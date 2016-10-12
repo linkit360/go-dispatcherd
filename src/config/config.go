@@ -8,21 +8,23 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/jinzhu/configor"
 
+	content "github.com/vostrok/contentd/rpcclient"
 	"github.com/vostrok/rabbit"
 )
 
 type AppConfig struct {
-	Server        ServerConfig        `yaml:"server"`
-	NewRelic      NewRelicConfig      `yaml:"newrelic"`
-	RBMQ          rabbit.RBMQConfig   `yaml:"rabbit"`
-	Subscriptions SubscriptionsConfig `yaml:"subscriptions"`
+	Server        ServerConfig            `yaml:"server"`
+	NewRelic      NewRelicConfig          `yaml:"newrelic"`
+	RBMQ          rabbit.RBMQConfig       `yaml:"rabbit"`
+	Subscriptions SubscriptionsConfig     `yaml:"subscriptions"`
+	ContentClient content.RPCClientConfig `yaml:"content_client"`
 }
 type ServerConfig struct {
 	Port          string `default:"70301"`
 	RBMQQueueName string `default:"new_subscription" yaml:"queue"`
 }
 type NewRelicConfig struct {
-	AppName string `default:"dispatcherd"`
+	AppName string `default:"dispatcherd.linkit360.com"`
 	License string `default:"4d635427ad90ca786ca2db6aa246ed651730b933"`
 }
 type SubscriptionsConfig struct {
@@ -43,47 +45,22 @@ func LoadConfig() AppConfig {
 		}
 	}
 
-	appConfig.Server.Port = EnvString("PORT", appConfig.Server.Port)
+	appConfig.Server.Port = envString("PORT", appConfig.Server.Port)
+	appConfig.Server.RBMQQueueName = envString("QUEUE", appConfig.Server.RBMQQueueName)
+
+	appConfig.ContentClient.DSN = envString("CONTENT_DSN", appConfig.ContentClient.DSN)
+	appConfig.ContentClient.Timeout = envString("CONTENT_DSN", appConfig.ContentClient.Timeout)
+
+	appConfig.RBMQ.Url = envString("RBMQ_URL", appConfig.RBMQ.Url)
 
 	log.WithField("config", appConfig).Info("Config loaded")
 	return appConfig
 }
 
-func EnvString(env, fallback string) string {
+func envString(env, fallback string) string {
 	e := os.Getenv(env)
 	if e == "" {
 		return fallback
 	}
 	return e
 }
-
-//
-//func EnvInt(env string, fallback int) int {
-//	e := os.Getenv(env)
-//	d, err := strconv.Atoi(e)
-//	if err != nil {
-//		return fallback
-//	}
-//	return d
-//}
-//
-//func EnvInt64(env string, fallback int64) int64 {
-//	e := os.Getenv(env)
-//	d, err := strconv.ParseInt(e, 10, 64)
-//	if err != nil {
-//		return fallback
-//	}
-//	return d
-//}
-//
-//func EnvBool(env string, fallback bool) bool {
-//	e := os.Getenv(env)
-//
-//	if e == "true" {
-//		return true
-//	}
-//	if e == "false" {
-//		return false
-//	}
-//	return fallback
-//}
