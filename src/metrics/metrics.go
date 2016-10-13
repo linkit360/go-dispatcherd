@@ -14,15 +14,17 @@ import (
 var M AppMetrics
 
 type AppMetrics struct {
-	RequestsOverall LocationMetric
-	NotFound        metrics.Counter
-	RBMQMetrics     rabbit.RBMQMetrics
+	RequestsOverall      LocationMetric
+	ContentDeliveryError metrics.Counter
+	NotFound             metrics.Counter
+	RBMQMetrics          rabbit.RBMQMetrics
 }
 
 func Init() AppMetrics {
 	M = AppMetrics{
-		RequestsOverall: NewLocationMetric("requests_overall"),
-		NotFound:        expvar.NewCounter("errors_404"),
+		RequestsOverall:      NewLocationMetric("requests_overall"),
+		ContentDeliveryError: expvar.NewCounter("error_content_delivery"),
+		NotFound:             expvar.NewCounter("errors_404"),
 		RBMQMetrics: rabbit.RBMQMetrics{
 			RbmqConnAttempt:     expvar.NewCounter("rbmq_conn_attempts_count"),
 			RbmqSessionRequests: expvar.NewCounter("rbmq_conn_reconnects_count"),

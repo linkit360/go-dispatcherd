@@ -30,7 +30,7 @@ func RunServer() {
 	r := gin.New()
 
 	r.Use(metrics.MetricHandler)
-	r.GET("/:subscription_hash", handlers.HandleSubscription)
+	r.GET("/:subscription_hash", handlers.HandlePull)
 
 	r.Static("/static/", appConfig.Subscriptions.StaticPath)
 	r.StaticFile("/favicon.ico", appConfig.Subscriptions.StaticPath+"/favicon.ico")

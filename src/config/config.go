@@ -3,7 +3,7 @@ package config
 import (
 	"flag"
 	"os"
-	//"strconv"
+	"strconv"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/jinzhu/configor"
@@ -49,7 +49,7 @@ func LoadConfig() AppConfig {
 	appConfig.Server.RBMQQueueName = envString("QUEUE", appConfig.Server.RBMQQueueName)
 
 	appConfig.ContentClient.DSN = envString("CONTENT_DSN", appConfig.ContentClient.DSN)
-	appConfig.ContentClient.Timeout = envString("CONTENT_DSN", appConfig.ContentClient.Timeout)
+	appConfig.ContentClient.Timeout = envInt("CONTENT_TIMEOUT", appConfig.ContentClient.Timeout)
 
 	appConfig.RBMQ.Url = envString("RBMQ_URL", appConfig.RBMQ.Url)
 
@@ -63,4 +63,13 @@ func envString(env, fallback string) string {
 		return fallback
 	}
 	return e
+}
+
+func envInt(env string, fallback int) int {
+	e := os.Getenv(env)
+	d, err := strconv.Atoi(e)
+	if err != nil {
+		return fallback
+	}
+	return d
 }

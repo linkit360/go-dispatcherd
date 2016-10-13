@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/vostrok/contentd/service"
 	"github.com/vostrok/dispatcherd/src/metrics"
 	"github.com/vostrok/rabbit"
 )
 
 type Notifier interface {
-	NewSubscriptionNotify(NewSubscriptionMessage) error
+	NewSubscriptionNotify(service.MsgRecordContentSent) error
 }
 type notifier struct {
 	queue string
@@ -38,13 +39,7 @@ func NewNotifierService(queueName string, conf rabbit.RBMQConfig) Notifier {
 	return n
 }
 
-type NewSubscriptionMessage struct {
-	Msisdn       string `json:"msisdn"`
-	ContentId    int64  `json:"content_id"`
-	CampaignHash string `json:"campaign_hash"`
-}
-
-func (service notifier) NewSubscriptionNotify(msg NewSubscriptionMessage) error {
+func (service notifier) NewSubscriptionNotify(msg service.MsgRecordContentSent) error {
 
 	event := EventNotify{
 		EventName: service.queue,

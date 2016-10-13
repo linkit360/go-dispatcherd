@@ -1,4 +1,4 @@
-package main
+package dispatcherd
 
 import (
 	"github.com/vostrok/dispatcherd/src"

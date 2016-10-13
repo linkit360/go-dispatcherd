@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 
 	log "github.com/Sirupsen/logrus"
@@ -9,12 +10,13 @@ import (
 
 	content "github.com/vostrok/contentd/rpcclient"
 	"github.com/vostrok/dispatcherd/src/config"
+	"github.com/vostrok/dispatcherd/src/metrics"
 	"github.com/vostrok/dispatcherd/src/rbmq"
 )
 
 var cnf config.AppConfig
 var notifierService rbmq.Notifier
-var contentClient content.Client
+var contentClient *content.Client
 
 func Init(conf config.AppConfig) {
 	cnf = conf
@@ -27,7 +29,9 @@ func Init(conf config.AppConfig) {
 	}
 }
 
-func HandleSubscription(c *gin.Context) {
+// uniq links generation ??
+// operators check
+func HandlePull(c *gin.Context) {
 	// todo: when other operators - could be another header name
 	msisdn := c.Request.Header.Get("X-Parse-MSISDN")
 	if len(msisdn) == 0 {
@@ -46,15 +50,36 @@ func HandleSubscription(c *gin.Context) {
 	}
 	log.WithField("campaignHash", campaignHash)
 
-	hash, err := contentClient.Get(msisdn, campaignHash)
+	contentProperties, err := contentClient.Get(msisdn, campaignHash)
 	if err != nil {
 		err := fmt.Errorf("contentClient.Get: %s", err.Error())
 		c.Error(err)
+		metrics.M.ContentDeliveryError.Add(1)
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 		return
 	}
 
-	notifierService.NewSubscriptionNotify(rbmq.NewSubscriptionMessage{CampaignHash: campaignHash, ContentId: 0})
+	notifierService.NewSubscriptionNotify(contentProperties)
 
-	http.ServeFile(c.Writer, c.Request, cnf.Subscriptions.StaticPath+hash)
+	serveContentFile(contentProperties.ContentPath, c)
+}
+
+func serveContentFile(filePath string, c *gin.Context) {
+	w := c.Writer
+
+	content, err := ioutil.ReadFile(cnf.Subscriptions.StaticPath + filePath)
+	if err != nil {
+		err := fmt.Errorf("serveContentFile. ioutil.ReadFile: %s", err.Error())
+		c.Error(err)
+		metrics.M.ContentDeliveryError.Add(1)
+		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset-utf-8")
+	w.Header().Set("Cache-Control", "no-cache, no-store, max-age=0, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+	w.WriteHeader(200)
+	w.Write(content)
 }
