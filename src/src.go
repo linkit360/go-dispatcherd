@@ -3,6 +3,9 @@ package src
 //
 
 import (
+	"net"
+	"net/rpc"
+	"net/rpc/jsonrpc"
 	"runtime"
 
 	log "github.com/Sirupsen/logrus"
@@ -13,6 +16,7 @@ import (
 	"github.com/vostrok/dispatcherd/src/handlers"
 	"github.com/vostrok/dispatcherd/src/metrics"
 	"github.com/vostrok/dispatcherd/src/newrelic"
+	"github.com/vostrok/dispatcherd/src/operator"
 	"github.com/vostrok/dispatcherd/src/rbmq"
 )
 
@@ -21,7 +25,9 @@ func RunServer() {
 	metrics.Init()
 	handlers.Init(appConfig)
 	newrelic.Init(appConfig.NewRelic)
-	rbmq.NewNotifierService(appConfig.Server.RBMQQueueName, appConfig.RBMQ)
+	operator.Init(appConfig.Operator)
+
+	rbmq.NewNotifierService(appConfig.Notifier)
 
 	nuCPU := runtime.NumCPU()
 	runtime.GOMAXPROCS(nuCPU)
@@ -51,4 +57,23 @@ func RunServer() {
 
 func notFound(r *gin.Context) {
 	metrics.M.NotFound.Add(1)
+}
+
+func RPCSrv(rpcPort string) {
+	l, err := net.Listen("tcp", rpcPort)
+	if err != nil {
+		log.Fatal("netListen ", err.Error())
+	}
+	server := rpc.NewServer()
+
+	// Operator.ReloadOperatorsIP
+	server.RegisterName("Operator", &operator.RPCReloadOperatorsIP{})
+
+	for {
+		if conn, err := l.Accept(); err == nil {
+			go server.ServeCodec(jsonrpc.NewServerCodec(conn))
+		} else {
+			log.WithField("error", err.Error()).Fatal("Accept")
+		}
+	}
 }

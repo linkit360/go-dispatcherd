@@ -9,19 +9,21 @@ import (
 	"github.com/jinzhu/configor"
 
 	content "github.com/vostrok/contentd/rpcclient"
-	"github.com/vostrok/rabbit"
+	"github.com/vostrok/dispatcherd/src/operator"
+	"github.com/vostrok/dispatcherd/src/rbmq"
 )
 
 type AppConfig struct {
 	Server        ServerConfig            `yaml:"server"`
 	NewRelic      NewRelicConfig          `yaml:"newrelic"`
-	RBMQ          rabbit.RBMQConfig       `yaml:"rabbit"`
+	Notifier      rbmq.NotifierConfig     `yaml:"notifier"`
 	Subscriptions SubscriptionsConfig     `yaml:"subscriptions"`
 	ContentClient content.RPCClientConfig `yaml:"content_client"`
+	Operator      operator.OperatorConfig `yaml:"operator"`
 }
+
 type ServerConfig struct {
-	Port          string `default:"70301"`
-	RBMQQueueName string `default:"new_subscription" yaml:"queue"`
+	Port string `default:"70301"`
 }
 type NewRelicConfig struct {
 	AppName string `default:"dispatcherd.linkit360.com"`
@@ -46,12 +48,11 @@ func LoadConfig() AppConfig {
 	}
 
 	appConfig.Server.Port = envString("PORT", appConfig.Server.Port)
-	appConfig.Server.RBMQQueueName = envString("QUEUE", appConfig.Server.RBMQQueueName)
 
 	appConfig.ContentClient.DSN = envString("CONTENT_DSN", appConfig.ContentClient.DSN)
 	appConfig.ContentClient.Timeout = envInt("CONTENT_TIMEOUT", appConfig.ContentClient.Timeout)
 
-	appConfig.RBMQ.Url = envString("RBMQ_URL", appConfig.RBMQ.Url)
+	appConfig.Notifier.Rbmq.Url = envString("RBMQ_URL", appConfig.Notifier.Rbmq.Url)
 
 	log.WithField("config", appConfig).Info("Config loaded")
 	return appConfig
