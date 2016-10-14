@@ -10,7 +10,7 @@ notifier:
     access_campaign: access_campaign
     new_subscription: new_subscription
   rabbit:
-    url: http://RBMQ.Url
+    url: amqp://linkit:dg-U_oHhy7-@52.66.23.201:5672
     chan_gap: 1000000
 
 subscriptions:

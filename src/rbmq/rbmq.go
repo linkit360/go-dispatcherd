@@ -5,7 +5,6 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/vostrok/contentd/service"
-	"github.com/vostrok/dispatcherd/src/metrics"
 	"github.com/vostrok/rabbit"
 )
 
@@ -39,10 +38,10 @@ type EventNotify struct {
 func NewNotifierService(conf NotifierConfig) Notifier {
 	var n Notifier
 	{
-		rabbit := rabbit.New(rabbit.RBMQConfig{
-			Url:            conf.Rbmq.Url,
-			PublishChanCap: conf.Rbmq.PublishChanCap,
-			Metrics:        metrics.M.RBMQMetrics,
+		rabbit := rabbit.NewPublisher(rabbit.RBMQConfig{
+			Url:     conf.Rbmq.Url,
+			ChanCap: conf.Rbmq.ChanCap,
+			Metrics: rabbit.InitMetrics(),
 		})
 
 		n = &notifier{
