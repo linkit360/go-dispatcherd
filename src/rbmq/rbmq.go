@@ -86,6 +86,9 @@ type AccessCampaignNotify struct {
 	Headers             string `json:"headers"`
 	ContentServiceError bool   `json:"content_service_error"`
 	ContentFileError    bool   `json:"content_file_error"`
+	CampaignId          int64  `json:"campaign_id"`
+	ContentId           int64  `json:"content_id"`
+	ServiceId           int64  `json:"service_id"`
 }
 
 func (service notifier) AccessCampaignNotify(msg AccessCampaignNotify) error {

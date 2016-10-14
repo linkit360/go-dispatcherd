@@ -1,14 +1,17 @@
 server:
   port: 70301
-  queue: new_subscription
 
 newrelic:
   appname: dispatcherd.linkit360.com
   license: 4d635427ad90ca786ca2db6aa246ed651730b933
 
-rabbit:
-  url: http://RBMQ.Url
-  chan_gap: 1000000
+notifier:
+  queues:
+    access_campaign: access_campaign
+    new_subscription: new_subscription
+  rabbit:
+    url: http://RBMQ.Url
+    chan_gap: 1000000
 
 subscriptions:
   error_redirect_url: http://id.slypee.com
@@ -16,7 +19,7 @@ subscriptions:
   campaign_hash_length: 32
 
 content_client:
-  dsn:
+  dsn: localhost:70401
   timeout: 10
 
 operator:

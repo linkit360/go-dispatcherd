@@ -101,12 +101,13 @@ func HandlePull(c *gin.Context) {
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 		return
 	}
+	msg.CampaignId = contentProperties.CampaignId
+	msg.ContentId = contentProperties.ContentId
+	msg.ServiceId = contentProperties.ServiceId
 
 	// for future use: after growth and createing of subscription service
 	// for PULL workflow there are no need to handle subscription
 	//notifierService.NewSubscriptionNotify(contentProperties)
-
-	notifierService.NewSubscriptionNotify(contentProperties)
 
 	if err = serveContentFile(contentProperties.ContentPath, c); err != nil {
 		msg.ContentFileError = true
