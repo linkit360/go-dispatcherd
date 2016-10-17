@@ -7,8 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-kit/kit/metrics"
 	"github.com/go-kit/kit/metrics/expvar"
-
-	"github.com/vostrok/rabbit"
 )
 
 var M AppMetrics
@@ -17,7 +15,6 @@ type AppMetrics struct {
 	RequestsOverall      LocationMetric
 	ContentDeliveryError metrics.Counter
 	NotFound             metrics.Counter
-	RBMQMetrics          rabbit.RBMQMetrics
 }
 
 func Init() AppMetrics {
@@ -25,14 +22,6 @@ func Init() AppMetrics {
 		RequestsOverall:      NewLocationMetric("requests_overall"),
 		ContentDeliveryError: expvar.NewCounter("error_content_delivery"),
 		NotFound:             expvar.NewCounter("errors_404"),
-		RBMQMetrics: rabbit.RBMQMetrics{
-			RbmqConnAttempt:     expvar.NewCounter("rbmq_conn_attempts_count"),
-			RbmqSessionRequests: expvar.NewCounter("rbmq_conn_reconnects_count"),
-			RbmqPublishErrs:     expvar.NewCounter("rbmq_conn_errs_pub_count"),
-			RbmqConnected:       expvar.NewGauge("rbmq_conn_status"),
-			PendingBuffer:       expvar.NewGauge("rbmq_buffer_pending_gauge"),
-			ReadingBuffer:       expvar.NewGauge("rbmq_buffer_reading_gauge"),
-		},
 	}
 	return M
 }

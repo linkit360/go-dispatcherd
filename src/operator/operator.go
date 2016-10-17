@@ -16,12 +16,12 @@ type Operator interface {
 }
 
 type OperatorConfig struct {
-	dbConf  DataBaseConfig `yaml:"db"`
+	DbConf  DataBaseConfig `yaml:"db"`
 	Private []IpRange      `yaml:"private_networks"`
 }
 
 func Init(conf OperatorConfig) {
-	op.initDatabase(conf.dbConf)
+	op.initDatabase(conf.DbConf)
 	err := op.loadIPRanges()
 	if err != nil {
 		log.WithField("error", err.Error()).Fatal("Load IP ranges fail")

@@ -23,7 +23,7 @@ type AppConfig struct {
 }
 
 type ServerConfig struct {
-	Port string `default:"70301"`
+	Port string `default:"50300"`
 }
 type NewRelicConfig struct {
 	AppName string `default:"dispatcherd.linkit360.com"`

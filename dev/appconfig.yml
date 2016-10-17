@@ -1,5 +1,5 @@
 server:
-  port: 70301
+  port: 50300
 
 newrelic:
   appname: dispatcherd.linkit360.com
@@ -19,7 +19,7 @@ subscriptions:
   campaign_hash_length: 32
 
 content_client:
-  dsn: localhost:70401
+  dsn: localhost:50301
   timeout: 10
 
 operator:
@@ -32,6 +32,7 @@ operator:
     pass: E0kZN8pUAs63wePepf
     port: 5432
     host: linkit.cz3twmoynbq5.eu-central-1.rds.amazonaws.com
+    ssl_mode: disable
     table_prefix: xmp_
 
   private_networks:
