@@ -6,9 +6,11 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
+	"github.com/nu7hatch/gouuid"
 
 	content "github.com/vostrok/contentd/rpcclient"
 	"github.com/vostrok/contentd/service"
@@ -37,6 +39,15 @@ func Init(conf config.AppConfig) {
 // uniq links generation ??
 // operators check
 func HandlePull(c *gin.Context) {
+	u4, err := uuid.NewV4()
+	if err != nil {
+		log.WithField("error", err.Error()).Error("generate uniq id")
+		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
+		return
+	}
+	tid := fmt.Sprintf("%d-%s", time.Now().Unix(), u4)
+	logCtx := log.WithField("tid", tid)
+
 	var msg rbmq.AccessCampaignNotify
 	defer func(msg rbmq.AccessCampaignNotify) {
 		notifierService.AccessCampaignNotify(msg)
@@ -52,15 +63,16 @@ func HandlePull(c *gin.Context) {
 	// todo: when other operators - could be another header name
 	msisdn := c.Request.Header.Get("X-Parse-MSISDN")
 	if len(msisdn) == 0 {
-		log.WithField("Header", "X-Parse-MSISDN").Error("msisdn is empty")
+		logCtx.WithField("Header", "X-Parse-MSISDN").Error("msisdn is empty")
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 		return
 	}
 	msg.Msisdn = msisdn
+	logCtx = logCtx.WithField("msisdn", msisdn)
 
 	ip := getIPAdress(c.Request)
 	if ip == nil {
-		log.WithField("msisdn", msisdn).Error("cannot determine IP address")
+		logCtx.Error("cannot determine IP address")
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 		return
 	}
@@ -72,31 +84,33 @@ func HandlePull(c *gin.Context) {
 	msg.Supported = info.Supported
 
 	if !info.Supported {
-		log.WithFields(log.Fields{"msisdn": msisdn, "info": info}).Error("operator is not supported")
+		logCtx.WithFields(log.Fields{"info": info}).Error("operator is not supported")
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 		return
 	}
 
 	campaignHash := c.Params.ByName("campaign_hash")
 	if len(campaignHash) != cnf.Subscriptions.CampaignHashLength {
-		log.WithFields(log.Fields{"campaignHash": campaignHash, "length": len(campaignHash)}).Error("Length is too small")
+		logCtx.WithFields(log.Fields{"campaignHash": campaignHash, "length": len(campaignHash)}).Error("Length is too small")
 		err := fmt.Errorf("Wrong campaign length %v", len(campaignHash))
 		c.Error(err)
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 		return
 	}
-	log.WithField("campaignHash", campaignHash)
+	logCtx.WithField("campaignHash", campaignHash)
 
 	contentProperties, err := contentClient.Get(service.GetUrlByCampaignHashParams{
 		Msisdn:       msisdn,
+		Tid:          tid,
 		CampaignHash: campaignHash,
 		CountryCode:  info.CountryCode,
 		OperatorCode: info.OperatorCode,
 	})
 	if err != nil {
-		msg.ContentServiceError = true
 		err := fmt.Errorf("contentClient.Get: %s", err.Error())
+		logCtx.WithField("error", err.Error()).Error("contentClient.Get")
 		c.Error(err)
+		msg.ContentServiceError = true
 		metrics.M.ContentDeliveryError.Add(1)
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 		return
@@ -110,7 +124,12 @@ func HandlePull(c *gin.Context) {
 	//notifierService.NewSubscriptionNotify(contentProperties)
 
 	if err = serveContentFile(contentProperties.ContentPath, c); err != nil {
+		err := fmt.Errorf("serveContentFile: %s", err.Error())
+		logCtx.WithField("error", err.Error()).Error("serveContentFile")
+		c.Error(err)
 		msg.ContentFileError = true
+		metrics.M.ContentDeliveryError.Add(1)
+		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 	}
 }
 
@@ -119,10 +138,7 @@ func serveContentFile(filePath string, c *gin.Context) error {
 
 	content, err := ioutil.ReadFile(cnf.Subscriptions.StaticPath + filePath)
 	if err != nil {
-		err := fmt.Errorf("serveContentFile. ioutil.ReadFile: %s", err.Error())
-		c.Error(err)
-		metrics.M.ContentDeliveryError.Add(1)
-		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
+		err := fmt.Errorf("ioutil.ReadFile: %s", err.Error())
 		return err
 	}
 

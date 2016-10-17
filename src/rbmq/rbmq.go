@@ -74,6 +74,7 @@ func (service notifier) NewSubscriptionNotify(msg service.ContentSentProperties)
 
 type AccessCampaignNotify struct {
 	Msisdn              string `json:"msisdn"`
+	Tid                 string `json:"tid"`
 	IP                  string `json:"ip"`
 	OperatorCode        int64  `json:"operator_code"`
 	CountryCode         int64  `json:"country_code"`
