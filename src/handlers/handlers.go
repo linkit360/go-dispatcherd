@@ -60,16 +60,6 @@ func HandlePull(c *gin.Context) {
 		Headers:   fmt.Sprintf("%v", c.Request.Header),
 	}
 
-	// todo: when other operators - could be another header name
-	msisdn := c.Request.Header.Get("X-Parse-MSISDN")
-	if len(msisdn) == 0 {
-		logCtx.WithField("Header", "X-Parse-MSISDN").Error("msisdn is empty")
-		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
-		return
-	}
-	msg.Msisdn = msisdn
-	logCtx = logCtx.WithField("msisdn", msisdn)
-
 	ip := getIPAdress(c.Request)
 	if ip == nil {
 		logCtx.Error("cannot determine IP address")
@@ -77,7 +67,6 @@ func HandlePull(c *gin.Context) {
 		return
 	}
 	info := operator.GetIpInfo(ip)
-
 	msg.IP = info.IP
 	msg.OperatorCode = info.OperatorCode
 	msg.CountryCode = info.CountryCode
@@ -88,6 +77,14 @@ func HandlePull(c *gin.Context) {
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 		return
 	}
+	msisdn := c.Request.Header.Get(info.Header)
+	if len(msisdn) == 0 {
+		logCtx.WithField("Header", info.Header).Error("msisdn is empty")
+		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
+		return
+	}
+	msg.Msisdn = msisdn
+	logCtx = logCtx.WithField("msisdn", msisdn)
 
 	campaignHash := c.Params.ByName("campaign_hash")
 	if len(campaignHash) != cnf.Subscriptions.CampaignHashLength {

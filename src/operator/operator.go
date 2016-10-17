@@ -40,6 +40,7 @@ type IPInfo struct {
 	IP           string
 	CountryCode  int64
 	OperatorCode int64
+	Header       string
 	Supported    bool
 }
 
@@ -54,6 +55,7 @@ func GetIpInfo(ipAddr net.IP) IPInfo {
 		if ipRange.In(ipAddr) {
 			info.OperatorCode = ipRange.OperatorCode
 			info.CountryCode = ipRange.CountryCode
+			info.Header = ipRange.HeaderName
 			if info.OperatorCode != 0 {
 				info.Supported = true
 			}
@@ -82,8 +84,9 @@ func (rpc *RPCReloadOperatorsIP) ReloadOperatorsIP(req ReloadOperatorsIPRequest,
 
 // todo - rewrite in binary three
 func (op operator) loadIPRanges() (err error) {
-
-	query := "SELECT id, operator_code, country_code, ip_from, ip_to from xmp_operator_ip"
+	query := "SELECT id, operator_code, country_code, ip_from, ip_to, " +
+		" ( SELECT xmp_operators.msisdn_header_name as header FROM xmp_operators where operator_code = code ) " +
+		" from xmp_operator_ip"
 	rows, err := op.db.Query(query)
 	if err != nil {
 		return fmt.Errorf("GetIpRanges: %s, query: %s", err.Error(), query)
@@ -100,6 +103,7 @@ func (op operator) loadIPRanges() (err error) {
 			&record.CountryCode,
 			&record.IpFrom,
 			&record.IpTo,
+			&record.HeaderName,
 		); err != nil {
 			return err
 		}
@@ -111,6 +115,8 @@ func (op operator) loadIPRanges() (err error) {
 		return fmt.Errorf("GetIpRanges RowsError: %s", err.Error())
 	}
 	op.ipRanges = records
+	log.WithField("IpRanges", op.ipRanges).Info("IpRanges loaded")
+
 	return nil
 }
 func (op operator) loadPrivateNetworks(ipConf []IpRange) {
@@ -120,7 +126,7 @@ func (op operator) loadPrivateNetworks(ipConf []IpRange) {
 		v.End = net.ParseIP(v.IpTo)
 		op.privateIPRanges = append(op.privateIPRanges, v)
 	}
-
+	log.WithField("privateNetworks", op.privateIPRanges).Info("private networks loaded")
 }
 
 type IpRange struct {
@@ -131,6 +137,7 @@ type IpRange struct {
 	Start        net.IP `json:"-" yaml:"-"`
 	IpTo         string `json:"ip_to,omitempty" yaml:"end"`
 	End          net.IP `json:"-" yaml:"-"`
+	HeaderName   string `json:"header_name" yaml:"-"`
 }
 
 func (r IpRange) In(ip net.IP) bool {
