@@ -7,6 +7,8 @@ import (
 	"net"
 
 	log "github.com/Sirupsen/logrus"
+
+	"github.com/vostrok/db"
 )
 
 var op operator
@@ -16,21 +18,11 @@ type Operator interface {
 }
 
 type OperatorConfig struct {
-	DbConf  DataBaseConfig `yaml:"db"`
-	Private []IpRange      `yaml:"private_networks"`
-}
-
-func Init(conf OperatorConfig) {
-	op.initDatabase(conf.DbConf)
-	err := op.loadIPRanges()
-	if err != nil {
-		log.WithField("error", err.Error()).Fatal("Load IP ranges fail")
-	}
-	op.loadPrivateNetworks(conf.Private)
+	DbConf  db.DataBaseConfig `yaml:"db"`
+	Private []IpRange         `yaml:"private_networks"`
 }
 
 type operator struct {
-	dbConfig        DataBaseConfig
 	db              *sql.DB
 	ipRanges        []IpRange
 	privateIPRanges []IpRange
@@ -42,6 +34,16 @@ type IPInfo struct {
 	OperatorCode int64
 	Header       string
 	Supported    bool
+}
+
+func Init(conf OperatorConfig) {
+	op = operator{}
+	op.db = db.Init(conf.DbConf)
+	err := op.loadIPRanges()
+	if err != nil {
+		log.WithField("error", err.Error()).Fatal("Load IP ranges fail")
+	}
+	op.loadPrivateNetworks(conf.Private)
 }
 
 func GetIpInfo(ipAddr net.IP) IPInfo {
@@ -115,7 +117,7 @@ func (op operator) loadIPRanges() (err error) {
 		return fmt.Errorf("GetIpRanges RowsError: %s", err.Error())
 	}
 	op.ipRanges = records
-	log.WithField("IpRanges", op.ipRanges).Info("IpRanges loaded")
+	log.WithField("IpRanges", len(op.ipRanges)).Info("IpRanges loaded")
 
 	return nil
 }

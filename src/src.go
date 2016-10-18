@@ -22,10 +22,10 @@ import (
 
 func RunServer() {
 	appConfig := config.LoadConfig()
+	operator.Init(appConfig.Operator)
 	metrics.Init()
 	handlers.Init(appConfig)
 	newrelic.Init(appConfig.NewRelic)
-	operator.Init(appConfig.Operator)
 
 	rbmq.NewNotifierService(appConfig.Notifier)
 
