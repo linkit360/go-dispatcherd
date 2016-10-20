@@ -26,7 +26,7 @@ type ServerConfig struct {
 	Port string `default:"50300"`
 }
 type NewRelicConfig struct {
-	AppName string `default:"dispatcherd.linkit360.com"`
+	AppName string `default:"dev.dispatcherd.linkit360.com"`
 	License string `default:"4d635427ad90ca786ca2db6aa246ed651730b933"`
 }
 type SubscriptionsConfig struct {

@@ -1,11 +1,7 @@
 package src
 
-//
-
 import (
-	"net"
-	"net/rpc"
-	"net/rpc/jsonrpc"
+	"errors"
 	"runtime"
 
 	log "github.com/Sirupsen/logrus"
@@ -35,6 +31,8 @@ func RunServer() {
 
 	r := gin.New()
 
+	operator.AddCQRHandlers(r)
+
 	r.Use(metrics.MetricHandler)
 	r.GET("/:subscription_hash", handlers.HandlePull)
 
@@ -55,25 +53,7 @@ func RunServer() {
 	r.Run(":" + appConfig.Server.Port)
 }
 
-func notFound(r *gin.Context) {
+func notFound(c *gin.Context) {
+	c.Error(errors.New("Not found"))
 	metrics.M.NotFound.Add(1)
-}
-
-func RPCSrv(rpcPort string) {
-	l, err := net.Listen("tcp", rpcPort)
-	if err != nil {
-		log.Fatal("netListen ", err.Error())
-	}
-	server := rpc.NewServer()
-
-	// Operator.ReloadOperatorsIP
-	server.RegisterName("Operator", &operator.RPCReloadOperatorsIP{})
-
-	for {
-		if conn, err := l.Accept(); err == nil {
-			go server.ServeCodec(jsonrpc.NewServerCodec(conn))
-		} else {
-			log.WithField("error", err.Error()).Fatal("Accept")
-		}
-	}
 }

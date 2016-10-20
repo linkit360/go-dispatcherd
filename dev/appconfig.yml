@@ -2,7 +2,7 @@ server:
   port: 50300
 
 newrelic:
-  appname: dispatcherd.linkit360.com
+  appname: dev.dispatcherd.linkit360.com
   license: 4d635427ad90ca786ca2db6aa246ed651730b933
 
 notifier:

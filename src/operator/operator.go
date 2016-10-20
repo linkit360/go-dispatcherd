@@ -3,11 +3,15 @@ package operator
 import (
 	"bytes"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net"
+	"net/http"
+	"strings"
 
 	log "github.com/Sirupsen/logrus"
 
+	"github.com/gin-gonic/gin"
 	"github.com/vostrok/db"
 )
 
@@ -24,6 +28,7 @@ type OperatorConfig struct {
 
 type operator struct {
 	db              *sql.DB
+	conf            OperatorConfig
 	ipRanges        []IpRange
 	privateIPRanges []IpRange
 }
@@ -39,6 +44,7 @@ type IPInfo struct {
 func Init(conf OperatorConfig) {
 	op = operator{}
 	op.db = db.Init(conf.DbConf)
+	op.conf = conf
 	err := op.loadIPRanges()
 	if err != nil {
 		log.WithField("error", err.Error()).Fatal("Load IP ranges fail")
@@ -67,28 +73,12 @@ func GetIpInfo(ipAddr net.IP) IPInfo {
 	return info
 }
 
-type RPCReloadOperatorsIP struct{}
-type ReloadOperatorsIPRequest struct{}
-type ReloadOperatorsIPResponse struct {
-	Success bool
-}
-
-func (rpc *RPCReloadOperatorsIP) ReloadOperatorsIP(req ReloadOperatorsIPRequest, res *ReloadOperatorsIPResponse) error {
-	err := op.loadIPRanges()
-	if err != nil {
-		res.Success = false
-		log.WithField("error", err.Error()).Error("Load IP ranges fail")
-		return err
-	}
-	res.Success = true
-	return nil
-}
-
 // todo - rewrite in binary three
 func (op operator) loadIPRanges() (err error) {
-	query := "SELECT id, operator_code, country_code, ip_from, ip_to, " +
-		" ( SELECT xmp_operators.msisdn_header_name as header FROM xmp_operators where operator_code = code ) " +
-		" from xmp_operator_ip"
+	query := fmt.Sprintf(""+
+		"SELECT id, operator_code, country_code, ip_from, ip_to, "+
+		" ( SELECT %soperators.msisdn_header_name as header FROM xmp_operators where operator_code = code ) "+
+		" from %soperator_ip", op.conf.DbConf.TablePrefix, op.conf.DbConf.TablePrefix)
 	rows, err := op.db.Query(query)
 	if err != nil {
 		return fmt.Errorf("GetIpRanges: %s, query: %s", err.Error(), query)
@@ -161,4 +151,58 @@ func IsPrivateSubnet(ipAddress net.IP) bool {
 		}
 	}
 	return false
+}
+
+type response struct {
+	Success bool        `json:"success,omitempty"`
+	Err     error       `json:"error,omitempty"`
+	Data    interface{} `json:"data,omitempty"`
+	Status  int         `json:"-"`
+}
+
+func AddCQRHandlers(r *gin.Engine) {
+	rg := r.Group("/cqr")
+	rg.GET("", Reload)
+}
+
+func Reload(c *gin.Context) {
+	var err error
+	r := response{Err: err, Status: http.StatusOK}
+
+	table, exists := c.GetQuery("table")
+	if !exists || table == "" {
+		table, exists = c.GetQuery("t")
+		if !exists || table == "" {
+			err := errors.New("Table name required")
+			r.Status = http.StatusBadRequest
+			r.Err = err
+			render(r, c)
+			return
+		}
+	}
+
+	switch {
+	case strings.Contains(table, "operator_ip"):
+		err := op.loadIPRanges()
+		if err != nil {
+			r.Success = false
+			r.Status = http.StatusInternalServerError
+			log.WithField("error", err.Error()).Error("Load IP ranges fail")
+		} else {
+			r.Success = true
+		}
+	default:
+		err = fmt.Errorf("Table name %s not recognized", table)
+		r.Status = http.StatusBadRequest
+	}
+	render(r, c)
+	return
+}
+
+func render(msg response, c *gin.Context) {
+	if msg.Err != nil {
+		c.Header("Error", msg.Err.Error())
+		c.Error(msg.Err)
+	}
+	c.JSON(msg.Status, msg)
 }
