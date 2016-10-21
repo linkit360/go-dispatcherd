@@ -76,11 +76,12 @@ func GetIpInfo(ipAddr net.IP) IPInfo {
 }
 
 // todo - rewrite in binary three
+// todo msisdn could be in many headers
 func (op operator) loadIPRanges() (err error) {
 	query := fmt.Sprintf(""+
 		"SELECT id, operator_code, country_code, ip_from, ip_to, "+
-		" ( SELECT %soperators.msisdn_header_name as header FROM xmp_operators where operator_code = code ) "+
-		" from %soperator_ip", op.conf.DbConf.TablePrefix, op.conf.DbConf.TablePrefix)
+		" ( SELECT %soperators.msisdn_header_name as header FROM %soperators where operator_code = code ) "+
+		" from %soperator_ip", op.conf.DbConf.TablePrefix, op.conf.DbConf.TablePrefix, op.conf.DbConf.TablePrefix)
 	rows, err := op.db.Query(query)
 	if err != nil {
 		return fmt.Errorf("GetIpRanges: %s, query: %s", err.Error(), query)

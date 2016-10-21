@@ -31,11 +31,7 @@ func RunServer() {
 	operator.AddCQRHandlers(r)
 
 	r.Use(metrics.MetricHandler)
-	r.GET("/campaign/:subscription_hash", handlers.HandlePull)
-
-	r.Static("/static/", appConfig.Subscriptions.StaticPath)
-	r.StaticFile("/favicon.ico", appConfig.Subscriptions.StaticPath+"/favicon.ico")
-	r.StaticFile("/robots.txt", appConfig.Subscriptions.StaticPath+"/robots.txt")
+	r.GET("/campaign/:campaign_hash", handlers.HandlePull)
 
 	rg := r.Group("/debug")
 	rg.GET("/vars", expvar.Handler())

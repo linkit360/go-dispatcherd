@@ -39,13 +39,10 @@ func Init(conf config.AppConfig) {
 }
 
 // uniq links generation ??
-// operators check
 func HandlePull(c *gin.Context) {
 	u4, err := uuid.NewV4()
 	if err != nil {
 		log.WithField("error", err.Error()).Error("generate uniq id")
-		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
-		return
 	}
 	tid := fmt.Sprintf("%d-%s", time.Now().Unix(), u4)
 	logCtx := log.WithField("tid", tid)
@@ -90,7 +87,10 @@ func HandlePull(c *gin.Context) {
 
 	campaignHash := c.Params.ByName("campaign_hash")
 	if len(campaignHash) != cnf.Subscriptions.CampaignHashLength {
-		logCtx.WithFields(log.Fields{"campaignHash": campaignHash, "length": len(campaignHash)}).Error("Length is too small")
+		logCtx.WithFields(log.Fields{
+			"campaignHash": campaignHash,
+			"length":       len(campaignHash),
+		}).Error("Length is too small")
 		err := fmt.Errorf("Wrong campaign length %v", len(campaignHash))
 		c.Error(err)
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
@@ -120,8 +120,9 @@ func HandlePull(c *gin.Context) {
 
 	// for future use: after growth and createing of subscription service
 	// for PULL workflow there are no need to handle subscription
-	//notifierService.NewSubscriptionNotify(contentProperties)
+	// notifierService.NewSubscriptionNotify(contentProperties)
 
+	// todo one time url-s
 	if err = serveContentFile(contentProperties.ContentPath, c); err != nil {
 		err := fmt.Errorf("serveContentFile: %s", err.Error())
 		logCtx.WithField("error", err.Error()).Error("serveContentFile")
