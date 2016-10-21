@@ -42,6 +42,8 @@ type IPInfo struct {
 }
 
 func Init(conf OperatorConfig) {
+	log.SetLevel(log.DebugLevel)
+
 	op = operator{}
 	op.db = db.Init(conf.DbConf)
 	op.conf = conf

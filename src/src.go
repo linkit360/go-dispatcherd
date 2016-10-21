@@ -13,7 +13,6 @@ import (
 	"github.com/vostrok/dispatcherd/src/metrics"
 	"github.com/vostrok/dispatcherd/src/newrelic"
 	"github.com/vostrok/dispatcherd/src/operator"
-	"github.com/vostrok/dispatcherd/src/rbmq"
 )
 
 func RunServer() {
@@ -22,8 +21,6 @@ func RunServer() {
 	metrics.Init()
 	handlers.Init(appConfig)
 	newrelic.Init(appConfig.NewRelic)
-
-	rbmq.NewNotifierService(appConfig.Notifier)
 
 	nuCPU := runtime.NumCPU()
 	runtime.GOMAXPROCS(nuCPU)
@@ -34,7 +31,7 @@ func RunServer() {
 	operator.AddCQRHandlers(r)
 
 	r.Use(metrics.MetricHandler)
-	r.GET("/:subscription_hash", handlers.HandlePull)
+	r.GET("/campaign/:subscription_hash", handlers.HandlePull)
 
 	r.Static("/static/", appConfig.Subscriptions.StaticPath)
 	r.StaticFile("/favicon.ico", appConfig.Subscriptions.StaticPath+"/favicon.ico")

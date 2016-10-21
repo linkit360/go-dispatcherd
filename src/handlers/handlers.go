@@ -26,6 +26,8 @@ var notifierService rbmq.Notifier
 var contentClient *content.Client
 
 func Init(conf config.AppConfig) {
+	log.SetLevel(log.DebugLevel)
+
 	cnf = conf
 	notifierService = rbmq.NewNotifierService(conf.Notifier)
 
