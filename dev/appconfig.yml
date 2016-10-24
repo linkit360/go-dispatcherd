@@ -1,5 +1,6 @@
 server:
-  port: 80
+  port: 50300
+  static_path: /var/www/xmp.linkit360.ru/web/
 
 newrelic:
   appname: dev.dispatcherd.linkit360.com
@@ -15,15 +16,13 @@ notifier:
 
 subscriptions:
   error_redirect_url: http://id.slypee.com
-  static_path: /var/www/xmp.linkit360.ru/web/
   campaign_hash_length: 32
 
 content_client:
   dsn: localhost:50301
   timeout: 10
 
-operator:
-  db:
+db:
     conn_ttl: -1
     max_conns: 15
     timeout: 30
@@ -35,6 +34,7 @@ operator:
     ssl_mode: disable
     table_prefix: xmp_
 
+operator:
   private_networks:
   - start: 10.0.0.0
     end: 10.255.255.255

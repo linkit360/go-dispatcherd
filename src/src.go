@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/contrib/expvar"
 	"github.com/gin-gonic/gin"
 
+	"github.com/vostrok/dispatcherd/src/campaigns"
 	"github.com/vostrok/dispatcherd/src/config"
 	"github.com/vostrok/dispatcherd/src/handlers"
 	"github.com/vostrok/dispatcherd/src/metrics"
@@ -17,7 +18,9 @@ import (
 
 func RunServer() {
 	appConfig := config.LoadConfig()
-	operator.Init(appConfig.Operator)
+	operator.Init(appConfig.Operator, appConfig.Db)
+	campaigns.Init(appConfig.Server.StaticPath, appConfig.Db)
+
 	metrics.Init()
 	handlers.Init(appConfig)
 	newrelic.Init(appConfig.NewRelic)
@@ -29,6 +32,7 @@ func RunServer() {
 	r := gin.New()
 
 	operator.AddCQRHandlers(r)
+	campaigns.AddCampaignHandlers(r)
 
 	r.Use(metrics.MetricHandler)
 	r.GET("/campaign/:campaign_hash", handlers.HandlePull)

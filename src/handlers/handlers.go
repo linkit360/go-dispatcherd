@@ -136,7 +136,7 @@ func HandlePull(c *gin.Context) {
 func serveContentFile(filePath string, c *gin.Context) error {
 	w := c.Writer
 
-	content, err := ioutil.ReadFile(cnf.Subscriptions.StaticPath + filePath)
+	content, err := ioutil.ReadFile(cnf.Server.StaticPath + filePath)
 	if err != nil {
 		err := fmt.Errorf("ioutil.ReadFile: %s", err.Error())
 		return err

@@ -22,13 +22,13 @@ type Operator interface {
 }
 
 type OperatorConfig struct {
-	DbConf  db.DataBaseConfig `yaml:"db"`
-	Private []IpRange         `yaml:"private_networks"`
+	Private []IpRange `yaml:"private_networks"`
 }
 
 type operator struct {
 	db              *sql.DB
 	conf            OperatorConfig
+	dbConf          db.DataBaseConfig
 	ipRanges        []IpRange
 	privateIPRanges []IpRange
 }
@@ -41,12 +41,14 @@ type IPInfo struct {
 	Supported    bool
 }
 
-func Init(conf OperatorConfig) {
+func Init(conf OperatorConfig, dbConfig db.DataBaseConfig) {
 	log.SetLevel(log.DebugLevel)
 
-	op = operator{}
-	op.db = db.Init(conf.DbConf)
-	op.conf = conf
+	op = operator{
+		db:     db.Init(dbConfig),
+		conf:   conf,
+		dbConf: dbConfig,
+	}
 	err := op.loadIPRanges()
 	if err != nil {
 		log.WithField("error", err.Error()).Fatal("Load IP ranges fail")
@@ -81,7 +83,7 @@ func (op operator) loadIPRanges() (err error) {
 	query := fmt.Sprintf(""+
 		"SELECT id, operator_code, country_code, ip_from, ip_to, "+
 		" ( SELECT %soperators.msisdn_header_name as header FROM %soperators where operator_code = code ) "+
-		" from %soperator_ip", op.conf.DbConf.TablePrefix, op.conf.DbConf.TablePrefix, op.conf.DbConf.TablePrefix)
+		" from %soperator_ip", op.dbConf.TablePrefix, op.dbConf.TablePrefix, op.dbConf.TablePrefix)
 	rows, err := op.db.Query(query)
 	if err != nil {
 		return fmt.Errorf("GetIpRanges: %s, query: %s", err.Error(), query)

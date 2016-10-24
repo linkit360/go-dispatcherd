@@ -9,6 +9,7 @@ import (
 	"github.com/jinzhu/configor"
 
 	content "github.com/vostrok/contentd/rpcclient"
+	"github.com/vostrok/db"
 	"github.com/vostrok/dispatcherd/src/operator"
 	"github.com/vostrok/dispatcherd/src/rbmq"
 )
@@ -20,10 +21,12 @@ type AppConfig struct {
 	Subscriptions SubscriptionsConfig     `yaml:"subscriptions"`
 	ContentClient content.RPCClientConfig `yaml:"content_client"`
 	Operator      operator.OperatorConfig `yaml:"operator"`
+	Db            db.DataBaseConfig       `yaml:"db"`
 }
 
 type ServerConfig struct {
-	Port string `default:"80"`
+	Port       string `default:"50300"`
+	StaticPath string `default:"/var/www/xmp.linkit360.ru/web/" yaml:"static_path"`
 }
 type NewRelicConfig struct {
 	AppName string `default:"dev.dispatcherd.linkit360.com"`
@@ -31,7 +34,6 @@ type NewRelicConfig struct {
 }
 type SubscriptionsConfig struct {
 	ErrorRedirectUrl   string `default:"http://id.slypee.com" yaml:"error_redirect_url"`
-	StaticPath         string `default:"/var/www/xmp.linkit360.ru/web/" yaml:"static_path"`
 	CampaignHashLength int    `default:"32" yaml:"campaign_hash_length"`
 }
 
