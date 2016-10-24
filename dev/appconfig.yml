@@ -1,5 +1,5 @@
 server:
-  port: 50300
+  port: 80
 
 newrelic:
   appname: dev.dispatcherd.linkit360.com
