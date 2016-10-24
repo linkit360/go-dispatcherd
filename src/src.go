@@ -3,6 +3,7 @@ package src
 import (
 	"errors"
 	"runtime"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/contrib/expvar"
@@ -14,6 +15,7 @@ import (
 	"github.com/vostrok/dispatcherd/src/metrics"
 	"github.com/vostrok/dispatcherd/src/newrelic"
 	"github.com/vostrok/dispatcherd/src/operator"
+	"github.com/vostrok/dispatcherd/src/sessions"
 )
 
 func RunServer() {
@@ -30,6 +32,10 @@ func RunServer() {
 	log.WithField("CPUCount", nuCPU)
 
 	r := gin.New()
+	sessions.Init(appConfig.Server.Sessions, r)
+
+	r.Use(AccessHandler)
+	r.Use(sessions.AddSessionTidHandler)
 
 	operator.AddCQRHandlers(r)
 	campaigns.AddCampaignHandlers(r)
@@ -53,4 +59,29 @@ func RunServer() {
 func notFound(c *gin.Context) {
 	c.Error(errors.New("Not found"))
 	metrics.M.NotFound.Add(1)
+}
+
+func AccessHandler(c *gin.Context) {
+	begin := time.Now()
+	c.Next()
+
+	responseTime := time.Since(begin)
+
+	if len(c.Errors) > 0 {
+		log.WithFields(log.Fields{
+			"method": c.Request.Method,
+			"path":   c.Request.URL.Path,
+			"req":    c.Request.URL.RawQuery,
+			"error":  c.Errors.String(),
+			"since":  responseTime,
+		}).Error("Error")
+	} else {
+		log.WithFields(log.Fields{
+			"method": c.Request.Method,
+			"path":   c.Request.URL.Path,
+			"req":    c.Request.URL.RawQuery,
+			"since":  responseTime,
+		}).Info("Access")
+	}
+	c.Header("X-Response-Time", responseTime.String())
 }

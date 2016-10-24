@@ -1,6 +1,13 @@
 server:
   port: 50300
   static_path: /var/www/xmp.linkit360.ru/web/
+  sessions:
+    secret: rCs7h2h_NqB5Kx-
+    path: /
+    domain: pk.linkit360.ru
+    cookie_ttl: 3600
+    secure: false
+    http_onlu: false
 
 newrelic:
   appname: mumbai.dispatcherd.linkit360.com

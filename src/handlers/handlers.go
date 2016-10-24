@@ -6,11 +6,9 @@ import (
 	"net"
 	"net/http"
 	"strings"
-	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
-	"github.com/nu7hatch/gouuid"
 
 	content "github.com/vostrok/contentd/rpcclient"
 	"github.com/vostrok/contentd/service"
@@ -18,6 +16,7 @@ import (
 	"github.com/vostrok/dispatcherd/src/metrics"
 	"github.com/vostrok/dispatcherd/src/operator"
 	"github.com/vostrok/dispatcherd/src/rbmq"
+	"github.com/vostrok/dispatcherd/src/sessions"
 )
 
 var cnf config.AppConfig
@@ -40,11 +39,7 @@ func Init(conf config.AppConfig) {
 
 // uniq links generation ??
 func HandlePull(c *gin.Context) {
-	u4, err := uuid.NewV4()
-	if err != nil {
-		log.WithField("error", err.Error()).Error("generate uniq id")
-	}
-	tid := fmt.Sprintf("%d-%s", time.Now().Unix(), u4)
+	tid := sessions.GetTid(c)
 	logCtx := log.WithField("tid", tid)
 
 	var msg rbmq.AccessCampaignNotify

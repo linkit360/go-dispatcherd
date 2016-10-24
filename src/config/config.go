@@ -25,9 +25,11 @@ type AppConfig struct {
 }
 
 type ServerConfig struct {
-	Port       string `default:"50300"`
-	StaticPath string `default:"/var/www/xmp.linkit360.ru/web/" yaml:"static_path"`
+	Port       string         `default:"50300"`
+	StaticPath string         `default:"/var/www/xmp.linkit360.ru/web/" yaml:"static_path"`
+	Sessions   SessionsConfig `yaml:"sessions"`
 }
+
 type NewRelicConfig struct {
 	AppName string `default:"dev.dispatcherd.linkit360.com"`
 	License string `default:"4d635427ad90ca786ca2db6aa246ed651730b933"`
