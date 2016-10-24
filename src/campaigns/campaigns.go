@@ -69,8 +69,8 @@ func Reload() error {
 
 		if err := rows.Scan(
 			&record.Id,
-			&record.Hash,
 			&record.Link,
+			&record.Hash,
 			&record.PageWelcome,
 		); err != nil {
 			return err
@@ -93,6 +93,7 @@ func Reload() error {
 
 func AddCampaignHandlers(r *gin.Engine) {
 	for _, v := range camp.campaigns.Map {
+		log.WithField("route", v.Link).Info("adding route")
 		rg := r.Group("/" + v.Link)
 		rg.StaticFile("", camp.staticPath+"/"+v.Hash+"/"+v.PageWelcome)
 	}
