@@ -3,7 +3,7 @@ server:
   static_path: /var/www/xmp.linkit360.ru/web/
 
 newrelic:
-  appname: dev.dispatcherd.linkit360.com
+  appname: mumbai.dispatcherd.linkit360.com
   license: 4d635427ad90ca786ca2db6aa246ed651730b933
 
 notifier:
