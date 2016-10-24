@@ -6,9 +6,11 @@ import (
 	"sync"
 
 	log "github.com/Sirupsen/logrus"
-
 	"github.com/gin-gonic/gin"
+
 	"github.com/vostrok/db"
+	"github.com/vostrok/dispatcherd/src/rbmq"
+	"github.com/vostrok/dispatcherd/src/sessions"
 )
 
 var camp *campaign
@@ -16,20 +18,22 @@ var camp *campaign
 const ACTIVE_STATUS = 1
 
 type campaign struct {
-	dbConn     *sql.DB
-	dbConf     db.DataBaseConfig
-	staticPath string
-	campaigns  *Campaigns
+	dbConn          *sql.DB
+	dbConf          db.DataBaseConfig
+	staticPath      string
+	campaigns       *Campaigns
+	notifierService rbmq.Notifier
 }
 
-func Init(static string, conf db.DataBaseConfig) {
+func Init(static string, conf db.DataBaseConfig, notifierConf rbmq.NotifierConfig) {
 	log.SetLevel(log.DebugLevel)
 
 	camp = &campaign{
-		dbConn:     db.Init(conf),
-		dbConf:     conf,
-		staticPath: static,
-		campaigns:  &Campaigns{},
+		dbConn:          db.Init(conf),
+		dbConf:          conf,
+		staticPath:      static,
+		campaigns:       &Campaigns{},
+		notifierService: rbmq.NewNotifierService(notifierConf),
 	}
 
 	err := Reload()
@@ -95,6 +99,21 @@ func AddCampaignHandlers(r *gin.Engine) {
 	for _, v := range camp.campaigns.Map {
 		log.WithField("route", v.Link).Info("adding route")
 		rg := r.Group("/" + v.Link)
+		rg.Use(NotifyOpenHandler)
 		rg.StaticFile("", camp.staticPath+"/"+v.Hash+"/"+v.PageWelcome)
+	}
+}
+
+func NotifyOpenHandler(c *gin.Context) {
+	action := rbmq.ActionNotify{
+		Action: "open",
+		Tid:    sessions.GetTid(c),
+	}
+
+	if err := camp.notifierService.ActionNotify(action); err != nil {
+		log.WithFields(log.Fields{
+			"error":  err.Error(),
+			"action": action,
+		}).Error("notify user action")
 	}
 }

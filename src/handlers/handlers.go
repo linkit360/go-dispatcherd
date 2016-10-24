@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -43,9 +44,23 @@ func HandlePull(c *gin.Context) {
 	logCtx := log.WithField("tid", tid)
 
 	var msg rbmq.AccessCampaignNotify
-	defer func(msg rbmq.AccessCampaignNotify) {
-		notifierService.AccessCampaignNotify(msg)
-	}(msg)
+	var action rbmq.ActionNotify
+	var err error
+
+	defer func(msg rbmq.AccessCampaignNotify, action rbmq.ActionNotify, err error) {
+		if err := notifierService.AccessCampaignNotify(msg); err != nil {
+			logCtx.WithField("error", err.Error()).Error("notify access campaign")
+		}
+		action.Error = err
+		if err := notifierService.ActionNotify(action); err != nil {
+			logCtx.WithField("error", err.Error()).Error("notify user action")
+		}
+	}(msg, action, err)
+	action = rbmq.ActionNotify{
+		Action: "pull_click",
+		Tid:    tid,
+	}
+
 	msg = rbmq.AccessCampaignNotify{
 		UserAgent: c.Request.UserAgent(),
 		Referer:   c.Request.Referer(),
@@ -56,6 +71,7 @@ func HandlePull(c *gin.Context) {
 
 	ip := getIPAdress(c.Request)
 	if ip == nil {
+		err = errors.New("Cannot determine IP address")
 		logCtx.Error("cannot determine IP address")
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 		return
@@ -67,12 +83,14 @@ func HandlePull(c *gin.Context) {
 	msg.Supported = info.Supported
 
 	if !info.Supported {
+		err = errors.New("Not supported")
 		logCtx.WithFields(log.Fields{"info": info}).Error("operator is not supported")
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 		return
 	}
 	msisdn := c.Request.Header.Get(info.Header)
 	if len(msisdn) == 0 {
+		err = errors.New("Msisdn not found")
 		logCtx.WithField("Header", info.Header).Error("msisdn is empty")
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 		return
@@ -86,7 +104,7 @@ func HandlePull(c *gin.Context) {
 			"campaignHash": campaignHash,
 			"length":       len(campaignHash),
 		}).Error("Length is too small")
-		err := fmt.Errorf("Wrong campaign length %v", len(campaignHash))
+		err := errors.New("Wrong campaign length")
 		c.Error(err)
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 		return
@@ -112,10 +130,6 @@ func HandlePull(c *gin.Context) {
 	msg.CampaignId = contentProperties.CampaignId
 	msg.ContentId = contentProperties.ContentId
 	msg.ServiceId = contentProperties.ServiceId
-
-	// for future use: after growth and createing of subscription service
-	// for PULL workflow there are no need to handle subscription
-	// notifierService.NewSubscriptionNotify(contentProperties)
 
 	// todo one time url-s
 	if err = serveContentFile(contentProperties.ContentPath, c); err != nil {

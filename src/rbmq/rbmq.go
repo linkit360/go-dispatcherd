@@ -12,18 +12,22 @@ type Notifier interface {
 	NewSubscriptionNotify(service.ContentSentProperties) error
 
 	AccessCampaignNotify(msg AccessCampaignNotify) error
+
+	ActionNotify(msg ActionNotify) error
 }
 
 type NotifierConfig struct {
 	Queues struct {
 		NewSubscriptionQueueName string `yaml:"new_subscription"`
 		AccessCampaignQueueName  string `yaml:"access_campaign"`
+		UserActionQueueName      string `yaml:"user_action"`
 	} `yaml:"queues"`
 	Rbmq rabbit.RBMQConfig `yaml:"rabbit"`
 }
 type queues struct {
 	newSubscription string
 	accessCampaign  string
+	userAction      string
 }
 type notifier struct {
 	q  queues
@@ -105,5 +109,26 @@ func (service notifier) AccessCampaignNotify(msg AccessCampaignNotify) error {
 	}
 
 	service.mq.Publish(rabbit.AMQPMessage{service.q.accessCampaign, body})
+	return nil
+}
+
+type ActionNotify struct {
+	Tid    string `json:"tid"`
+	Error  error  `json:"error"`
+	Action string `json:"tid"`
+}
+
+func (service notifier) ActionNotify(msg ActionNotify) error {
+	event := EventNotify{
+		EventName: "action",
+		EventData: msg,
+	}
+	body, err := json.Marshal(event)
+	if err != nil {
+		logrus.WithField("ActionNotify", err.Error())
+		return err
+	}
+
+	service.mq.Publish(rabbit.AMQPMessage{service.q.userAction, body})
 	return nil
 }
