@@ -33,6 +33,10 @@ func Gather(tid, campaignHash string, r *http.Request) (msg rbmq.AccessCampaignN
 		return
 	}
 	info := operator.GetIpInfo(ip)
+	log.WithFields(log.Fields{
+		"info": fmt.Sprintf("%#v", info),
+	}).Info("got IP info")
+
 	msg.IP = info.IP
 	msg.OperatorCode = info.OperatorCode
 	msg.CountryCode = info.CountryCode
@@ -47,6 +51,12 @@ func Gather(tid, campaignHash string, r *http.Request) (msg rbmq.AccessCampaignN
 	msisdn := ""
 	for _, header := range info.MsisdnHeaders {
 		msisdn = r.Header.Get(header)
+		log.WithFields(log.Fields{
+			"request": r.Header,
+			"header":  header,
+			"msisdn":  msisdn,
+		}).Debug("check header")
+
 		if len(msisdn) > 0 {
 			break
 		}
@@ -54,8 +64,10 @@ func Gather(tid, campaignHash string, r *http.Request) (msg rbmq.AccessCampaignN
 	if len(msisdn) == 0 {
 		err = errors.New("Msisdn not found")
 		msg.Error = err.Error()
-		logCtx.WithField("Header", info.MsisdnHeaders).Error("msisdn is empty")
-
+		logCtx.WithFields(log.Fields{
+			"operatorsSettings": info.MsisdnHeaders,
+			"Header":            r.Header,
+		}).Error("msisdn is empty")
 	}
 	msg.Msisdn = msisdn
 	logCtx = logCtx.WithField("msisdn", msisdn)

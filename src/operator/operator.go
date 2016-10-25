@@ -32,6 +32,7 @@ type IPInfo struct {
 	OperatorCode  int64
 	MsisdnHeaders []string
 	Supported     bool
+	Range         IpRange
 }
 
 type IpRange struct {
@@ -42,7 +43,7 @@ type IpRange struct {
 	Start         net.IP   `json:"-" yaml:"-"`
 	IpTo          string   `json:"ip_to,omitempty" yaml:"end"`
 	End           net.IP   `json:"-" yaml:"-"`
-	MsisdnHeaders []string `json:"msisdn_headers" yaml:"-"`
+	MsisdnHeaders []string `yaml:"-"`
 }
 
 func (r IpRange) In(ip net.IP) bool {
@@ -66,6 +67,7 @@ func Init(conf OperatorConfig, dbConfig db.DataBaseConfig) {
 	if err := Reload(); err != nil {
 		log.WithField("error", err.Error()).Fatal("Load IP ranges fail")
 	}
+
 	op.loadPrivateNetworks(conf.Private)
 }
 
@@ -76,8 +78,8 @@ func GetIpInfo(ipAddr net.IP) IPInfo {
 		return info
 	}
 	for _, ipRange := range op.ipRanges {
-
 		if ipRange.In(ipAddr) {
+			info.Range = ipRange
 			info.OperatorCode = ipRange.OperatorCode
 			info.CountryCode = ipRange.CountryCode
 			info.MsisdnHeaders = ipRange.MsisdnHeaders
@@ -118,12 +120,20 @@ func Reload() (err error) {
 		); err != nil {
 			return err
 		}
-		if err := json.Unmarshal([]byte(headers), &record.MsisdnHeaders); err != nil {
+		decodedHeaders := make([]string, 0)
+		if err := json.Unmarshal([]byte(headers), &decodedHeaders); err != nil {
 			log.WithFields(log.Fields{
 				"error":   err.Error(),
 				"iprange": record,
 			}).Fatal("unmarshaling headers")
 		}
+		record.MsisdnHeaders = decodedHeaders
+		log.WithFields(log.Fields{
+			"operator":       record.OperatorCode,
+			"headers":        headers,
+			"decodedHeaders": fmt.Sprintf("%#v", decodedHeaders),
+		}).Debug("unmarshaling headers")
+
 		record.Start = net.ParseIP(record.IpFrom)
 		record.End = net.ParseIP(record.IpTo)
 		records = append(records, record)
@@ -132,8 +142,10 @@ func Reload() (err error) {
 		return fmt.Errorf("GetIpRanges RowsError: %s", err.Error())
 	}
 	op.ipRanges = records
-	log.WithField("IpRanges", len(op.ipRanges)).Info("IpRanges loaded")
-
+	log.WithFields(log.Fields{
+		"IpRangesLen": len(op.ipRanges),
+		"IpRanges":    op.ipRanges,
+	}).Info("IpRanges loaded")
 	return nil
 }
 func (op operator) loadPrivateNetworks(ipConf []IpRange) {
