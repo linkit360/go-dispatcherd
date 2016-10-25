@@ -50,7 +50,7 @@ func HandlePull(c *gin.Context) {
 	}
 	var err error
 	defer func(msg rbmq.AccessCampaignNotify, action rbmq.UserActionNotify, err error) {
-		action.Error = err
+		action.Error = err.Error()
 		if err := notifierService.ActionNotify(action); err != nil {
 			logCtx.WithField("error", err.Error()).Error("notify user action")
 		}

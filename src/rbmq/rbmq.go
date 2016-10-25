@@ -18,10 +18,9 @@ type Notifier interface {
 
 type NotifierConfig struct {
 	Queues struct {
-		NewSubscriptionQueueName      string `yaml:"new_subscription" default:"new_subscription"`
-		AccessCampaignQueueName       string `yaml:"access_campaign" default:"access_campaign"`
-		AccessCampaignUpdateQueueName string `yaml:"access_campaign_update" default:"access_campaign_update"`
-		UserActionQueueName           string `yaml:"user_action" default:"user_action"`
+		NewSubscriptionQueueName string `yaml:"new_subscription" default:"new_subscription"`
+		AccessCampaignQueueName  string `yaml:"access_campaign" default:"access_campaign"`
+		UserActionsQueueName     string `yaml:"user_actions" default:"user_actions"`
 	} `yaml:"queues"`
 	Rbmq rabbit.RBMQConfig `yaml:"rabbit"`
 }
@@ -52,10 +51,9 @@ func NewNotifierService(conf NotifierConfig) Notifier {
 
 		n = &notifier{
 			q: queues{
-				newSubscription:      conf.Queues.NewSubscriptionQueueName,
-				accessCampaign:       conf.Queues.AccessCampaignQueueName,
-				userAction:           conf.Queues.UserActionQueueName,
-				accessCampaignUpdate: conf.Queues.AccessCampaignUpdateQueueName,
+				newSubscription: conf.Queues.NewSubscriptionQueueName,
+				accessCampaign:  conf.Queues.AccessCampaignQueueName,
+				userAction:      conf.Queues.UserActionsQueueName,
 			},
 			mq: rabbit,
 		}
@@ -118,13 +116,13 @@ func (service notifier) AccessCampaignNotify(msg AccessCampaignNotify) error {
 
 type UserActionNotify struct {
 	Tid    string `json:"tid"`
-	Error  error  `json:"error"`
+	Error  string `json:"error"`
 	Action string `json:"tid"`
 }
 
 func (service notifier) ActionNotify(msg UserActionNotify) error {
 	event := EventNotify{
-		EventName: "user_action",
+		EventName: "user_actions",
 		EventData: msg,
 	}
 	body, err := json.Marshal(event)
