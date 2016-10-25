@@ -56,6 +56,8 @@ func HandlePull(c *gin.Context) {
 		}
 	}(msg, action, err)
 
+	logCtx.Debug(c.Request.Header)
+
 	campaignHash := c.Params.ByName("campaign_hash")
 	if len(campaignHash) != cnf.Subscriptions.CampaignHashLength {
 		logCtx.WithFields(log.Fields{
@@ -75,6 +77,8 @@ func HandlePull(c *gin.Context) {
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 		return
 	}
+	logCtx = logCtx.WithField("msisdn", msg.Msisdn)
+	logCtx.WithFields(log.Fields{}).Debug("gathered info, get content id..")
 
 	contentProperties, err := contentClient.Get(service.GetUrlByCampaignHashParams{
 		Msisdn:       msg.Msisdn,
@@ -92,19 +96,26 @@ func HandlePull(c *gin.Context) {
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 		return
 	}
+	logCtx.WithFields(log.Fields{
+		"contentPropertities": contentProperties,
+	}).Debug("got content id, serving file")
+
 	msg.CampaignId = contentProperties.CampaignId
 	msg.ContentId = contentProperties.ContentId
 	msg.ServiceId = contentProperties.ServiceId
 
 	// todo one time url-s
-	if err = utils.ServeFile(cnf.Server.StaticPath+contentProperties.ContentPath, c); err != nil {
+	err = utils.ServeFile(cnf.Server.StaticPath+contentProperties.ContentPath, c)
+	if err != nil {
 		err := fmt.Errorf("serveContentFile: %s", err.Error())
 		logCtx.WithField("error", err.Error()).Error("serveContentFile")
 		c.Error(err)
 		msg.Error = err.Error()
 		metrics.M.ContentDeliveryError.Add(1)
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
+		return
 	}
+	logCtx.WithFields(log.Fields{}).Debug("served file ok")
 }
 
 func AddCampaignHandlers(r *gin.Engine) {

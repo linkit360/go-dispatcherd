@@ -70,7 +70,6 @@ func Gather(tid, campaignHash string, r *http.Request) (msg rbmq.AccessCampaignN
 		}).Error("msisdn is empty")
 	}
 	msg.Msisdn = msisdn
-	logCtx = logCtx.WithField("msisdn", msisdn)
 	return
 }
 
