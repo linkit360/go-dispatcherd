@@ -3,7 +3,7 @@ package rbmq
 import (
 	"encoding/json"
 
-	"github.com/Sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
 	"github.com/vostrok/contentd/service"
 	"github.com/vostrok/rabbit"
 )
@@ -13,7 +13,7 @@ type Notifier interface {
 
 	AccessCampaignNotify(msg AccessCampaignNotify) error
 
-	ActionNotify(msg UserActionNotify) error
+	ActionNotify(msg UserActionsNotify) error
 }
 
 type NotifierConfig struct {
@@ -38,6 +38,10 @@ type notifier struct {
 type EventNotify struct {
 	EventName string      `json:"event_name,omitempty"`
 	EventData interface{} `json:"event_data,omitempty"`
+}
+
+func init() {
+	log.SetLevel(log.DebugLevel)
 }
 
 func NewNotifierService(conf NotifierConfig) Notifier {
@@ -70,7 +74,7 @@ func (service notifier) NewSubscriptionNotify(msg service.ContentSentProperties)
 
 	body, err := json.Marshal(event)
 	if err != nil {
-		logrus.WithField("NewSubscriptionNotify", err.Error())
+		log.WithField("NewSubscriptionNotify", err.Error())
 		return err
 	}
 
@@ -106,7 +110,7 @@ func (service notifier) AccessCampaignNotify(msg AccessCampaignNotify) error {
 
 	body, err := json.Marshal(event)
 	if err != nil {
-		logrus.WithField("AccessCampaignNotify", err.Error())
+		log.WithField("AccessCampaignNotify", err.Error())
 		return err
 	}
 
@@ -114,20 +118,20 @@ func (service notifier) AccessCampaignNotify(msg AccessCampaignNotify) error {
 	return nil
 }
 
-type UserActionNotify struct {
+type UserActionsNotify struct {
 	Tid    string `json:"tid"`
 	Error  string `json:"error"`
 	Action string `json:"tid"`
 }
 
-func (service notifier) ActionNotify(msg UserActionNotify) error {
+func (service notifier) ActionNotify(msg UserActionsNotify) error {
 	event := EventNotify{
 		EventName: "user_actions",
 		EventData: msg,
 	}
 	body, err := json.Marshal(event)
 	if err != nil {
-		logrus.WithField("ActionNotify", err.Error())
+		log.WithField("ActionNotify", err.Error())
 		return err
 	}
 

@@ -22,6 +22,8 @@ type SessionsConfig struct {
 }
 
 func Init(conf SessionsConfig, r *gin.Engine) {
+	log.SetLevel(log.DebugLevel)
+
 	store = sessions.NewCookieStore([]byte(conf.Secret))
 	options := sessions.Options{
 		Path:     conf.Path,
@@ -41,6 +43,8 @@ func AddSessionTidHandler(c *gin.Context) {
 }
 
 func SetSession(c *gin.Context) {
+	log.Debug("set session")
+
 	var tid string
 	session := sessions.Default(c)
 	v := session.Get("tid")

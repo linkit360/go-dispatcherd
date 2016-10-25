@@ -35,7 +35,6 @@ func RunServer() {
 	sessions.Init(appConfig.Server.Sessions, r)
 
 	r.Use(AccessHandler)
-	r.Use(sessions.AddSessionTidHandler)
 
 	handlers.AddCampaignHandlers(r)
 	handlers.AddCQRHandler(r)

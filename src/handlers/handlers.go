@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
@@ -17,7 +18,6 @@ import (
 	"github.com/vostrok/dispatcherd/src/rbmq"
 	"github.com/vostrok/dispatcherd/src/sessions"
 	"github.com/vostrok/dispatcherd/src/utils"
-	"strings"
 )
 
 var cnf config.AppConfig
@@ -44,12 +44,12 @@ func HandlePull(c *gin.Context) {
 	logCtx := log.WithField("tid", tid)
 
 	var msg rbmq.AccessCampaignNotify
-	action := rbmq.UserActionNotify{
+	action := rbmq.UserActionsNotify{
 		Action: "pull_click",
 		Tid:    tid,
 	}
 	var err error
-	defer func(msg rbmq.AccessCampaignNotify, action rbmq.UserActionNotify, err error) {
+	defer func(msg rbmq.AccessCampaignNotify, action rbmq.UserActionsNotify, err error) {
 		action.Error = err.Error()
 		if err := notifierService.ActionNotify(action); err != nil {
 			logCtx.WithField("error", err.Error()).Error("notify user action")
@@ -111,23 +111,28 @@ func AddCampaignHandlers(r *gin.Engine) {
 	for _, v := range campaigns.Get().Map {
 		log.WithField("route", v.Link).Info("adding route")
 		rg := r.Group("/" + v.Link)
-		rg.Use(NotifyOpenHandler)
+		rg.Use(sessions.AddSessionTidHandler)
+		rg.Use(NotifyAccessCampaignHandler)
 		rg.GET("", v.Serve)
 	}
 }
 
-func NotifyOpenHandler(c *gin.Context) {
+func NotifyAccessCampaignHandler(c *gin.Context) {
 	tid := sessions.GetTid(c)
 	paths := strings.Split(c.Request.URL.Path, "/")
-	campaignHash := paths[len(paths)-1]
+	campaignLink := paths[len(paths)-1]
+	campaign, ok := campaigns.Get().Map[campaignLink]
+	if !ok {
+		log.WithField("error", "unknown campaign").Error(fmt.Sprintf("campaign %s is unknown", campaignLink))
+	}
 
 	logCtx := log.WithFields(log.Fields{
 		"tid":          tid,
-		"campaignHash": campaignHash,
+		"campaignHash": campaign.Hash,
 	})
-	logCtx.Info("new access")
+	logCtx.Info("NotifyAccessCampaignHandler")
 
-	action := rbmq.UserActionNotify{
+	action := rbmq.UserActionsNotify{
 		Action: "access",
 		Tid:    tid,
 	}
@@ -138,7 +143,7 @@ func NotifyOpenHandler(c *gin.Context) {
 			"action": action,
 		}).Error("notify user action")
 	}
-	msg, err := gather.Gather(tid, campaignHash, c.Request)
+	msg, err := gather.Gather(tid, campaign.Hash, c.Request)
 	if err != nil {
 		logCtx.WithFields(log.Fields{
 			"error":          err.Error(),

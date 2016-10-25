@@ -45,12 +45,12 @@ func Init(static string, conf db.DataBaseConfig) {
 
 // Tasks:
 // Keep in memory all active campaigns
-// Allow to get a campaign information by campaign id fastly
+// Allow to get a campaign information by campaign link fastly
 // Reload when changes to campaigns are done
 
 type Campaigns struct {
 	sync.RWMutex
-	Map map[int64]Campaign
+	Map map[string]Campaign
 }
 type Campaign struct {
 	Id          int64
@@ -60,7 +60,7 @@ type Campaign struct {
 }
 
 func (campaign Campaign) Serve(c *gin.Context) {
-	utils.ServeFile(camp.staticPath+"/"+campaign.Hash+"/"+campaign.PageWelcome, c)
+	utils.ServeFile(camp.staticPath+"campaign/"+campaign.Hash+"/"+campaign.PageWelcome, c)
 }
 
 func Reload() error {
@@ -93,9 +93,9 @@ func Reload() error {
 	camp.campaigns.Lock()
 	defer camp.campaigns.Unlock()
 
-	camp.campaigns.Map = make(map[int64]Campaign, len(records))
+	camp.campaigns.Map = make(map[string]Campaign, len(records))
 	for _, campaign := range records {
-		camp.campaigns.Map[campaign.Id] = campaign
+		camp.campaigns.Map[campaign.Link] = campaign
 	}
 	return nil
 }
