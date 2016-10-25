@@ -37,8 +37,7 @@ func RunServer() {
 	r.Use(AccessHandler)
 	r.Use(sessions.AddSessionTidHandler)
 
-	operator.AddCQRHandlers(r)
-	campaigns.AddCampaignHandlers(r)
+	handlers.AddCQRHandler(r)
 
 	r.Use(metrics.MetricHandler)
 	r.GET("/campaign/:campaign_hash", handlers.HandlePull)

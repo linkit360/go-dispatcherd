@@ -12,6 +12,7 @@ import (
 	"github.com/vostrok/db"
 	"github.com/vostrok/dispatcherd/src/operator"
 	"github.com/vostrok/dispatcherd/src/rbmq"
+	"github.com/vostrok/dispatcherd/src/sessions"
 )
 
 type AppConfig struct {
@@ -25,9 +26,9 @@ type AppConfig struct {
 }
 
 type ServerConfig struct {
-	Port       string         `default:"50300"`
-	StaticPath string         `default:"/var/www/xmp.linkit360.ru/web/" yaml:"static_path"`
-	Sessions   SessionsConfig `yaml:"sessions"`
+	Port       string                  `default:"50300"`
+	StaticPath string                  `default:"/var/www/xmp.linkit360.ru/web/" yaml:"static_path"`
+	Sessions   sessions.SessionsConfig `yaml:"sessions"`
 }
 
 type NewRelicConfig struct {

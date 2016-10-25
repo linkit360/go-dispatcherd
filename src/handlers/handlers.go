@@ -3,7 +3,6 @@ package handlers
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"strings"
@@ -13,11 +12,13 @@ import (
 
 	content "github.com/vostrok/contentd/rpcclient"
 	"github.com/vostrok/contentd/service"
+	"github.com/vostrok/dispatcherd/src/campaigns"
 	"github.com/vostrok/dispatcherd/src/config"
 	"github.com/vostrok/dispatcherd/src/metrics"
 	"github.com/vostrok/dispatcherd/src/operator"
 	"github.com/vostrok/dispatcherd/src/rbmq"
 	"github.com/vostrok/dispatcherd/src/sessions"
+	"github.com/vostrok/dispatcherd/src/utils"
 )
 
 var cnf config.AppConfig
@@ -88,10 +89,16 @@ func HandlePull(c *gin.Context) {
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 		return
 	}
-	msisdn := c.Request.Header.Get(info.Header)
+	msisdn := ""
+	for _, header := range info.MsisdnHeaders {
+		msisdn = c.Request.Header.Get(header)
+		if len(msisdn) > 0 {
+			break
+		}
+	}
 	if len(msisdn) == 0 {
 		err = errors.New("Msisdn not found")
-		logCtx.WithField("Header", info.Header).Error("msisdn is empty")
+		logCtx.WithField("Header", info.MsisdnHeaders).Error("msisdn is empty")
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 		return
 	}
@@ -132,7 +139,7 @@ func HandlePull(c *gin.Context) {
 	msg.ServiceId = contentProperties.ServiceId
 
 	// todo one time url-s
-	if err = serveContentFile(contentProperties.ContentPath, c); err != nil {
+	if err = utils.ServeFile(cnf.Server.StaticPath+contentProperties.ContentPath, c); err != nil {
 		err := fmt.Errorf("serveContentFile: %s", err.Error())
 		logCtx.WithField("error", err.Error()).Error("serveContentFile")
 		c.Error(err)
@@ -140,24 +147,6 @@ func HandlePull(c *gin.Context) {
 		metrics.M.ContentDeliveryError.Add(1)
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 	}
-}
-
-func serveContentFile(filePath string, c *gin.Context) error {
-	w := c.Writer
-
-	content, err := ioutil.ReadFile(cnf.Server.StaticPath + filePath)
-	if err != nil {
-		err := fmt.Errorf("ioutil.ReadFile: %s", err.Error())
-		return err
-	}
-
-	w.Header().Set("Content-Type", "text/html; charset-utf-8")
-	w.Header().Set("Cache-Control", "no-cache, no-store, max-age=0, must-revalidate")
-	w.Header().Set("Pragma", "no-cache")
-	w.Header().Set("Expires", "0")
-	w.WriteHeader(200)
-	w.Write(content)
-	return nil
 }
 
 func getIPAdress(r *http.Request) net.IP {
@@ -174,4 +163,27 @@ func getIPAdress(r *http.Request) net.IP {
 		}
 	}
 	return nil
+}
+
+func AddCampaignHandlers(r *gin.Engine) {
+	for _, v := range campaigns.Get().Map {
+		log.WithField("route", v.Link).Info("adding route")
+		rg := r.Group("/" + v.Link)
+		rg.Use(NotifyOpenHandler)
+		rg.GET("", v.Serve)
+	}
+}
+
+func NotifyOpenHandler(c *gin.Context) {
+	action := rbmq.ActionNotify{
+		Action: "access",
+		Tid:    sessions.GetTid(c),
+	}
+
+	if err := notifierService.ActionNotify(action); err != nil {
+		log.WithFields(log.Fields{
+			"error":  err.Error(),
+			"action": action,
+		}).Error("notify user action")
+	}
 }

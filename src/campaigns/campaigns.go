@@ -9,8 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/vostrok/db"
-	"github.com/vostrok/dispatcherd/src/rbmq"
-	"github.com/vostrok/dispatcherd/src/sessions"
+	"github.com/vostrok/dispatcherd/src/utils"
 )
 
 var camp *campaign
@@ -18,22 +17,24 @@ var camp *campaign
 const ACTIVE_STATUS = 1
 
 type campaign struct {
-	dbConn          *sql.DB
-	dbConf          db.DataBaseConfig
-	staticPath      string
-	campaigns       *Campaigns
-	notifierService rbmq.Notifier
+	dbConn     *sql.DB
+	dbConf     db.DataBaseConfig
+	staticPath string
+	campaigns  *Campaigns
 }
 
-func Init(static string, conf db.DataBaseConfig, notifierConf rbmq.NotifierConfig) {
+func Get() *Campaigns {
+	return camp.campaigns
+}
+
+func Init(static string, conf db.DataBaseConfig) {
 	log.SetLevel(log.DebugLevel)
 
 	camp = &campaign{
-		dbConn:          db.Init(conf),
-		dbConf:          conf,
-		staticPath:      static,
-		campaigns:       &Campaigns{},
-		notifierService: rbmq.NewNotifierService(notifierConf),
+		dbConn:     db.Init(conf),
+		dbConf:     conf,
+		staticPath: static,
+		campaigns:  &Campaigns{},
 	}
 
 	err := Reload()
@@ -44,7 +45,7 @@ func Init(static string, conf db.DataBaseConfig, notifierConf rbmq.NotifierConfi
 
 // Tasks:
 // Keep in memory all active campaigns
-// Allow to get a service_id by campaign hash fastly
+// Allow to get a campaign information by campaign id fastly
 // Reload when changes to campaigns are done
 
 type Campaigns struct {
@@ -56,6 +57,10 @@ type Campaign struct {
 	PageWelcome string
 	Hash        string
 	Link        string
+}
+
+func (campaign Campaign) Serve(c *gin.Context) {
+	utils.ServeFile(camp.staticPath+"/"+campaign.Hash+"/"+campaign.PageWelcome, c)
 }
 
 func Reload() error {
@@ -93,27 +98,4 @@ func Reload() error {
 		camp.campaigns.Map[campaign.Id] = campaign
 	}
 	return nil
-}
-
-func AddCampaignHandlers(r *gin.Engine) {
-	for _, v := range camp.campaigns.Map {
-		log.WithField("route", v.Link).Info("adding route")
-		rg := r.Group("/" + v.Link)
-		rg.Use(NotifyOpenHandler)
-		rg.StaticFile("", camp.staticPath+"/"+v.Hash+"/"+v.PageWelcome)
-	}
-}
-
-func NotifyOpenHandler(c *gin.Context) {
-	action := rbmq.ActionNotify{
-		Action: "open",
-		Tid:    sessions.GetTid(c),
-	}
-
-	if err := camp.notifierService.ActionNotify(action); err != nil {
-		log.WithFields(log.Fields{
-			"error":  err.Error(),
-			"action": action,
-		}).Error("notify user action")
-	}
 }

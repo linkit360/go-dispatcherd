@@ -23,7 +23,7 @@ type SessionsConfig struct {
 
 func Init(conf SessionsConfig, r *gin.Engine) {
 	store = sessions.NewCookieStore([]byte(conf.Secret))
-	options := &sessions.Options{
+	options := sessions.Options{
 		Path:     conf.Path,
 		Domain:   conf.Domain,
 		MaxAge:   conf.MaxAge,

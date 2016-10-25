@@ -3,23 +3,16 @@ package operator
 import (
 	"bytes"
 	"database/sql"
-	"errors"
+	"encoding/json"
 	"fmt"
 	"net"
-	"net/http"
-	"strings"
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/gin-gonic/gin"
 	"github.com/vostrok/db"
 )
 
-var op operator
-
-type Operator interface {
-	IsSupported(msisdn string) bool
-}
+var op *operator
 
 type OperatorConfig struct {
 	Private []IpRange `yaml:"private_networks"`
@@ -34,23 +27,43 @@ type operator struct {
 }
 
 type IPInfo struct {
-	IP           string
-	CountryCode  int64
-	OperatorCode int64
-	Header       string
-	Supported    bool
+	IP            string
+	CountryCode   int64
+	OperatorCode  int64
+	MsisdnHeaders []string
+	Supported     bool
+}
+
+type IpRange struct {
+	Id            int64    `json:"id,omitempty" yaml:"-"`
+	OperatorCode  int64    `json:"operator_code,omitempty" yaml:"-"`
+	CountryCode   int64    `json:"country_code,omitempty" yaml:"-"`
+	IpFrom        string   `json:"ip_from,omitempty" yaml:"start"`
+	Start         net.IP   `json:"-" yaml:"-"`
+	IpTo          string   `json:"ip_to,omitempty" yaml:"end"`
+	End           net.IP   `json:"-" yaml:"-"`
+	MsisdnHeaders []string `json:"msisdn_headers" yaml:"-"`
+}
+
+func (r IpRange) In(ip net.IP) bool {
+	if ip.To4() == nil {
+		return false
+	}
+	if bytes.Compare(ip, r.Start) >= 0 && bytes.Compare(ip, r.End) <= 0 {
+		return true
+	}
+	return false
 }
 
 func Init(conf OperatorConfig, dbConfig db.DataBaseConfig) {
 	log.SetLevel(log.DebugLevel)
 
-	op = operator{
+	op = &operator{
 		db:     db.Init(dbConfig),
 		conf:   conf,
 		dbConf: dbConfig,
 	}
-	err := op.loadIPRanges()
-	if err != nil {
+	if err := Reload(); err != nil {
 		log.WithField("error", err.Error()).Fatal("Load IP ranges fail")
 	}
 	op.loadPrivateNetworks(conf.Private)
@@ -67,7 +80,7 @@ func GetIpInfo(ipAddr net.IP) IPInfo {
 		if ipRange.In(ipAddr) {
 			info.OperatorCode = ipRange.OperatorCode
 			info.CountryCode = ipRange.CountryCode
-			info.Header = ipRange.HeaderName
+			info.MsisdnHeaders = ipRange.MsisdnHeaders
 			if info.OperatorCode != 0 {
 				info.Supported = true
 			}
@@ -77,12 +90,12 @@ func GetIpInfo(ipAddr net.IP) IPInfo {
 	return info
 }
 
+// msisdn could be in many headers
 // todo - rewrite in binary three
-// todo msisdn could be in many headers
-func (op operator) loadIPRanges() (err error) {
+func Reload() (err error) {
 	query := fmt.Sprintf(""+
 		"SELECT id, operator_code, country_code, ip_from, ip_to, "+
-		" ( SELECT %soperators.msisdn_header_name as header FROM %soperators where operator_code = code ) "+
+		" ( SELECT %soperators.msisdn_headers as header FROM %soperators where operator_code = code ) "+
 		" from %soperator_ip", op.dbConf.TablePrefix, op.dbConf.TablePrefix, op.dbConf.TablePrefix)
 	rows, err := op.db.Query(query)
 	if err != nil {
@@ -94,15 +107,22 @@ func (op operator) loadIPRanges() (err error) {
 	for rows.Next() {
 		record := IpRange{}
 
+		var headers string
 		if err := rows.Scan(
 			&record.Id,
 			&record.OperatorCode,
 			&record.CountryCode,
 			&record.IpFrom,
 			&record.IpTo,
-			&record.HeaderName,
+			&headers,
 		); err != nil {
 			return err
+		}
+		if err := json.Unmarshal([]byte(headers), &record.MsisdnHeaders); err != nil {
+			log.WithFields(log.Fields{
+				"error":   err.Error(),
+				"iprange": record,
+			}).Fatal("unmarshaling headers")
 		}
 		record.Start = net.ParseIP(record.IpFrom)
 		record.End = net.ParseIP(record.IpTo)
@@ -126,27 +146,6 @@ func (op operator) loadPrivateNetworks(ipConf []IpRange) {
 	log.WithField("privateNetworks", op.privateIPRanges).Info("private networks loaded")
 }
 
-type IpRange struct {
-	Id           int64  `json:"id,omitempty" yaml:"-"`
-	OperatorCode int64  `json:"operator_code,omitempty" yaml:"-"`
-	CountryCode  int64  `json:"country_code,omitempty" yaml:"-"`
-	IpFrom       string `json:"ip_from,omitempty" yaml:"start"`
-	Start        net.IP `json:"-" yaml:"-"`
-	IpTo         string `json:"ip_to,omitempty" yaml:"end"`
-	End          net.IP `json:"-" yaml:"-"`
-	HeaderName   string `json:"header_name" yaml:"-"`
-}
-
-func (r IpRange) In(ip net.IP) bool {
-	if ip.To4() == nil {
-		return false
-	}
-	if bytes.Compare(ip, r.Start) >= 0 && bytes.Compare(ip, r.End) <= 0 {
-		return true
-	}
-	return false
-}
-
 func IsPrivateSubnet(ipAddress net.IP) bool {
 	if ipCheck := ipAddress.To4(); ipCheck != nil {
 		for _, r := range op.privateIPRanges {
@@ -156,58 +155,4 @@ func IsPrivateSubnet(ipAddress net.IP) bool {
 		}
 	}
 	return false
-}
-
-type response struct {
-	Success bool        `json:"success,omitempty"`
-	Err     error       `json:"error,omitempty"`
-	Data    interface{} `json:"data,omitempty"`
-	Status  int         `json:"-"`
-}
-
-func AddCQRHandlers(r *gin.Engine) {
-	rg := r.Group("/cqr")
-	rg.GET("", Reload)
-}
-
-func Reload(c *gin.Context) {
-	var err error
-	r := response{Err: err, Status: http.StatusOK}
-
-	table, exists := c.GetQuery("table")
-	if !exists || table == "" {
-		table, exists = c.GetQuery("t")
-		if !exists || table == "" {
-			err := errors.New("Table name required")
-			r.Status = http.StatusBadRequest
-			r.Err = err
-			render(r, c)
-			return
-		}
-	}
-
-	switch {
-	case strings.Contains(table, "operator_ip"):
-		err := op.loadIPRanges()
-		if err != nil {
-			r.Success = false
-			r.Status = http.StatusInternalServerError
-			log.WithField("error", err.Error()).Error("Load IP ranges fail")
-		} else {
-			r.Success = true
-		}
-	default:
-		err = fmt.Errorf("Table name %s not recognized", table)
-		r.Status = http.StatusBadRequest
-	}
-	render(r, c)
-	return
-}
-
-func render(msg response, c *gin.Context) {
-	if msg.Err != nil {
-		c.Header("Error", msg.Err.Error())
-		c.Error(msg.Err)
-	}
-	c.JSON(msg.Status, msg)
 }
