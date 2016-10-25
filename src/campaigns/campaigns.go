@@ -60,7 +60,7 @@ type Campaign struct {
 }
 
 func (campaign Campaign) Serve(c *gin.Context) {
-	utils.ServeFile(camp.staticPath+"campaign/"+campaign.Hash+"/"+campaign.PageWelcome, c)
+	utils.ServeFile(camp.staticPath+"campaign/"+campaign.Hash+"/"+campaign.PageWelcome+".html", c)
 }
 
 func Reload() error {
