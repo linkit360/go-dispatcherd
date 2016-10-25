@@ -64,6 +64,7 @@ func HandlePull(c *gin.Context) {
 		}).Error("Length is too small")
 		err := errors.New("Wrong campaign length")
 		c.Error(err)
+		msg.Error = err.Error()
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 		return
 	}
@@ -86,7 +87,7 @@ func HandlePull(c *gin.Context) {
 		err := fmt.Errorf("contentClient.Get: %s", err.Error())
 		logCtx.WithField("error", err.Error()).Error("contentClient.Get")
 		c.Error(err)
-		msg.Error = err
+		msg.Error = err.Error()
 		metrics.M.ContentDeliveryError.Add(1)
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 		return
@@ -100,7 +101,7 @@ func HandlePull(c *gin.Context) {
 		err := fmt.Errorf("serveContentFile: %s", err.Error())
 		logCtx.WithField("error", err.Error()).Error("serveContentFile")
 		c.Error(err)
-		msg.Error = err
+		msg.Error = err.Error()
 		metrics.M.ContentDeliveryError.Add(1)
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 	}

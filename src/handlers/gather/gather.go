@@ -28,7 +28,7 @@ func Gather(tid, campaignHash string, r *http.Request) (msg rbmq.AccessCampaignN
 	ip := getIPAdress(r)
 	if ip == nil {
 		err = errors.New("Cannot determine IP address")
-		msg.Error = err
+		msg.Error = err.Error()
 		logCtx.Error("cannot determine IP address")
 		return
 	}
@@ -40,7 +40,7 @@ func Gather(tid, campaignHash string, r *http.Request) (msg rbmq.AccessCampaignN
 
 	if !info.Supported {
 		err = errors.New("Not supported")
-		msg.Error = err
+		msg.Error = err.Error()
 		logCtx.WithFields(log.Fields{"info": info}).Error("operator is not supported")
 		return
 	}
@@ -53,7 +53,7 @@ func Gather(tid, campaignHash string, r *http.Request) (msg rbmq.AccessCampaignN
 	}
 	if len(msisdn) == 0 {
 		err = errors.New("Msisdn not found")
-		msg.Error = err
+		msg.Error = err.Error()
 		logCtx.WithField("Header", info.MsisdnHeaders).Error("msisdn is empty")
 
 	}

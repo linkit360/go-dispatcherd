@@ -93,7 +93,7 @@ type AccessCampaignNotify struct {
 	UrlPath      string `json:"url_path"`
 	Method       string `json:"method"`
 	Headers      string `json:"headers"`
-	Error        error  `json:"error"`
+	Error        string `json:"error"`
 	CampaignId   int64  `json:"campaign_id"`
 	ContentId    int64  `json:"content_id"`
 	ServiceId    int64  `json:"service_id"`
