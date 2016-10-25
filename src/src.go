@@ -37,6 +37,7 @@ func RunServer() {
 	r.Use(AccessHandler)
 	r.Use(sessions.AddSessionTidHandler)
 
+	handlers.AddCampaignHandlers(r)
 	handlers.AddCQRHandler(r)
 
 	r.Use(metrics.MetricHandler)

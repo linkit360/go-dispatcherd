@@ -13,21 +13,23 @@ type Notifier interface {
 
 	AccessCampaignNotify(msg AccessCampaignNotify) error
 
-	ActionNotify(msg ActionNotify) error
+	ActionNotify(msg UserActionNotify) error
 }
 
 type NotifierConfig struct {
 	Queues struct {
-		NewSubscriptionQueueName string `yaml:"new_subscription"`
-		AccessCampaignQueueName  string `yaml:"access_campaign"`
-		UserActionQueueName      string `yaml:"user_action"`
+		NewSubscriptionQueueName      string `yaml:"new_subscription" default:"new_subscription"`
+		AccessCampaignQueueName       string `yaml:"access_campaign" default:"access_campaign"`
+		AccessCampaignUpdateQueueName string `yaml:"access_campaign_update" default:"access_campaign_update"`
+		UserActionQueueName           string `yaml:"user_action" default:"user_action"`
 	} `yaml:"queues"`
 	Rbmq rabbit.RBMQConfig `yaml:"rabbit"`
 }
 type queues struct {
-	newSubscription string
-	accessCampaign  string
-	userAction      string
+	newSubscription      string
+	accessCampaign       string
+	userAction           string
+	accessCampaignUpdate string
 }
 type notifier struct {
 	q  queues
@@ -50,8 +52,10 @@ func NewNotifierService(conf NotifierConfig) Notifier {
 
 		n = &notifier{
 			q: queues{
-				newSubscription: conf.Queues.NewSubscriptionQueueName,
-				accessCampaign:  conf.Queues.AccessCampaignQueueName,
+				newSubscription:      conf.Queues.NewSubscriptionQueueName,
+				accessCampaign:       conf.Queues.AccessCampaignQueueName,
+				userAction:           conf.Queues.UserActionQueueName,
+				accessCampaignUpdate: conf.Queues.AccessCampaignUpdateQueueName,
 			},
 			mq: rabbit,
 		}
@@ -77,22 +81,22 @@ func (service notifier) NewSubscriptionNotify(msg service.ContentSentProperties)
 }
 
 type AccessCampaignNotify struct {
-	Msisdn              string `json:"msisdn"`
-	Tid                 string `json:"tid"`
-	IP                  string `json:"ip"`
-	OperatorCode        int64  `json:"operator_code"`
-	CountryCode         int64  `json:"country_code"`
-	Supported           bool   `json:"supported"`
-	UserAgent           string `json:"user_agent"`
-	Referer             string `json:"referer"`
-	UrlPath             string `json:"url_path"`
-	Method              string `json:"method"`
-	Headers             string `json:"headers"`
-	ContentServiceError bool   `json:"content_service_error"`
-	ContentFileError    bool   `json:"content_file_error"`
-	CampaignId          int64  `json:"campaign_id"`
-	ContentId           int64  `json:"content_id"`
-	ServiceId           int64  `json:"service_id"`
+	Msisdn       string `json:"msisdn"`
+	CampaignHash string `json:"campaoign_hash"`
+	Tid          string `json:"tid"`
+	IP           string `json:"ip"`
+	OperatorCode int64  `json:"operator_code"`
+	CountryCode  int64  `json:"country_code"`
+	Supported    bool   `json:"supported"`
+	UserAgent    string `json:"user_agent"`
+	Referer      string `json:"referer"`
+	UrlPath      string `json:"url_path"`
+	Method       string `json:"method"`
+	Headers      string `json:"headers"`
+	Error        error  `json:"error"`
+	CampaignId   int64  `json:"campaign_id"`
+	ContentId    int64  `json:"content_id"`
+	ServiceId    int64  `json:"service_id"`
 }
 
 func (service notifier) AccessCampaignNotify(msg AccessCampaignNotify) error {
@@ -112,15 +116,15 @@ func (service notifier) AccessCampaignNotify(msg AccessCampaignNotify) error {
 	return nil
 }
 
-type ActionNotify struct {
+type UserActionNotify struct {
 	Tid    string `json:"tid"`
 	Error  error  `json:"error"`
 	Action string `json:"tid"`
 }
 
-func (service notifier) ActionNotify(msg ActionNotify) error {
+func (service notifier) ActionNotify(msg UserActionNotify) error {
 	event := EventNotify{
-		EventName: "action",
+		EventName: "user_action",
 		EventData: msg,
 	}
 	body, err := json.Marshal(event)
