@@ -41,7 +41,9 @@ func Init(conf config.AppConfig) {
 // uniq links generation ??
 func HandlePull(c *gin.Context) {
 	tid := sessions.GetTid(c)
-	logCtx := log.WithField("tid", tid)
+	logCtx := log.WithFields(log.Fields{
+		"tid": tid,
+	})
 
 	var msg rbmq.AccessCampaignNotify
 	action := rbmq.UserActionsNotify{
@@ -107,7 +109,7 @@ func HandlePull(c *gin.Context) {
 	msg.ServiceId = contentProperties.ServiceId
 
 	// todo one time url-s
-	err = utils.ServeFile(cnf.Server.Path+contentProperties.ContentPath, c)
+	err = utils.ServeFile(cnf.Server.Path+contentProperties.ContentPath, c, logCtx)
 	if err != nil {
 		err := fmt.Errorf("serveContentFile: %s", err.Error())
 		logCtx.WithField("error", err.Error()).Error("serveContentFile")
@@ -131,20 +133,26 @@ func AddCampaignHandlers(r *gin.Engine) {
 }
 
 func NotifyAccessCampaignHandler(c *gin.Context) {
+
 	tid := sessions.GetTid(c)
+
 	paths := strings.Split(c.Request.URL.Path, "/")
 	campaignLink := paths[len(paths)-1]
 	campaign, ok := campaigns.Get().Map[campaignLink]
+	campaignHash := ""
 	if !ok {
-		log.WithField("error", "unknown campaign").Error(fmt.Sprintf("campaign %s is unknown", campaignLink))
+		log.WithFields(log.Fields{
+			"error": "unknown campaign",
+			"path":  campaignLink,
+		}).Error("campaign is unknown")
+	} else {
+		campaignHash = campaign.Hash
 	}
-
 	logCtx := log.WithFields(log.Fields{
 		"tid":          tid,
-		"campaignHash": campaign.Hash,
+		"campaignHash": campaignHash,
 	})
-	logCtx.Info("NotifyAccessCampaignHandler")
-
+	logCtx.Info("notify user action")
 	action := rbmq.UserActionsNotify{
 		Action: "access",
 		Tid:    tid,
@@ -173,7 +181,7 @@ func NotifyAccessCampaignHandler(c *gin.Context) {
 	} else {
 		logCtx.WithFields(log.Fields{
 			"accessCampaign": msg,
-		}).Info("Notify AccessCampaign done")
+		}).Info("done notify access campaign")
 	}
 
 }

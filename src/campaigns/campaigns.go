@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"sync"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
 
 	"github.com/vostrok/db"
+	"github.com/vostrok/dispatcherd/src/sessions"
 	"github.com/vostrok/dispatcherd/src/utils"
 )
 
@@ -28,7 +29,7 @@ func Get() *Campaigns {
 }
 
 func Init(static string, conf db.DataBaseConfig) {
-	log.SetLevel(log.DebugLevel)
+	logrus.SetLevel(logrus.DebugLevel)
 
 	camp = &campaign{
 		dbConn:     db.Init(conf),
@@ -39,7 +40,7 @@ func Init(static string, conf db.DataBaseConfig) {
 
 	err := Reload()
 	if err != nil {
-		log.WithField("error", err.Error()).Fatal("Load IP ranges fail")
+		logrus.WithField("error", err.Error()).Fatal("Load IP ranges fail")
 	}
 }
 
@@ -60,7 +61,9 @@ type Campaign struct {
 }
 
 func (campaign Campaign) Serve(c *gin.Context) {
-	utils.ServeFile(camp.staticPath+"campaign/"+campaign.Hash+"/"+campaign.PageWelcome+".html", c)
+	tid := sessions.GetTid(c)
+	log := logrus.WithField("tid", tid)
+	utils.ServeFile(camp.staticPath+"campaign/"+campaign.Hash+"/"+campaign.PageWelcome+".html", c, log)
 }
 
 func Reload() error {

@@ -69,22 +69,25 @@ func AccessHandler(c *gin.Context) {
 	c.Next()
 
 	responseTime := time.Since(begin)
+	tid := sessions.GetTid(c)
 
 	if len(c.Errors) > 0 {
 		log.WithFields(log.Fields{
+			"tid":    tid,
 			"method": c.Request.Method,
 			"path":   c.Request.URL.Path,
 			"req":    c.Request.URL.RawQuery,
 			"error":  c.Errors.String(),
 			"since":  responseTime,
-		}).Error("Error")
+		}).Error(c.Errors.String())
 	} else {
 		log.WithFields(log.Fields{
+			"tid":    tid,
 			"method": c.Request.Method,
 			"path":   c.Request.URL.Path,
 			"req":    c.Request.URL.RawQuery,
 			"since":  responseTime,
-		}).Info("Access")
+		}).Info("access")
 	}
 	c.Header("X-Response-Time", responseTime.String())
 }

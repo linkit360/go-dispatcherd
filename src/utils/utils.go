@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
 )
 
-func ServeFile(filePath string, c *gin.Context) error {
+func ServeFile(filePath string, c *gin.Context, log *logrus.Entry) error {
 	log.WithField("path", filePath).Debug("serve file")
 
 	w := c.Writer

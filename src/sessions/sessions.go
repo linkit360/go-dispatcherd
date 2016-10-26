@@ -61,7 +61,7 @@ func SetSession(c *gin.Context) {
 	}
 	session.Set("tid", tid)
 	session.Save()
-	log.WithField("tid", tid).Info("session seved")
+	log.WithField("tid", tid).Info("session saved")
 }
 
 func GetTid(c *gin.Context) string {
