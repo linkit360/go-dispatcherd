@@ -17,6 +17,7 @@ func Gather(tid, campaignHash string, r *http.Request) (msg rbmq.AccessCampaignN
 	logCtx := log.WithFields(log.Fields{"tid": tid, "campaign": campaignHash})
 
 	msg = rbmq.AccessCampaignNotify{
+		Tid:          tid,
 		CampaignHash: campaignHash,
 		UserAgent:    r.UserAgent(),
 		Referer:      r.Referer(),
