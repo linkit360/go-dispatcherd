@@ -23,19 +23,12 @@ import (
 var cnf config.AppConfig
 
 var notifierService rbmq.Notifier
-var contentClient *content.Client
 
 func Init(conf config.AppConfig) {
 	log.SetLevel(log.DebugLevel)
 
 	cnf = conf
 	notifierService = rbmq.NewNotifierService(conf.Notifier)
-
-	var err error
-	contentClient, err = content.NewClient(conf.ContentClient.DSN, conf.ContentClient.Timeout)
-	if err != nil {
-		log.WithField("error", err.Error()).Fatal("Init content service rpc client")
-	}
 }
 
 // uniq links generation ??
@@ -87,6 +80,12 @@ func HandlePull(c *gin.Context) {
 	logCtx = logCtx.WithField("msisdn", msg.Msisdn)
 	logCtx.WithFields(log.Fields{}).Debug("gathered info, get content id..")
 
+	contentClient, err := content.NewClient(cnf.ContentClient.DSN, cnf.ContentClient.Timeout)
+	if err != nil {
+		log.WithField("error", err.Error()).Error("content service rpc client unavialable")
+		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
+		return
+	}
 	contentProperties, err := contentClient.Get(service.GetUrlByCampaignHashParams{
 		Msisdn:       msg.Msisdn,
 		Tid:          tid,
