@@ -9,8 +9,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
 
-	content "github.com/vostrok/contentd/rpcclient"
-	"github.com/vostrok/contentd/service"
+	content_service "github.com/vostrok/contentd/service"
 	"github.com/vostrok/dispatcherd/src/campaigns"
 	"github.com/vostrok/dispatcherd/src/config"
 	"github.com/vostrok/dispatcherd/src/handlers/gather"
@@ -23,12 +22,14 @@ import (
 var cnf config.AppConfig
 
 var notifierService rbmq.Notifier
+var contentSvc content_service.ContentService
 
 func Init(conf config.AppConfig) {
 	log.SetLevel(log.DebugLevel)
 
 	cnf = conf
 	notifierService = rbmq.NewNotifierService(conf.Notifier)
+	content_service.InitService(conf.ContentService)
 }
 
 // uniq links generation ??
@@ -80,19 +81,14 @@ func HandlePull(c *gin.Context) {
 	logCtx = logCtx.WithField("msisdn", msg.Msisdn)
 	logCtx.WithFields(log.Fields{}).Debug("gathered info, get content id..")
 
-	contentClient, err := content.NewClient(cnf.ContentClient.DSN, cnf.ContentClient.Timeout)
-	if err != nil {
-		log.WithField("error", err.Error()).Error("content service rpc client unavialable")
-		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
-		return
-	}
-	contentProperties, err := contentClient.Get(service.GetUrlByCampaignHashParams{
-		Msisdn:       msg.Msisdn,
-		Tid:          tid,
-		CampaignHash: campaignHash,
-		CountryCode:  msg.CountryCode,
-		OperatorCode: msg.OperatorCode,
-	})
+	contentProperties, err := content_service.GetUrlByCampaignHash(
+		content_service.GetUrlByCampaignHashParams{
+			Msisdn:       msg.Msisdn,
+			Tid:          tid,
+			CampaignHash: campaignHash,
+			CountryCode:  msg.CountryCode,
+			OperatorCode: msg.OperatorCode,
+		})
 	if err != nil {
 		err := fmt.Errorf("contentClient.Get: %s", err.Error())
 		logCtx.WithField("error", err.Error()).Error("contentClient.Get")

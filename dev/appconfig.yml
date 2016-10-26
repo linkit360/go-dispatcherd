@@ -58,3 +58,33 @@ operator:
     end: 192.168.255.255
   - start: 198.18.0.0
     end: 198.19.255.255
+
+service:
+  retry_count: 10
+  table_prefix: xmp_
+  uniq_days: 10
+  tables:
+  - campaign
+  - service
+  - content
+  - service_content
+  - subscriptions
+  - content_sent
+
+  db:
+    conn_ttl: -1
+    max_conns: 15
+    timeout: 30
+    name: linkit_dev
+    user: linkit
+    pass: E0kZN8pUAs63wePepf
+    port: 5432
+    host: linkit.cz3twmoynbq5.eu-central-1.rds.amazonaws.com
+    ssl_mode: disable
+    table_prefix: xmp_
+
+  notifier:
+    queues:
+      content_sent: content_sent
+    url: amqp://linkit:dg-U_oHhy7-@52.66.23.201:5672
+    chan_gap: 10000000

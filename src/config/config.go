@@ -9,6 +9,7 @@ import (
 	"github.com/jinzhu/configor"
 
 	content "github.com/vostrok/contentd/rpcclient"
+	content_service "github.com/vostrok/contentd/service"
 	"github.com/vostrok/db"
 	"github.com/vostrok/dispatcherd/src/operator"
 	"github.com/vostrok/dispatcherd/src/rbmq"
@@ -16,13 +17,14 @@ import (
 )
 
 type AppConfig struct {
-	Server        ServerConfig            `yaml:"server"`
-	NewRelic      NewRelicConfig          `yaml:"newrelic"`
-	Notifier      rbmq.NotifierConfig     `yaml:"notifier"`
-	Subscriptions SubscriptionsConfig     `yaml:"subscriptions"`
-	ContentClient content.RPCClientConfig `yaml:"content_client"`
-	Operator      operator.OperatorConfig `yaml:"operator"`
-	Db            db.DataBaseConfig       `yaml:"db"`
+	Server         ServerConfig                         `yaml:"server"`
+	NewRelic       NewRelicConfig                       `yaml:"newrelic"`
+	Notifier       rbmq.NotifierConfig                  `yaml:"notifier"`
+	Subscriptions  SubscriptionsConfig                  `yaml:"subscriptions"`
+	ContentClient  content.RPCClientConfig              `yaml:"content_client"`
+	Operator       operator.OperatorConfig              `yaml:"operator"`
+	Db             db.DataBaseConfig                    `yaml:"db"`
+	ContentService content_service.ContentServiceConfig `yaml:"service"`
 }
 
 type ServerConfig struct {
