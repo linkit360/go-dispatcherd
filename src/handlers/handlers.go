@@ -50,7 +50,9 @@ func HandlePull(c *gin.Context) {
 	}
 	var err error
 	defer func(msg rbmq.AccessCampaignNotify, action rbmq.UserActionsNotify, err error) {
-		action.Error = err.Error()
+		if err != nil {
+			action.Error = err.Error()
+		}
 		if err := notifierService.ActionNotify(action); err != nil {
 			logCtx.WithField("error", err.Error()).Error("notify user action")
 		}
@@ -105,7 +107,7 @@ func HandlePull(c *gin.Context) {
 	msg.ServiceId = contentProperties.ServiceId
 
 	// todo one time url-s
-	err = utils.ServeFile(cnf.Server.StaticPath+contentProperties.ContentPath, c)
+	err = utils.ServeFile(cnf.Server.Path+contentProperties.ContentPath, c)
 	if err != nil {
 		err := fmt.Errorf("serveContentFile: %s", err.Error())
 		logCtx.WithField("error", err.Error()).Error("serveContentFile")

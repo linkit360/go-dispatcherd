@@ -21,7 +21,7 @@ import (
 func RunServer() {
 	appConfig := config.LoadConfig()
 	operator.Init(appConfig.Operator, appConfig.Db)
-	campaigns.Init(appConfig.Server.StaticPath, appConfig.Db)
+	campaigns.Init(appConfig.Server.Path, appConfig.Db)
 
 	metrics.Init()
 	handlers.Init(appConfig)
@@ -44,6 +44,10 @@ func RunServer() {
 
 	rg := r.Group("/debug")
 	rg.GET("/vars", expvar.Handler())
+
+	r.Static("/static/", appConfig.Server.Path+"/static/")
+	r.StaticFile("/favicon.ico", appConfig.Server.Path+"/favicon.ico")
+	r.StaticFile("/robots.txt", appConfig.Server.Path+"/robots.txt")
 
 	r.NoRoute(notFound)
 

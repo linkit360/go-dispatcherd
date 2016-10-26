@@ -26,9 +26,9 @@ type AppConfig struct {
 }
 
 type ServerConfig struct {
-	Port       string                  `default:"50300"`
-	StaticPath string                  `default:"/var/www/xmp.linkit360.ru/web/" yaml:"static_path"`
-	Sessions   sessions.SessionsConfig `yaml:"sessions"`
+	Port     string                  `default:"50300"`
+	Path     string                  `default:"/var/www/xmp.linkit360.ru/web/" yaml:"path"`
+	Sessions sessions.SessionsConfig `yaml:"sessions"`
 }
 
 type NewRelicConfig struct {

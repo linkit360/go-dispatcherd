@@ -1,6 +1,7 @@
 server:
   port: 50300
-  static_path: /var/www/xmp.linkit360.ru/web/
+  path: /var/www/xmp.linkit360.ru/web/
+
   sessions:
     secret: rCs7h2h_NqB5Kx-
     path: /
