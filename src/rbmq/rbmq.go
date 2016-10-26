@@ -3,6 +3,7 @@ package rbmq
 import (
 	"encoding/json"
 
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/vostrok/contentd/service"
 	"github.com/vostrok/rabbit"
@@ -74,8 +75,7 @@ func (service notifier) NewSubscriptionNotify(msg service.ContentSentProperties)
 
 	body, err := json.Marshal(event)
 	if err != nil {
-		log.WithField("NewSubscriptionNotify", err.Error())
-		return err
+		return fmt.Errorf("json.Marshal: %s", err.Error())
 	}
 
 	service.mq.Publish(rabbit.AMQPMessage{service.q.newSubscription, body})
@@ -83,22 +83,22 @@ func (service notifier) NewSubscriptionNotify(msg service.ContentSentProperties)
 }
 
 type AccessCampaignNotify struct {
-	Msisdn       string `json:"msisdn"`
-	CampaignHash string `json:"campaoign_hash"`
-	Tid          string `json:"tid"`
-	IP           string `json:"ip"`
-	OperatorCode int64  `json:"operator_code"`
-	CountryCode  int64  `json:"country_code"`
-	Supported    bool   `json:"supported"`
-	UserAgent    string `json:"user_agent"`
-	Referer      string `json:"referer"`
-	UrlPath      string `json:"url_path"`
-	Method       string `json:"method"`
-	Headers      string `json:"headers"`
-	Error        string `json:"error"`
-	CampaignId   int64  `json:"campaign_id"`
-	ContentId    int64  `json:"content_id"`
-	ServiceId    int64  `json:"service_id"`
+	Msisdn       string `json:"msisdn,omitempty"`
+	CampaignHash string `json:"campaoign_hash,omitempty"`
+	Tid          string `json:"tid,omitempty"`
+	IP           string `json:"ip,omitempty"`
+	OperatorCode int64  `json:"operator_code,omitempty"`
+	CountryCode  int64  `json:"country_code,omitempty"`
+	Supported    bool   `json:"supported,omitempty"`
+	UserAgent    string `json:"user_agent,omitempty"`
+	Referer      string `json:"referer,omitempty"`
+	UrlPath      string `json:"url_path,omitempty"`
+	Method       string `json:"method,omitempty"`
+	Headers      string `json:"headers,omitempty"`
+	Error        string `json:"error,omitempty"`
+	CampaignId   int64  `json:"campaign_id,omitempty"`
+	ContentId    int64  `json:"content_id,omitempty"`
+	ServiceId    int64  `json:"service_id,omitempty"`
 }
 
 func (service notifier) AccessCampaignNotify(msg AccessCampaignNotify) error {
@@ -110,8 +110,7 @@ func (service notifier) AccessCampaignNotify(msg AccessCampaignNotify) error {
 
 	body, err := json.Marshal(event)
 	if err != nil {
-		log.WithField("AccessCampaignNotify", err.Error())
-		return err
+		return fmt.Errorf("json.Marshal: %s", err.Error())
 	}
 
 	service.mq.Publish(rabbit.AMQPMessage{service.q.accessCampaign, body})
@@ -119,22 +118,24 @@ func (service notifier) AccessCampaignNotify(msg AccessCampaignNotify) error {
 }
 
 type UserActionsNotify struct {
-	Tid    string `json:"tid"`
-	Error  string `json:"error"`
-	Action string `json:"tid"`
+	Tid    string `json:"tid,omitempty"`
+	Error  string `json:"error,omitempty"`
+	Action string `json:"action,omitempty"`
 }
 
 func (service notifier) ActionNotify(msg UserActionsNotify) error {
+	log.WithField("msg", msg).Debug("got msg")
+
 	event := EventNotify{
 		EventName: "user_actions",
 		EventData: msg,
 	}
+	log.WithField("event", event).Debug("got event")
 	body, err := json.Marshal(event)
 	if err != nil {
-		log.WithField("ActionNotify", err.Error())
-		return err
+		return fmt.Errorf("json.Marshal: %s", err.Error())
 	}
-
+	log.WithField("body", string(body)).Debug("sent body")
 	service.mq.Publish(rabbit.AMQPMessage{service.q.userAction, body})
 	return nil
 }

@@ -154,12 +154,13 @@ func NotifyAccessCampaignHandler(c *gin.Context) {
 		logCtx.WithFields(log.Fields{
 			"error":  err.Error(),
 			"action": action,
-		}).Error("notify user action")
+		}).Error("error notify user action")
 	} else {
 		logCtx.WithFields(log.Fields{
 			"action": action,
-		}).Info("Notify User Action done")
+		}).Info("done notify user action")
 	}
+
 	msg, err := gather.Gather(tid, campaign.Hash, c.Request)
 	if err != nil {
 		logCtx.WithFields(log.Fields{
