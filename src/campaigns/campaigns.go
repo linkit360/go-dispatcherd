@@ -63,7 +63,7 @@ type Campaign struct {
 func (campaign Campaign) Serve(c *gin.Context) {
 	tid := sessions.GetTid(c)
 	log := logrus.WithField("tid", tid)
-	utils.ServeFile(camp.staticPath+"campaign/"+campaign.Hash+"/"+campaign.PageWelcome+".html", c, log)
+	utils.ServeStaticFile(camp.staticPath+"campaign/"+campaign.Hash+"/"+campaign.PageWelcome+".html", c, log)
 }
 
 func Reload() error {

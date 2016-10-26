@@ -107,7 +107,12 @@ func HandlePull(c *gin.Context) {
 	msg.ServiceId = contentProperties.ServiceId
 
 	// todo one time url-s
-	err = utils.ServeFile(cnf.Server.Path+"uploaded_content/"+contentProperties.ContentPath, c, logCtx)
+	err = utils.ServeAttachment(
+		cnf.Server.Path+"uploaded_content/"+contentProperties.ContentPath,
+		contentProperties.ContentName,
+		c,
+		logCtx,
+	)
 	if err != nil {
 		err := fmt.Errorf("serveContentFile: %s", err.Error())
 		logCtx.WithField("error", err.Error()).Error("serveContentFile")
