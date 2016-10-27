@@ -2,13 +2,13 @@ package handlers
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
 
+	content_service "github.com/vostrok/contentd/service"
 	"github.com/vostrok/dispatcherd/src/campaigns"
 	"github.com/vostrok/dispatcherd/src/operator"
 )
@@ -59,9 +59,13 @@ func Reload(c *gin.Context) {
 			r.Success = true
 		}
 	default:
-		err = fmt.Errorf("Table name %s not recognized", table)
-		r.Status = http.StatusBadRequest
+		if _, err := content_service.CQR(table); err != nil {
+			r.Success = false
+			r.Status = http.StatusInternalServerError
+			log.WithField("error", err.Error()).Error("content service reload")
+		}
 	}
+
 	render(r, c)
 	return
 }

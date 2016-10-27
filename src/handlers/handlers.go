@@ -22,7 +22,6 @@ import (
 var cnf config.AppConfig
 
 var notifierService rbmq.Notifier
-var contentSvc content_service.ContentService
 
 func Init(conf config.AppConfig) {
 	log.SetLevel(log.DebugLevel)

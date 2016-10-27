@@ -9,6 +9,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
+	"encoding/json"
 	"github.com/vostrok/dispatcherd/src/operator"
 	"github.com/vostrok/dispatcherd/src/rbmq"
 )
@@ -16,6 +17,11 @@ import (
 func Gather(tid, campaignHash string, r *http.Request) (msg rbmq.AccessCampaignNotify, err error) {
 	logCtx := log.WithFields(log.Fields{"tid": tid, "campaign": campaignHash})
 
+	headers, err := json.Marshal(r.Header)
+	if err != nil {
+		logCtx.Error("cannot marshal headers")
+		headers = []byte("{}")
+	}
 	msg = rbmq.AccessCampaignNotify{
 		Tid:          tid,
 		CampaignHash: campaignHash,
@@ -23,7 +29,7 @@ func Gather(tid, campaignHash string, r *http.Request) (msg rbmq.AccessCampaignN
 		Referer:      r.Referer(),
 		UrlPath:      r.URL.String(),
 		Method:       r.Method,
-		Headers:      fmt.Sprintf("%v", r.Header),
+		Headers:      string(headers),
 	}
 
 	ip := getIPAdress(r)
