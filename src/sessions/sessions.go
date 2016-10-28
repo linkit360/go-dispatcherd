@@ -42,13 +42,15 @@ func AddSessionTidHandler(c *gin.Context) {
 	c.Next()
 }
 
+// tid example 1477597462-3f66f7ea-afef-42a2-69ad-549a6a38b5ff
 func SetSession(c *gin.Context) {
 	log.Debug("set session")
 
 	var tid string
 	session := sessions.Default(c)
 	v := session.Get("tid")
-	if v == nil {
+
+	if v == nil || len(string(v.(string))) < 40 {
 		log.WithField("headers", c.Request.Header).Debug("no session found")
 		u4, err := uuid.NewV4()
 		if err != nil {
@@ -58,6 +60,7 @@ func SetSession(c *gin.Context) {
 		log.WithField("tid", tid).Debug("generated tid")
 	} else {
 		log.WithField("tid", v).Debug("already have tid")
+		tid = string(v.(string))
 	}
 	session.Set("tid", tid)
 	session.Save()
