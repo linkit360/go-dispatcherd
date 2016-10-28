@@ -4,8 +4,10 @@ import (
 	"database/sql"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/Sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
 
 	"github.com/vostrok/db"
@@ -66,12 +68,28 @@ func (campaign Campaign) Serve(c *gin.Context) {
 	utils.ServeStaticFile(camp.staticPath+"campaign/"+campaign.Hash+"/"+campaign.PageWelcome+".html", c, log)
 }
 
-func Reload() error {
+func Reload() (err error) {
+	log.WithFields(log.Fields{}).Debug("campaigns reload...")
+	begin := time.Now()
+	defer func(err error) {
+		errStr := ""
+		if err != nil {
+			errStr = err.Error()
+		}
+		log.WithFields(log.Fields{
+			"error": errStr,
+			"took":  time.Since(begin),
+		}).Debug("campaigns reload")
+	}(err)
+
 	query := fmt.Sprintf("select id, link, hash, page_welcome from %scampaigns where status = $1",
 		camp.dbConf.TablePrefix)
-	rows, err := camp.dbConn.Query(query, ACTIVE_STATUS)
+
+	var rows *sql.Rows
+	rows, err = camp.dbConn.Query(query, ACTIVE_STATUS)
 	if err != nil {
-		return fmt.Errorf("QueryServices: %s, query: %s", err.Error(), query)
+		err = fmt.Errorf("db.Query: %s, query: %s", err.Error(), query)
+		return
 	}
 	defer rows.Close()
 
@@ -79,18 +97,20 @@ func Reload() error {
 	for rows.Next() {
 		record := Campaign{}
 
-		if err := rows.Scan(
+		if err = rows.Scan(
 			&record.Id,
 			&record.Link,
 			&record.Hash,
 			&record.PageWelcome,
 		); err != nil {
-			return err
+			err = fmt.Errorf("rows.Scan: %s", err.Error())
+			return
 		}
 		records = append(records, record)
 	}
 	if rows.Err() != nil {
-		return fmt.Errorf("RowsError: %s", err.Error())
+		err = fmt.Errorf("rows.Err: %s", err.Error())
+		return
 	}
 
 	camp.campaigns.Lock()

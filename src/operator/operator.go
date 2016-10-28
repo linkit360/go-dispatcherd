@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 
@@ -95,13 +96,28 @@ func GetIpInfo(ipAddr net.IP) IPInfo {
 // msisdn could be in many headers
 // todo - rewrite in binary three
 func Reload() (err error) {
+	log.WithFields(log.Fields{}).Debug("operators reload...")
+	begin := time.Now()
+	defer func(err error) {
+		errStr := ""
+		if err != nil {
+			errStr = err.Error()
+		}
+		log.WithFields(log.Fields{
+			"error": errStr,
+			"took":  time.Since(begin),
+		}).Debug("operators reload")
+	}(err)
+
 	query := fmt.Sprintf(""+
 		"SELECT id, operator_code, country_code, ip_from, ip_to, "+
 		" ( SELECT %soperators.msisdn_headers as header FROM %soperators where operator_code = code ) "+
 		" from %soperator_ip", op.dbConf.TablePrefix, op.dbConf.TablePrefix, op.dbConf.TablePrefix)
-	rows, err := op.db.Query(query)
+	var rows *sql.Rows
+	rows, err = op.db.Query(query)
 	if err != nil {
-		return fmt.Errorf("GetIpRanges: %s, query: %s", err.Error(), query)
+		err = fmt.Errorf("db.Query: %s, query: %s", err.Error(), query)
+		return
 	}
 	defer rows.Close()
 
@@ -110,7 +126,7 @@ func Reload() (err error) {
 		record := IpRange{}
 
 		var headers string
-		if err := rows.Scan(
+		if err = rows.Scan(
 			&record.Id,
 			&record.OperatorCode,
 			&record.CountryCode,
@@ -118,6 +134,7 @@ func Reload() (err error) {
 			&record.IpTo,
 			&headers,
 		); err != nil {
+			err = fmt.Errorf("rows.Scan: %s", err.Error())
 			return err
 		}
 		decodedHeaders := make([]string, 0)
@@ -128,18 +145,13 @@ func Reload() (err error) {
 			}).Fatal("unmarshaling headers")
 		}
 		record.MsisdnHeaders = decodedHeaders
-		log.WithFields(log.Fields{
-			"operator":       record.OperatorCode,
-			"headers":        headers,
-			"decodedHeaders": fmt.Sprintf("%#v", decodedHeaders),
-		}).Debug("unmarshaling headers")
-
 		record.Start = net.ParseIP(record.IpFrom)
 		record.End = net.ParseIP(record.IpTo)
 		records = append(records, record)
 	}
 	if rows.Err() != nil {
-		return fmt.Errorf("GetIpRanges RowsError: %s", err.Error())
+		err = fmt.Errorf("rows.Err: %s", err.Error())
+		return
 	}
 	op.ipRanges = records
 	log.WithFields(log.Fields{
