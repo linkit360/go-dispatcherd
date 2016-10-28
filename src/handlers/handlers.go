@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
 
+	content "github.com/vostrok/contentd/rpcclient"
 	content_service "github.com/vostrok/contentd/service"
 	"github.com/vostrok/dispatcherd/src/campaigns"
 	"github.com/vostrok/dispatcherd/src/config"
@@ -17,9 +19,6 @@ import (
 	"github.com/vostrok/dispatcherd/src/rbmq"
 	"github.com/vostrok/dispatcherd/src/sessions"
 	"github.com/vostrok/dispatcherd/src/utils"
-
-	content "github.com/vostrok/contentd/rpcclient"
-	"time"
 )
 
 var cnf config.AppConfig
