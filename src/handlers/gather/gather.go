@@ -2,7 +2,6 @@ package gather
 
 import (
 	"errors"
-	"fmt"
 	"net"
 	"net/http"
 	"strings"
@@ -41,8 +40,9 @@ func Gather(tid, campaignHash string, r *http.Request) (msg rbmq.AccessCampaignN
 	}
 	info := operator.GetIpInfo(ip)
 	log.WithFields(log.Fields{
-		"info": fmt.Sprintf("%#v", info),
-	}).Info("got IP info")
+		"operator_code": info.OperatorCode,
+		"supported":     info.Supported,
+	}).Debug("got IP info")
 
 	msg.IP = info.IP
 	msg.OperatorCode = info.OperatorCode

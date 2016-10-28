@@ -17,6 +17,9 @@ import (
 	"github.com/vostrok/dispatcherd/src/rbmq"
 	"github.com/vostrok/dispatcherd/src/sessions"
 	"github.com/vostrok/dispatcherd/src/utils"
+
+	content "github.com/vostrok/contentd/rpcclient"
+	"time"
 )
 
 var cnf config.AppConfig
@@ -40,21 +43,19 @@ func HandlePull(c *gin.Context) {
 	logCtx := log.WithFields(log.Fields{
 		"tid": tid,
 	})
-
 	var msg rbmq.AccessCampaignNotify
 	action := rbmq.UserActionsNotify{
 		Action: "pull_click",
 		Tid:    tid,
 	}
 	var err error
-	defer func(msg rbmq.AccessCampaignNotify, action rbmq.UserActionsNotify, err error) {
-		if err != nil {
-			action.Error = err.Error()
-		}
+	defer func() {
 		if err := notifierService.ActionNotify(action); err != nil {
 			logCtx.WithField("error", err.Error()).Error("notify user action")
+		} else {
+
 		}
-	}(msg, action, err)
+	}()
 
 	logCtx.Debug(c.Request.Header)
 
@@ -67,6 +68,7 @@ func HandlePull(c *gin.Context) {
 		err := errors.New("Wrong campaign length")
 		c.Error(err)
 		msg.Error = err.Error()
+		action.Error = err.Error()
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 		return
 	}
@@ -74,32 +76,44 @@ func HandlePull(c *gin.Context) {
 
 	msg, err = gather.Gather(tid, campaignHash, c.Request)
 	if err != nil {
+		msg.Error = err.Error()
+		action.Error = err.Error()
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 		return
 	}
 	logCtx = logCtx.WithField("msisdn", msg.Msisdn)
 	logCtx.WithFields(log.Fields{}).Debug("gathered info, get content id..")
 
-	contentProperties, err := content_service.GetUrlByCampaignHash(
-		content_service.GetUrlByCampaignHashParams{
-			Msisdn:       msg.Msisdn,
-			Tid:          tid,
-			CampaignHash: campaignHash,
-			CountryCode:  msg.CountryCode,
-			OperatorCode: msg.OperatorCode,
-		})
+	contentClient, err := content.NewClient(cnf.ContentClient.DSN, cnf.ContentClient.Timeout)
 	if err != nil {
-		err := fmt.Errorf("contentClient.Get: %s", err.Error())
+		msg.Error = err.Error()
+		action.Error = err.Error()
+		log.WithField("error", err.Error()).Error("content service rpc client unavialable")
+		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
+		return
+	}
+	contentProperties := &content_service.ContentSentProperties{}
+	contentProperties, err = contentClient.Get(content_service.GetUrlByCampaignHashParams{
+		Msisdn:       msg.Msisdn,
+		Tid:          tid,
+		CampaignHash: campaignHash,
+		CountryCode:  msg.CountryCode,
+		OperatorCode: msg.OperatorCode,
+	})
+
+	if err != nil {
+		err = fmt.Errorf("contentClient.Get: %s", err.Error())
 		logCtx.WithField("error", err.Error()).Error("contentClient.Get")
 		c.Error(err)
 		msg.Error = err.Error()
+		action.Error = err.Error()
 		metrics.M.ContentDeliveryError.Add(1)
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 		return
 	}
 	logCtx.WithFields(log.Fields{
 		"contentPropertities": contentProperties,
-	}).Debug("got content id, serving file")
+	}).Debug("contentd response")
 
 	msg.CampaignId = contentProperties.CampaignId
 	msg.ContentId = contentProperties.ContentId
@@ -117,6 +131,8 @@ func HandlePull(c *gin.Context) {
 		logCtx.WithField("error", err.Error()).Error("serveContentFile")
 		c.Error(err)
 		msg.Error = err.Error()
+		msg.Error = err.Error()
+		action.Error = err.Error()
 		metrics.M.ContentDeliveryError.Add(1)
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 		return
@@ -155,6 +171,7 @@ func NotifyAccessCampaignHandler(c *gin.Context) {
 		"campaignHash": campaignHash,
 	})
 	logCtx.Info("notify user action")
+	begin := time.Now()
 	action := rbmq.UserActionsNotify{
 		Action: "access",
 		Tid:    tid,
@@ -168,6 +185,7 @@ func NotifyAccessCampaignHandler(c *gin.Context) {
 	} else {
 		logCtx.WithFields(log.Fields{
 			"action": action,
+			"took":   time.Since(begin),
 		}).Info("done notify user action")
 	}
 
