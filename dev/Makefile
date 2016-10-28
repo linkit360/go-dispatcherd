@@ -26,3 +26,9 @@ agree:
 
 testlocal:
 	curl -L --header "HTTP_MSISDN: 928974412092" --header "X-Real-Ip: 10.80.128.1" --header "Host: pk.linkit360.ru" "http://localhost:50300/mobilink-p2"
+
+cqrcampaign:
+	curl http://localhost:50300/cqr?t=campaigns
+
+cqroperator_ip:
+	curl http://localhost:50300/cqr?t=campaigns
