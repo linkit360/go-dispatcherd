@@ -62,7 +62,7 @@ func SetSession(c *gin.Context) {
 		log.WithField("tid", v).Debug("already have tid")
 		tid = string(v.(string))
 	}
-	if msisdn, ok := c.GetQuery("msisdin"); ok {
+	if msisdn, ok := c.GetQuery("msisdn"); ok {
 		log.WithField("msisdn", msisdn).Debug("found msisdn")
 		session.Set("msisdn", msisdn)
 	}
