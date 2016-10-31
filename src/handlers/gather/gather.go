@@ -9,13 +9,15 @@ import (
 	log "github.com/Sirupsen/logrus"
 
 	"encoding/json"
+	"github.com/gin-gonic/gin"
 	"github.com/vostrok/dispatcherd/src/operator"
 	"github.com/vostrok/dispatcherd/src/rbmq"
 )
 
-func Gather(tid, campaignHash string, r *http.Request) (msg rbmq.AccessCampaignNotify, err error) {
+func Gather(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampaignNotify, err error) {
 	logCtx := log.WithFields(log.Fields{"tid": tid, "campaign": campaignHash})
 
+	r := c.Request
 	headers, err := json.Marshal(r.Header)
 	if err != nil {
 		logCtx.Error("cannot marshal headers")
@@ -71,12 +73,17 @@ func Gather(tid, campaignHash string, r *http.Request) (msg rbmq.AccessCampaignN
 		}
 	}
 	if len(msisdn) == 0 {
-		err = errors.New("Msisdn not found")
-		msg.Error = err.Error()
-		logCtx.WithFields(log.Fields{
-			"operatorsSettings": info.MsisdnHeaders,
-			"Header":            r.Header,
-		}).Error("msisdn is empty")
+		var ok bool
+		if msisdn, ok = c.GetQuery("msisdn"); ok {
+			logCtx.WithFields(log.Fields{"msisdn": msisdn}).Debug("took from get params")
+		} else {
+			err = errors.New("Msisdn not found")
+			msg.Error = err.Error()
+			logCtx.WithFields(log.Fields{
+				"operatorsSettings": info.MsisdnHeaders,
+				"Header":            r.Header,
+			}).Error("msisdn is empty")
+		}
 	}
 	msg.Msisdn = msisdn
 	return

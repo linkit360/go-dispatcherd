@@ -27,8 +27,11 @@ agree:
 testlocal:
 	curl -L --header "HTTP_MSISDN: 928974412092" --header "X-Real-Ip: 10.80.128.1" --header "Host: pk.linkit360.ru" "http://localhost:50300/mobilink-p2"
 
+agreelocal:
+	curl -L -H 'HTTP_MSISDN: 928974412092' -H 'X-Real-Ip: 10.80.128.1' -H 'Host: pk.linkit360.ru' "http://localhost:50300/campaign/f90f2aca5c640289d0a29417bcb63a37"
+
 cqrcampaign:
 	curl http://localhost:50300/cqr?t=campaigns
 
 cqroperator_ip:
-	curl http://localhost:50300/cqr?t=campaigns
+	curl http://localhost:50300/cqr?t=operator_ip

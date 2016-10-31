@@ -52,7 +52,6 @@ func HandlePull(c *gin.Context) {
 		if err := notifierService.ActionNotify(action); err != nil {
 			logCtx.WithField("error", err.Error()).Error("notify user action")
 		} else {
-
 		}
 	}()
 
@@ -73,7 +72,7 @@ func HandlePull(c *gin.Context) {
 	}
 	logCtx = logCtx.WithField("campaignHash", campaignHash)
 
-	msg, err = gather.Gather(tid, campaignHash, c.Request)
+	msg, err = gather.Gather(tid, campaignHash, c)
 	if err != nil {
 		msg.Error = err.Error()
 		action.Error = err.Error()
@@ -188,7 +187,7 @@ func NotifyAccessCampaignHandler(c *gin.Context) {
 		}).Info("done notify user action")
 	}
 
-	msg, err := gather.Gather(tid, campaign.Hash, c.Request)
+	msg, err := gather.Gather(tid, campaign.Hash, c)
 	if err != nil {
 		logCtx.WithFields(log.Fields{
 			"error":          err.Error(),
