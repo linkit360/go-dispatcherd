@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/vostrok/dispatcherd/src/operator"
 	"github.com/vostrok/dispatcherd/src/rbmq"
+	"github.com/vostrok/dispatcherd/src/sessions"
 )
 
 func Gather(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampaignNotify, err error) {
@@ -59,33 +60,46 @@ func Gather(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampaignNo
 		logCtx.WithFields(log.Fields{"info": info}).Error("operator is not supported")
 		return
 	}
-	msisdn := ""
+
+	msg.Msisdn = ""
 	for _, header := range info.MsisdnHeaders {
-		msisdn = r.Header.Get(header)
+		msg.Msisdn = r.Header.Get(header)
 		log.WithFields(log.Fields{
 			"request": r.Header,
 			"header":  header,
-			"msisdn":  msisdn,
+			"msisdn":  msg.Msisdn,
 		}).Debug("check header")
 
-		if len(msisdn) > 0 {
+		if len(msg.Msisdn) > 0 {
 			break
 		}
 	}
-	if len(msisdn) == 0 {
-		var ok bool
-		if msisdn, ok = c.GetQuery("msisdn"); ok {
-			logCtx.WithFields(log.Fields{"msisdn": msisdn}).Debug("took from get params")
-		} else {
-			err = errors.New("Msisdn not found")
-			msg.Error = err.Error()
-			logCtx.WithFields(log.Fields{
-				"operatorsSettings": info.MsisdnHeaders,
-				"Header":            r.Header,
-			}).Error("msisdn is empty")
-		}
+	if len(msg.Msisdn) != 0 {
+		return
 	}
-	msg.Msisdn = msisdn
+	var ok bool
+	if msg.Msisdn, ok = c.GetQuery("msisdn"); ok {
+		logCtx.WithFields(log.Fields{
+			"msisdn": msg.Msisdn,
+		}).Debug("took from get params")
+		return
+	}
+
+	msg.Msisdn = sessions.GetMsisdn(c)
+	if len(msg.Msisdn) >= 5 {
+		logCtx.WithFields(log.Fields{
+			"msisdn": msg.Msisdn,
+		}).Debug("took from sessions")
+		return
+	}
+
+	err = errors.New("Msisdn not found")
+	msg.Error = err.Error()
+	logCtx.WithFields(log.Fields{
+		"operatorsSettings": info.MsisdnHeaders,
+		"Header":            r.Header,
+	}).Error("msisdn is empty")
+
 	return
 }
 

@@ -62,6 +62,10 @@ func SetSession(c *gin.Context) {
 		log.WithField("tid", v).Debug("already have tid")
 		tid = string(v.(string))
 	}
+	if msisdn, ok := c.GetQuery("msisdin"); ok {
+		log.WithField("msisdn", msisdn).Debug("found msisdn")
+		session.Set("msisdn", msisdn)
+	}
 	session.Set("tid", tid)
 	session.Save()
 	log.WithField("tid", tid).Info("session saved")
@@ -70,11 +74,22 @@ func SetSession(c *gin.Context) {
 func GetTid(c *gin.Context) string {
 	session := sessions.Default(c)
 	v := session.Get("tid")
-	if v == nil {
+	if v == nil || len(string(v.(string))) < 40 {
 		log.WithField("headers", c.Request.Header).Error("no tid")
 		return ""
 	} else {
 		log.WithField("tid", v).Debug("found tid")
 		return fmt.Sprintf("%s", v)
+	}
+}
+func GetMsisdn(c *gin.Context) string {
+	session := sessions.Default(c)
+	v := session.Get("msisdn")
+	if v == nil || len(string(v.(string))) < 5 {
+		log.WithField("headers", c.Request.Header).Debug("no msisdn")
+		return ""
+	} else {
+		log.WithField("msisdn", v).Debug("found msisdn")
+		return string(v.(string))
 	}
 }

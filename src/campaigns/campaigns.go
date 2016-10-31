@@ -65,11 +65,6 @@ type Campaign struct {
 func (campaign Campaign) Serve(c *gin.Context) {
 	tid := sessions.GetTid(c)
 	log := logrus.WithField("tid", tid)
-
-	if msisdn, ok := c.GetQuery("msisdin"); ok {
-		log.WithField("msisdn", msisdn).Debug("found msisdn")
-		c.Writer.Header().Set("HTTP_MSISDN", msisdn)
-	}
 	utils.ServeStaticFile(camp.staticPath+"campaign/"+campaign.Hash+"/"+campaign.PageWelcome+".html", c, log)
 }
 
