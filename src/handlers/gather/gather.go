@@ -40,6 +40,7 @@ func Gather(tid, campaignHash string, r *http.Request) (msg rbmq.AccessCampaignN
 	}
 	info := operator.GetIpInfo(ip)
 	log.WithFields(log.Fields{
+		"ip":            info.IP,
 		"operator_code": info.OperatorCode,
 		"supported":     info.Supported,
 		"headers":       info.MsisdnHeaders,
