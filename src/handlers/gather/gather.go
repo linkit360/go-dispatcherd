@@ -42,6 +42,7 @@ func Gather(tid, campaignHash string, r *http.Request) (msg rbmq.AccessCampaignN
 	log.WithFields(log.Fields{
 		"operator_code": info.OperatorCode,
 		"supported":     info.Supported,
+		"headers":       info.MsisdnHeaders,
 	}).Debug("got IP info")
 
 	msg.IP = info.IP
