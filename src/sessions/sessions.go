@@ -16,7 +16,7 @@ type SessionsConfig struct {
 	Secret   string `default:"rCs7h2h_NqB5Kx-" yaml:"secret"`
 	Path     string `default:"/" yaml:"path"`
 	Domain   string `default:"pk.linkit360.ru" yaml:"domain"`
-	MaxAge   int    `default:"3600" yaml:"cookie_ttl"` // MaxAge>0 means Max-Age attribute present and given in seconds.
+	MaxAge   int    `default:"87400" yaml:"cookie_ttl"` // MaxAge>0 means Max-Age attribute present and given in seconds.
 	Secure   bool   `default:"false" yaml:"secure"`
 	HttpOnly bool   `default:"false" yaml:"http_only"`
 }
@@ -81,6 +81,10 @@ func GetTid(c *gin.Context) string {
 		log.WithField("tid", v).Debug("found tid")
 		return fmt.Sprintf("%s", v)
 	}
+}
+func RemoveTid(c *gin.Context) string {
+	session := sessions.Default(c)
+	session.Set("tid", "")
 }
 func GetMsisdn(c *gin.Context) string {
 	session := sessions.Default(c)

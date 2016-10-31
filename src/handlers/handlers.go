@@ -136,6 +136,7 @@ func HandlePull(c *gin.Context) {
 		return
 	}
 	logCtx.WithFields(log.Fields{}).Debug("served file ok")
+	sessions.RemoveTid(c)
 }
 
 func AddCampaignHandlers(r *gin.Engine) {
