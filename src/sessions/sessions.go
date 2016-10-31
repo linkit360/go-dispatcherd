@@ -63,7 +63,7 @@ func SetSession(c *gin.Context) {
 		tid = string(v.(string))
 	}
 	if msisdn, ok := c.GetQuery("msisdn"); ok {
-		log.WithField("msisdn", msisdn).Debug("found msisdn")
+		log.WithField("msisdn", msisdn).Debug("found msisdn in get params")
 		session.Set("msisdn", msisdn)
 	}
 	session.Set("tid", tid)
@@ -89,7 +89,7 @@ func GetMsisdn(c *gin.Context) string {
 		log.WithField("headers", c.Request.Header).Debug("no msisdn")
 		return ""
 	} else {
-		log.WithField("msisdn", v).Debug("found msisdn")
+		log.WithField("msisdn", v).Debug("found msisdn in session")
 		return string(v.(string))
 	}
 }
