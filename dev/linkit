@@ -1,0 +1,12 @@
+/var/log/linkit/*log {
+    create 0644 centos centos 
+    daily
+    missingok
+    notifempty
+    dateext
+    compress
+    sharedscripts
+    postrotate
+        /usr/bin/supervisorctl reload all > /dev/null 2>/dev/null || true
+    endscript
+}
