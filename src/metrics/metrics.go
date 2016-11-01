@@ -14,6 +14,7 @@ var M AppMetrics
 type AppMetrics struct {
 	RequestsOverall      LocationMetric
 	ContentDeliveryError metrics.Counter
+	MsisdnNotFound       metrics.Gauge
 	NotFound             metrics.Counter
 }
 
@@ -21,6 +22,7 @@ func Init() AppMetrics {
 	M = AppMetrics{
 		RequestsOverall:      NewLocationMetric("requests_overall"),
 		ContentDeliveryError: expvar.NewCounter("error_content_delivery"),
+		MsisdnNotFound:       expvar.NewGauge("error_msisdn_not_found"),
 		NotFound:             expvar.NewCounter("errors_404"),
 	}
 	return M

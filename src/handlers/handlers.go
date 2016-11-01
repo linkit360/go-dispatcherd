@@ -53,6 +53,7 @@ func HandlePull(c *gin.Context) {
 			logCtx.WithField("error", err.Error()).Error("notify user action")
 		} else {
 		}
+		sessions.RemoveTid(c)
 	}()
 
 	logCtx.Debug(c.Request.Header)
@@ -136,7 +137,6 @@ func HandlePull(c *gin.Context) {
 		return
 	}
 	logCtx.WithFields(log.Fields{}).Debug("served file ok")
-	sessions.RemoveTid(c)
 }
 
 func AddCampaignHandlers(r *gin.Engine) {

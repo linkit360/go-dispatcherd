@@ -82,9 +82,10 @@ func GetTid(c *gin.Context) string {
 		return fmt.Sprintf("%s", v)
 	}
 }
-func RemoveTid(c *gin.Context) string {
+func RemoveTid(c *gin.Context) {
 	session := sessions.Default(c)
 	session.Set("tid", "")
+	session.Save()
 }
 func GetMsisdn(c *gin.Context) string {
 	session := sessions.Default(c)
