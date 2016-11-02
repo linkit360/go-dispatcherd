@@ -1,0 +1,33 @@
+.PHONY: rebuild config pull send
+
+senddev:
+	cd contentd/server; make senddev; cd - ; \
+	cd qlistener; make senddev; cd - ;\
+	cd dispatcherd;  make senddev; cd - ; \
+	cd mt_manager; make senddev; cd - ;
+	cd operator; make senddev; cd - ;
+	cd pixels; make senddev; cd - ;
+
+rebuild:
+	cd contentd/server; make release; make senddev; cd - ; \
+	cd qlistener; make release; make senddev; cd - ;\
+	cd dispatcherd; make release; make senddev; cd - ; \
+	cd mt_manager; make release; make senddev; cd - ;
+	cd operator; make release; make senddev cd - ;
+	cd pixels; make release; make senddev cd - ;
+
+release:
+	cd contentd/server; make sendprod; cd - ; \
+	cd qlistener; make sendprod; cd - ;\
+	cd dispatcherd; make sendprod; cd - ; \
+	cd mt_manager; make sendprod; cd - ;
+	cd operator; make sendprod; cd - ;
+	cd pixels; make sendprod; cd - ;
+
+pull:
+	cd contentd/server; git pull; cd - ; \
+	cd qlistener; git pull; cd - ;\
+	cd dispatcherd; git pull; cd - ; \
+	cd mt_manager; git pull; cd - ;
+	cd operator; git pull; cd - ;
+	cd pixels; git pull; cd - ;

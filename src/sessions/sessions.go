@@ -66,6 +66,11 @@ func SetSession(c *gin.Context) {
 		log.WithField("msisdn", msisdn).Debug("found msisdn in get params")
 		session.Set("msisdn", msisdn)
 	}
+	if msisdn, ok := c.GetQuery("msisdn"); ok {
+		log.WithField("msisdn", msisdn).Debug("found msisdn in get params")
+		session.Set("msisdn", msisdn)
+	}
+
 	session.Set("tid", tid)
 	session.Save()
 	log.WithField("tid", tid).Info("session saved")
