@@ -1,4 +1,4 @@
-server:
+server: //linkit-mobilink.cb2q7f7mvbwr.ap-south-1.rds.amazonaws.com
   port: 50300
   path: /var/www/xmp.linkit360.ru/web/
 

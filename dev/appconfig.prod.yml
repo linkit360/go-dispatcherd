@@ -1,4 +1,4 @@
-server:
+server: # linkit-mobilink.cb2q7f7mvbwr.ap-south-1.rds.amazonaws.com
   port: 50300
   path: /var/www/xmp.linkit360.ru/web/
 
@@ -10,6 +10,9 @@ server:
     secure: false
     http_only: false
 
+content_client:
+  dsn: localhost:50301
+  timeout: 10
 
 notifier:
   queues:
@@ -20,29 +23,13 @@ notifier:
   rbmq:
     user: linkit
     pass: dg-U_oHhy7-
-    host: 52.66.23.201
+    host: linkit-mobilink.cb2q7f7mvbwr.ap-south-1.rds.amazonaws.com
     port: 5672
     chan_capacity: 10000000
 
 subscriptions:
   error_redirect_url: http://id.slypee.com
   campaign_hash_length: 32
-
-content_client:
-  dsn: localhost:50301
-  timeout: 10
-
-db:
-  conn_ttl: -1
-  max_conns: 15
-  timeout: 30
-  name: linkit_mobilink
-  user: linkit_mobilink
-  pass: A0kZN8pUAs63wePezz
-  port: 5432
-  host: linkit-mobilink.cb2q7f7mvbwr.ap-south-1.rds.amazonaws.com
-  ssl_mode: disable
-  table_prefix: xmp_
 
 operator:
   private_networks:
@@ -58,3 +45,16 @@ operator:
     end: 192.168.255.255
   - start: 198.18.0.0
     end: 198.19.255.255
+
+db:
+  conn_ttl: -1
+  max_conns: 15
+  timeout: 30
+  name: linkit_mobilink
+  user: linkit_mobilink
+  pass: A0kZN8pUAs63wePezz
+  port: 5432
+  host: linkit-mobilink.cb2q7f7mvbwr.ap-south-1.rds.amazonaws.com
+  ssl_mode: disable
+  table_prefix: xmp_
+
