@@ -12,6 +12,7 @@ release:
   go build -ldflags "-s -w" -o bin/dispatcherd-linux-amd64
 
 send:
+	ssh -i ~/.ssh/mobilink_centos.pem centos@52.66.23.201 rm /home/centos/go/src/github.com/vostrok/dispatcherd/bin/dispatcherd-linux-amd64
 	scp -i ~/.ssh/mobilink_centos.pem bin/dispatcherd-linux-amd64 centos@52.66.23.201:/home/centos/go/src/github.com/vostrok/dispatcherd/bin/dispatcherd-linux-amd64
 	scp -i ~/.ssh/mobilink_centos.pem dev/appconfig.yml centos@52.66.23.201:/home/centos/go/src/github.com/vostrok/dispatcherd/dev/
 
@@ -25,7 +26,10 @@ agree:
 	curl -L -H 'HTTP_MSISDN: 928974412092' -H 'X-Real-Ip: 10.80.128.1' -H 'Host: pk.linkit360.ru' "http://52.66.23.201/campaign/f90f2aca5c640289d0a29417bcb63a37"
 
 testlocal:
-	curl -L --header "HTTP_MSISDN: 928974412092" --header "X-Real-Ip: 10.80.128.1" --header "Host: pk.linkit360.ru" "http://localhost:50300/mobilink-p2"
+	curl -i -L --header "HTTP_MSISDN: 928974412092" --header "X-Real-Ip: 10.80.128.1" --header "Host: pk.linkit360.ru" "http://localhost:50300/mobilink-p2"
+
+testlocal1:
+	curl -i -L --header "X-Real-Ip: 10.80.128.1" --header "Host: pk.linkit360.ru" "http://localhost:50300/mobilink-p2?msisdn=928974412092"
 
 agreelocal:
 	curl -L -H 'HTTP_MSISDN: 928974412092' -H 'X-Real-Ip: 10.80.128.1' -H 'Host: pk.linkit360.ru' "http://localhost:50300/campaign/f90f2aca5c640289d0a29417bcb63a37"
