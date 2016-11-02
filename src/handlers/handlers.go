@@ -30,7 +30,6 @@ func Init(conf config.AppConfig) {
 
 	cnf = conf
 	notifierService = rbmq.NewNotifierService(conf.Notifier)
-	content_service.InitService(conf.ContentService)
 }
 
 // uniq links generation ??

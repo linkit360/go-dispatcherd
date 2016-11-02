@@ -9,7 +9,6 @@ import (
 	"github.com/jinzhu/configor"
 
 	content "github.com/vostrok/contentd/rpcclient"
-	content_service "github.com/vostrok/contentd/service"
 	"github.com/vostrok/db"
 	"github.com/vostrok/dispatcherd/src/operator"
 	"github.com/vostrok/dispatcherd/src/rbmq"
@@ -17,25 +16,18 @@ import (
 )
 
 type AppConfig struct {
-	Server         ServerConfig                         `yaml:"server"`
-	NewRelic       NewRelicConfig                       `yaml:"newrelic"`
-	Notifier       rbmq.NotifierConfig                  `yaml:"notifier"`
-	Subscriptions  SubscriptionsConfig                  `yaml:"subscriptions"`
-	ContentClient  content.RPCClientConfig              `yaml:"content_client"`
-	Operator       operator.OperatorConfig              `yaml:"operator"`
-	Db             db.DataBaseConfig                    `yaml:"db"`
-	ContentService content_service.ContentServiceConfig `yaml:"service"`
+	Server        ServerConfig            `yaml:"server"`
+	ContentClient content.RPCClientConfig `yaml:"content_client"`
+	Notifier      rbmq.NotifierConfig     `yaml:"notifier"`
+	Subscriptions SubscriptionsConfig     `yaml:"subscriptions"`
+	Operator      operator.OperatorConfig `yaml:"operator"`
+	Db            db.DataBaseConfig       `yaml:"db"`
 }
 
 type ServerConfig struct {
 	Port     string                  `default:"50300"`
 	Path     string                  `default:"/var/www/xmp.linkit360.ru/web/" yaml:"path"`
 	Sessions sessions.SessionsConfig `yaml:"sessions"`
-}
-
-type NewRelicConfig struct {
-	AppName string `default:"dev.dispatcherd.linkit360.com"`
-	License string `default:"4d635427ad90ca786ca2db6aa246ed651730b933"`
 }
 type SubscriptionsConfig struct {
 	ErrorRedirectUrl   string `default:"http://id.slypee.com" yaml:"error_redirect_url"`
@@ -59,7 +51,7 @@ func LoadConfig() AppConfig {
 	appConfig.ContentClient.DSN = envString("CONTENT_DSN", appConfig.ContentClient.DSN)
 	appConfig.ContentClient.Timeout = envInt("CONTENT_TIMEOUT", appConfig.ContentClient.Timeout)
 
-	appConfig.Notifier.Rbmq.Url = envString("RBMQ_URL", appConfig.Notifier.Rbmq.Url)
+	appConfig.Notifier.Rbmq.Host = envString("RBMQ_HOST", appConfig.Notifier.Rbmq.Host)
 
 	log.WithField("config", appConfig).Info("Config loaded")
 	return appConfig

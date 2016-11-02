@@ -8,11 +8,8 @@ server:
     domain: pk.linkit360.ru
     cookie_ttl: 3600
     secure: false
-    http_onlu: false
+    http_only: false
 
-newrelic:
-  appname: mumbai.dispatcherd.linkit360.com
-  license: 4d635427ad90ca786ca2db6aa246ed651730b933
 
 notifier:
   queues:
@@ -20,9 +17,12 @@ notifier:
     new_subscription: new_subscription
     user_actions: user_actions
 
-  rabbit:
-    url: amqp://linkit:dg-U_oHhy7-@52.66.23.201:5672
-    chan_gap: 1000000
+  rbmq:
+    user: linkit
+    pass: dg-U_oHhy7-
+    host: 52.66.23.201
+    port: 5672
+    chan_capacity: 10000000
 
 subscriptions:
   error_redirect_url: http://id.slypee.com
@@ -58,33 +58,3 @@ operator:
     end: 192.168.255.255
   - start: 198.18.0.0
     end: 198.19.255.255
-
-service:
-  retry_count: 10
-  table_prefix: xmp_
-  uniq_days: 10
-  tables:
-  - campaign
-  - service
-  - content
-  - service_content
-  - subscriptions
-  - content_sent
-
-  db:
-    conn_ttl: -1
-    max_conns: 15
-    timeout: 30
-    name: linkit_mobilink
-    user: linkit_mobilink
-    pass: A0kZN8pUAs63wePezz
-    port: 5432
-    host: linkit-mobilink.cb2q7f7mvbwr.ap-south-1.rds.amazonaws.com
-    ssl_mode: disable
-    table_prefix: xmp_
-
-  notifier:
-    queues:
-      content_sent: content_sent
-    url: amqp://linkit:dg-U_oHhy7-@52.66.23.201:5672
-    chan_gap: 10000000
