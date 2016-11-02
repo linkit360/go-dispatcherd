@@ -7,6 +7,6 @@
     compress
     sharedscripts
     postrotate
-        /usr/bin/supervisorctl reload all > /dev/null 2>/dev/null || true
+        /usr/bin/supervisorctl restart all > /dev/null 2>/dev/null || true
     endscript
 }
