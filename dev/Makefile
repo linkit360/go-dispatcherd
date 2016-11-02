@@ -1,4 +1,4 @@
-.PHONY: dev run release
+.PHONY: dev run build seddev sendprod
 
 dev:
 	rm dispatcherd; go build; ./dispatcherd;
@@ -6,18 +6,20 @@ dev:
 run:
 	./dispatcherd
 
-release:
+build:
 	rm -v bin/dispatcherd-linux-amd64; \
 	export GOOS=linux; export GOARCH=amd64; \
   go build -ldflags "-s -w" -o bin/dispatcherd-linux-amd64
 
-send:
+sendprod:
 	ssh -i ~/.ssh/mobilink_centos.pem centos@52.66.23.201 rm /home/centos/go/src/github.com/vostrok/dispatcherd/bin/dispatcherd-linux-amd64
 	scp -i ~/.ssh/mobilink_centos.pem bin/dispatcherd-linux-amd64 centos@52.66.23.201:/home/centos/go/src/github.com/vostrok/dispatcherd/bin/dispatcherd-linux-amd64
 	scp -i ~/.ssh/mobilink_centos.pem dev/appconfig.yml centos@52.66.23.201:/home/centos/go/src/github.com/vostrok/dispatcherd/dev/
 
-config:
-	scp -i ~/.ssh/mobilink_centos.pem dev/appconfig.yml centos@52.66.23.201:/home/centos/go/src/github.com/vostrok/dispatcherd/dev/
+senddev:
+	scp -i ~/.ssh/mobilink_centos_testing_stage.pem centos@35.154.8.158 rm /home/centos/go/src/github.com/vostrok/dispatcherd/bin/dispatcherd-linux-amd64
+	scp -i ~/.ssh/mobilink_centos_testing_stage.pem bin/dispatcherd-linux-amd64 centos@35.154.8.158:/home/centos/go/src/github.com/vostrok/dispatcherd/bin/dispatcherd-linux-amd64
+	scp -i ~/.ssh/mobilink_centos_testing_stage.pem  dev/appconfig.ymlcentos@35.154.8.158:/home/centos/go/src/github.com/vostrok/dispatcherd/dev/
 
 access:
 	curl -L -H 'HTTP_MSISDN: 928974412092' -H 'X-Real-Ip: 10.80.128.1' -H 'Host: pk.linkit360.ru' "http://52.66.23.201/mobilink-p2" 
