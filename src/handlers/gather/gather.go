@@ -86,7 +86,7 @@ func Gather(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampaignNo
 		return
 	}
 
-	msg.Msisdn = sessions.GetMsisdn(c)
+	msg.Msisdn = sessions.GetFromSession("msisdn", c)
 	if len(msg.Msisdn) >= 5 {
 		logCtx.WithFields(log.Fields{
 			"msisdn": msg.Msisdn,

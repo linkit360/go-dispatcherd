@@ -21,10 +21,11 @@ notifier:
     user_actions: user_actions
 
   rbmq:
-    user: linkit
-    pass: dg-U_oHhy7-
-    host: linkit-mobilink.cb2q7f7mvbwr.ap-south-1.rds.amazonaws.com
-    port: 5672
+    conn:
+      user: linkit
+      pass: dg-U_oHhy7-
+      host: linkit-mobilink.cb2q7f7mvbwr.ap-south-1.rds.amazonaws.com
+      port: 5672
     chan_capacity: 10000000
 
 subscriptions:

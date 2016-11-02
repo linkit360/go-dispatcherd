@@ -51,7 +51,7 @@ func LoadConfig() AppConfig {
 	appConfig.ContentClient.DSN = envString("CONTENT_DSN", appConfig.ContentClient.DSN)
 	appConfig.ContentClient.Timeout = envInt("CONTENT_TIMEOUT", appConfig.ContentClient.Timeout)
 
-	appConfig.Notifier.Rbmq.Host = envString("RBMQ_HOST", appConfig.Notifier.Rbmq.Host)
+	appConfig.Notifier.Rbmq.Conn.Host = envString("RBMQ_HOST", appConfig.Notifier.Rbmq.Conn.Host)
 
 	log.WithField("config", appConfig).Info("Config loaded")
 	return appConfig
