@@ -108,10 +108,11 @@ func Reload() (err error) {
 		filePath := camp.staticPath + "campaign/" + record.Hash + "/" + record.PageWelcome + ".html"
 		record.Content, err = ioutil.ReadFile(filePath)
 		if err != nil {
-			log.WithField("error", err.Error()).Error("ioutil.ReadFile serve file error")
 			err := fmt.Errorf("ioutil.ReadFile: %s", err.Error())
+			log.WithField("error", err.Error()).Error("ioutil.ReadFile serve file error")
 			return err
 		}
+		log.WithField("path", filePath).Debug("loaded")
 
 		records = append(records, record)
 	}

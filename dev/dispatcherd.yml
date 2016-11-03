@@ -24,7 +24,7 @@ notifier:
     conn:
       user: linkit
       pass: dg-U_oHhy7-
-      host: ec2-35-154-8-158.ap-south-1.compute.amazonaws.com
+      host: localhost
       port: 5672
     chan_capacity: 10000000
 
@@ -51,11 +51,11 @@ db:
   conn_ttl: -1
   max_conns: 15
   timeout: 30
-  name: linkit_mobilink
-  user: linkit_mobilink
-  pass: A0kZN8pUAs63wePezz
+  name: linkit_dev
+  user: linkit
+  pass: E0kZN8pUAs63wePepf
   port: 5432
-  host: ec2-35-154-8-158.ap-south-1.compute.amazonaws.com
+  host: linkit.cz3twmoynbq5.eu-central-1.rds.amazonaws.com
   ssl_mode: disable
   table_prefix: xmp_
 
