@@ -13,7 +13,6 @@ import (
 	"github.com/vostrok/dispatcherd/src/config"
 	"github.com/vostrok/dispatcherd/src/handlers"
 	"github.com/vostrok/dispatcherd/src/metrics"
-	"github.com/vostrok/dispatcherd/src/newrelic"
 	"github.com/vostrok/dispatcherd/src/operator"
 	"github.com/vostrok/dispatcherd/src/sessions"
 )
@@ -25,7 +24,6 @@ func RunServer() {
 
 	metrics.Init()
 	handlers.Init(appConfig)
-	newrelic.Init(appConfig.NewRelic)
 
 	nuCPU := runtime.NumCPU()
 	runtime.GOMAXPROCS(nuCPU)
@@ -53,8 +51,6 @@ func RunServer() {
 
 	r.RedirectTrailingSlash = true
 	r.RedirectFixedPath = true
-
-	newrelic.RecordInitApp()
 
 	r.Run(":" + appConfig.Server.Port)
 }

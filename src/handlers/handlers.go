@@ -30,7 +30,6 @@ func Init(conf config.AppConfig) {
 
 	cnf = conf
 	notifierService = rbmq.NewNotifierService(conf.Notifier)
-	content_service.InitService(conf.ContentService)
 }
 
 // uniq links generation ??
@@ -98,6 +97,8 @@ func HandlePull(c *gin.Context) {
 		CampaignHash: campaignHash,
 		CountryCode:  msg.CountryCode,
 		OperatorCode: msg.OperatorCode,
+		Publisher:    sessions.GetFromSession("publisher", c),
+		Pixel:        sessions.GetFromSession("pixel", c),
 	})
 
 	if err != nil {

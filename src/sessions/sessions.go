@@ -66,9 +66,13 @@ func SetSession(c *gin.Context) {
 		log.WithField("msisdn", msisdn).Debug("found msisdn in get params")
 		session.Set("msisdn", msisdn)
 	}
-	if msisdn, ok := c.GetQuery("msisdn"); ok {
-		log.WithField("msisdn", msisdn).Debug("found msisdn in get params")
-		session.Set("msisdn", msisdn)
+	if pixel, ok := c.GetQuery("aff_sub"); ok {
+		log.WithField("pixel", pixel).Debug("found pixel in get params")
+		session.Set("pixel", pixel)
+	}
+	if publisher, ok := c.GetQuery("aff_pr"); ok {
+		log.WithField("publisher", publisher).Debug("found publisher in get params")
+		session.Set("publisher", publisher)
 	}
 
 	session.Set("tid", tid)
@@ -92,14 +96,14 @@ func RemoveTid(c *gin.Context) {
 	session.Set("tid", "")
 	session.Save()
 }
-func GetMsisdn(c *gin.Context) string {
+func GetFromSession(what string, c *gin.Context) string {
 	session := sessions.Default(c)
-	v := session.Get("msisdn")
+	v := session.Get(what)
 	if v == nil || len(string(v.(string))) < 5 {
-		log.WithField("headers", c.Request.Header).Debug("no msisdn")
+		log.WithField("headers", c.Request.Header).Debug("no " + what)
 		return ""
 	} else {
-		log.WithField("msisdn", v).Debug("found msisdn in session")
+		log.WithField(what, v).Debug("found " + what + " in session")
 		return string(v.(string))
 	}
 }
