@@ -42,7 +42,7 @@ func Init(static string, conf db.DataBaseConfig) {
 
 	err := Reload()
 	if err != nil {
-		logrus.WithField("error", err.Error()).Fatal("Load IP ranges fail")
+		logrus.WithField("error", err.Error()).Fatal("reload campaigns failed")
 	}
 }
 
@@ -68,6 +68,9 @@ func (campaign Campaign) Serve(c *gin.Context) {
 }
 
 func Reload() (err error) {
+	camp.campaigns.Lock()
+	defer camp.campaigns.Unlock()
+
 	log.WithFields(log.Fields{}).Debug("campaigns reload...")
 	begin := time.Now()
 	defer func(err error) {
@@ -120,9 +123,6 @@ func Reload() (err error) {
 		err = fmt.Errorf("rows.Err: %s", err.Error())
 		return
 	}
-
-	camp.campaigns.Lock()
-	defer camp.campaigns.Unlock()
 
 	camp.campaigns.Map = make(map[string]Campaign, len(records))
 	for _, campaign := range records {
