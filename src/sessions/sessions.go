@@ -44,7 +44,7 @@ func AddSessionTidHandler(c *gin.Context) {
 
 // tid example 1477597462-3f66f7ea-afef-42a2-69ad-549a6a38b5ff
 func SetSession(c *gin.Context) {
-	log.Debug("set session")
+	log.WithFields(log.Fields{"path": c.Request.URL.String()}).Debug("set session")
 
 	var tid string
 	session := sessions.Default(c)
@@ -77,7 +77,7 @@ func SetSession(c *gin.Context) {
 
 	session.Set("tid", tid)
 	session.Save()
-	log.WithField("tid", tid).Info("session saved")
+	log.WithFields(log.Fields{"tid": tid, "path": c.Request.URL.Path}).Info("session saved")
 }
 
 func GetTid(c *gin.Context) string {
