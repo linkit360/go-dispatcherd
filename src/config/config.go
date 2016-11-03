@@ -35,7 +35,7 @@ type SubscriptionsConfig struct {
 }
 
 func LoadConfig() AppConfig {
-	cfg := flag.String("config", "dev/appconfig.yml", "configuration yml file")
+	cfg := flag.String("config", "dev/dispatcherd.yml", "configuration yml file")
 	flag.Parse()
 	var appConfig AppConfig
 

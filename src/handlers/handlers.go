@@ -34,6 +34,7 @@ func Init(conf config.AppConfig) {
 
 // uniq links generation ??
 func HandlePull(c *gin.Context) {
+	sessions.SetSession(c)
 	tid := sessions.GetTid(c)
 	if tid == "" {
 		tid = "testtid"
