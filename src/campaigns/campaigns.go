@@ -3,6 +3,7 @@ package campaigns
 import (
 	"database/sql"
 	"fmt"
+	"io/ioutil"
 	"sync"
 	"time"
 
@@ -11,7 +12,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/vostrok/db"
-	"github.com/vostrok/dispatcherd/src/sessions"
 	"github.com/vostrok/dispatcherd/src/utils"
 )
 
@@ -60,12 +60,11 @@ type Campaign struct {
 	PageWelcome string
 	Hash        string
 	Link        string
+	Content     []byte
 }
 
 func (campaign Campaign) Serve(c *gin.Context) {
-	tid := sessions.GetTid(c)
-	log := logrus.WithField("tid", tid)
-	utils.ServeStaticFile(camp.staticPath+"campaign/"+campaign.Hash+"/"+campaign.PageWelcome+".html", c, log)
+	utils.ServeBytes(campaign.Content, c)
 }
 
 func Reload() (err error) {
@@ -106,6 +105,14 @@ func Reload() (err error) {
 			err = fmt.Errorf("rows.Scan: %s", err.Error())
 			return
 		}
+		filePath := camp.staticPath + "campaign/" + record.Hash + "/" + record.PageWelcome + ".html"
+		record.Content, err = ioutil.ReadFile(filePath)
+		if err != nil {
+			log.WithField("error", err.Error()).Error("ioutil.ReadFile serve file error")
+			err := fmt.Errorf("ioutil.ReadFile: %s", err.Error())
+			return err
+		}
+
 		records = append(records, record)
 	}
 	if rows.Err() != nil {
