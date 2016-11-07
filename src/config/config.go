@@ -47,7 +47,7 @@ func LoadConfig() AppConfig {
 	}
 
 	appConfig.Server.Port = envString("PORT", appConfig.Server.Port)
-	appConfig.Server.Path = envString("PATH", appConfig.Server.Path)
+	appConfig.Server.Path = envString("SERVER_PATH", appConfig.Server.Path)
 
 	appConfig.ContentClient.DSN = envString("CONTENT_DSN", appConfig.ContentClient.DSN)
 	appConfig.ContentClient.Timeout = envInt("CONTENT_TIMEOUT", appConfig.ContentClient.Timeout)

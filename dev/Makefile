@@ -6,11 +6,12 @@ dev:
 run:
 	export PATH="web/" ; ./dispatcherd
 
+rm:
+    rm ~/linkit/dispatcherd-linux-amd64; rm -v bin/dispatcherd-linux-amd64;
+
 build:
-	rm -v bin/dispatcherd-linux-amd64; \
 	export GOOS=linux; export GOARCH=amd64; \
   go build -ldflags "-s -w" -o bin/dispatcherd-linux-amd64 ; \
-    rm ~/linkit/dispatcherd-linux-amd64; \
   cp  bin/dispatcherd-linux-amd64 ~/linkit
 
 senddev:
