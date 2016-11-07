@@ -10,7 +10,6 @@ import (
 
 	"encoding/json"
 	"github.com/gin-gonic/gin"
-	"github.com/vostrok/dispatcherd/src/metrics"
 	"github.com/vostrok/dispatcherd/src/operator"
 	"github.com/vostrok/dispatcherd/src/rbmq"
 	"github.com/vostrok/dispatcherd/src/sessions"
@@ -95,7 +94,6 @@ func Gather(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampaignNo
 	}
 
 	err = errors.New("Msisdn not found")
-	metrics.M.MsisdnNotFound.Add(1)
 	msg.Error = err.Error()
 	logCtx.WithFields(log.Fields{
 		"operatorsSettings": info.MsisdnHeaders,

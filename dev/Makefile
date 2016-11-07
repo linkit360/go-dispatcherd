@@ -9,7 +9,9 @@ run:
 build:
 	rm -v bin/dispatcherd-linux-amd64; \
 	export GOOS=linux; export GOARCH=amd64; \
-  go build -ldflags "-s -w" -o bin/dispatcherd-linux-amd64
+  go build -ldflags "-s -w" -o bin/dispatcherd-linux-amd64 ; \
+    rm ~/linkit/dispatcherd-linux-amd64; \
+  cp  bin/dispatcherd-linux-amd64 ~/linkit
 
 senddev:
 	ssh -i ~/.ssh/mobilink_centos_testing_stage.pem centos@35.154.8.158 rm /home/centos/linkit/dispatcherd-linux-amd64
