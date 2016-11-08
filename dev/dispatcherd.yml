@@ -5,7 +5,7 @@ server:
   sessions:
     secret: rCs7h2h_NqB5Kx-
     path: /
-    domain: 35.154.8.158
+    domain: dev.pk.linkit360.ru
     cookie_ttl: 3600
     secure: false
     http_only: false
