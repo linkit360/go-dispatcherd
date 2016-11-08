@@ -108,7 +108,7 @@ func HandlePull(c *gin.Context) {
 		c.Error(err)
 		msg.Error = err.Error()
 		action.Error = err.Error()
-		metrics.M.ContentDeliveryError.Add(1)
+		metrics.M.ContentDeliveryErrors.Add(1)
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 		return
 	}
@@ -134,7 +134,7 @@ func HandlePull(c *gin.Context) {
 		msg.Error = err.Error()
 		msg.Error = err.Error()
 		action.Error = err.Error()
-		metrics.M.ContentDeliveryError.Add(1)
+		metrics.M.ContentDeliveryErrors.Add(1)
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 		return
 	}

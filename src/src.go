@@ -6,8 +6,8 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/gin-gonic/contrib/expvar"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/vostrok/dispatcherd/src/campaigns"
 	"github.com/vostrok/dispatcherd/src/config"
@@ -37,11 +37,10 @@ func RunServer() {
 	handlers.AddCampaignHandlers(r)
 	handlers.AddCQRHandler(r)
 
-	r.Use(metrics.MetricHandler)
 	r.GET("/campaign/:campaign_hash", handlers.HandlePull)
 
-	rg := r.Group("/debug")
-	rg.GET("/vars", expvar.Handler())
+	rg := r.Group("/metrics")
+	rg.GET("", gin.WrapH(prometheus.Handler()))
 
 	r.Static("/static/", appConfig.Server.Path+"/static/")
 	r.StaticFile("/favicon.ico", appConfig.Server.Path+"/favicon.ico")
@@ -57,7 +56,7 @@ func RunServer() {
 
 func notFound(c *gin.Context) {
 	c.Error(errors.New("Not found"))
-	metrics.M.NotFound.Add(1)
+	metrics.M.PageNotFoundError.Add(1)
 }
 
 func AccessHandler(c *gin.Context) {
