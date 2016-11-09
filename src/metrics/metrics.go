@@ -14,6 +14,7 @@ type Metrics struct {
 	CampaignPageError     prometheus.Gauge
 	ContentDeliveryErrors prometheus.Counter
 	PageNotFoundError     prometheus.Counter
+	ContentdRPCDialError  prometheus.Counter
 }
 
 func Init() {
@@ -21,10 +22,11 @@ func Init() {
 		RequestsOverall:       newCounter("requests_overall", "Number of requests overall"),
 		RequestsAccess:        newCounter("requests_access", "Number of requests access the campaign static page"),
 		RequestsAgree:         newCounter("requests_agree", "Number of requests pressed the button"),
-		RequestsErrors:        newCounter("requests_errors", "Number of requests pressed the button"),
+		RequestsErrors:        newCounter("errors_requests", "Number of requests pressed the button"),
 		CampaignPageError:     newGauge("campaign_page_not_found", "campaigns", "If 0 - all campaigns loaded ok. If 1 - there were errors during the load of campaign html"),
 		ContentDeliveryErrors: newCounter("content_delivery_errors", "Number of requests with content delivery error"),
-		PageNotFoundError:     newCounter("404_error", "Number of 404 requests"),
+		PageNotFoundError:     newCounter("errors_404", "Number of 404 requests"),
+		ContentdRPCDialError:  newCounter("errors_contentd_rpc", "Number of errors connected with RPC contentd"),
 	}
 }
 

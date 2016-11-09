@@ -30,6 +30,8 @@ func Init(conf config.AppConfig) {
 
 	cnf = conf
 	notifierService = rbmq.NewNotifierService(conf.Notifier)
+
+	content.Init(conf.ContentClient)
 }
 
 // uniq links generation ??
@@ -83,16 +85,8 @@ func HandlePull(c *gin.Context) {
 	logCtx = logCtx.WithField("msisdn", msg.Msisdn)
 	logCtx.WithFields(log.Fields{}).Debug("gathered info, get content id..")
 
-	contentClient, err := content.NewClient(cnf.ContentClient.DSN, cnf.ContentClient.Timeout)
-	if err != nil {
-		msg.Error = err.Error()
-		action.Error = err.Error()
-		log.WithField("error", err.Error()).Error("content service rpc client unavialable")
-		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
-		return
-	}
 	contentProperties := &content_service.ContentSentProperties{}
-	contentProperties, err = contentClient.Get(content_service.GetUrlByCampaignHashParams{
+	contentProperties, err = content.Get(content_service.GetUrlByCampaignHashParams{
 		Msisdn:       msg.Msisdn,
 		Tid:          tid,
 		CampaignHash: campaignHash,
@@ -101,8 +95,19 @@ func HandlePull(c *gin.Context) {
 		Publisher:    sessions.GetFromSession("publisher", c),
 		Pixel:        sessions.GetFromSession("pixel", c),
 	})
-
 	if err != nil {
+		metrics.M.ContentdRPCDialError.Inc()
+		err = fmt.Errorf("contentClient.Get: %s", err.Error())
+		logCtx.WithField("error", err.Error()).Error("contentClient.Get")
+		c.Error(err)
+		msg.Error = err.Error()
+		action.Error = err.Error()
+		metrics.M.ContentDeliveryErrors.Add(1)
+		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
+		logCtx.Fatal("fatal case")
+		return
+	}
+	if contentProperties.Error != "" {
 		err = fmt.Errorf("contentClient.Get: %s", err.Error())
 		logCtx.WithField("error", err.Error()).Error("contentClient.Get")
 		c.Error(err)
