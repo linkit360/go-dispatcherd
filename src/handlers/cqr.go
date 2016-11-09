@@ -8,7 +8,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
 
-	content_service "github.com/vostrok/contentd/service"
 	"github.com/vostrok/dispatcherd/src/campaigns"
 	"github.com/vostrok/dispatcherd/src/operator"
 )
@@ -59,11 +58,9 @@ func Reload(c *gin.Context) {
 			r.Success = true
 		}
 	default:
-		if _, err := content_service.CQR(table); err != nil {
-			r.Success = false
-			r.Status = http.StatusInternalServerError
-			log.WithField("error", err.Error()).Error("content service reload")
-		}
+		r.Success = false
+		r.Status = http.StatusInternalServerError
+		log.WithField("error", err.Error()).Error("table not fouund")
 	}
 
 	render(r, c)

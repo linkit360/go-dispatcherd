@@ -12,7 +12,7 @@ import (
 	"github.com/vostrok/dispatcherd/src/campaigns"
 	"github.com/vostrok/dispatcherd/src/config"
 	"github.com/vostrok/dispatcherd/src/handlers"
-	"github.com/vostrok/dispatcherd/src/metrics"
+	m "github.com/vostrok/dispatcherd/src/metrics"
 	"github.com/vostrok/dispatcherd/src/operator"
 	"github.com/vostrok/dispatcherd/src/sessions"
 )
@@ -22,7 +22,7 @@ func RunServer() {
 	operator.Init(appConfig.Operator, appConfig.Db)
 	campaigns.Init(appConfig.Server.Path, appConfig.Db)
 
-	metrics.Init()
+	m.Init(appConfig.Name)
 	handlers.Init(appConfig)
 
 	nuCPU := runtime.NumCPU()
@@ -56,7 +56,7 @@ func RunServer() {
 
 func notFound(c *gin.Context) {
 	c.Error(errors.New("Not found"))
-	metrics.M.PageNotFoundError.Add(1)
+	m.PageNotFoundError++
 }
 
 func AccessHandler(c *gin.Context) {

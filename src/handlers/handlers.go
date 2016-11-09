@@ -15,7 +15,7 @@ import (
 	"github.com/vostrok/dispatcherd/src/campaigns"
 	"github.com/vostrok/dispatcherd/src/config"
 	"github.com/vostrok/dispatcherd/src/handlers/gather"
-	"github.com/vostrok/dispatcherd/src/metrics"
+	m "github.com/vostrok/dispatcherd/src/metrics"
 	"github.com/vostrok/dispatcherd/src/rbmq"
 	"github.com/vostrok/dispatcherd/src/sessions"
 	"github.com/vostrok/dispatcherd/src/utils"
@@ -36,6 +36,9 @@ func Init(conf config.AppConfig) {
 
 // uniq links generation ??
 func HandlePull(c *gin.Context) {
+	m.Overall++
+	m.Agree++
+
 	sessions.SetSession(c)
 	tid := sessions.GetTid(c)
 	if tid == "" {
@@ -51,6 +54,9 @@ func HandlePull(c *gin.Context) {
 	}
 	var err error
 	defer func() {
+		if err != nil {
+			m.Errors++
+		}
 		if err := notifierService.ActionNotify(action); err != nil {
 			logCtx.WithField("error", err.Error()).Error("notify user action")
 		} else {
@@ -96,24 +102,26 @@ func HandlePull(c *gin.Context) {
 		Pixel:        sessions.GetFromSession("pixel", c),
 	})
 	if err != nil {
-		metrics.M.ContentdRPCDialError.Inc()
+		m.ContentdRPCDialError++
+
 		err = fmt.Errorf("contentClient.Get: %s", err.Error())
 		logCtx.WithField("error", err.Error()).Error("contentClient.Get")
 		c.Error(err)
 		msg.Error = err.Error()
 		action.Error = err.Error()
-		metrics.M.ContentDeliveryErrors.Add(1)
+		m.ContentDeliveryErrors++
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
-		logCtx.Fatal("fatal case")
+		logCtx.Fatal("contentd fatal: trying to free all resources")
 		return
 	}
 	if contentProperties.Error != "" {
+		m.ContentDeliveryErrors++
+
 		err = fmt.Errorf("contentClient.Get: %s", err.Error())
 		logCtx.WithField("error", err.Error()).Error("contentClient.Get")
 		c.Error(err)
 		msg.Error = err.Error()
 		action.Error = err.Error()
-		metrics.M.ContentDeliveryErrors.Add(1)
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 		return
 	}
@@ -133,13 +141,14 @@ func HandlePull(c *gin.Context) {
 		logCtx,
 	)
 	if err != nil {
+		m.ContentDeliveryErrors++
+
 		err := fmt.Errorf("serveContentFile: %s", err.Error())
 		logCtx.WithField("error", err.Error()).Error("serveContentFile")
 		c.Error(err)
 		msg.Error = err.Error()
 		msg.Error = err.Error()
 		action.Error = err.Error()
-		metrics.M.ContentDeliveryErrors.Add(1)
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 		return
 	}

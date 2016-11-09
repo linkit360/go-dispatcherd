@@ -13,9 +13,11 @@ import (
 	"github.com/vostrok/dispatcherd/src/operator"
 	"github.com/vostrok/dispatcherd/src/rbmq"
 	"github.com/vostrok/dispatcherd/src/sessions"
+	"strings"
 )
 
 type AppConfig struct {
+	Name          string                  `yaml:"name"`
 	Server        ServerConfig            `yaml:"server"`
 	ContentClient content.RPCClientConfig `yaml:"content_client"`
 	Notifier      rbmq.NotifierConfig     `yaml:"notifier"`
@@ -44,6 +46,13 @@ func LoadConfig() AppConfig {
 			log.WithField("config", err.Error()).Fatal("config load error")
 			os.Exit(1)
 		}
+	}
+
+	if appConfig.Name == "" {
+		log.Fatal("app name must be defiled as <host>_<name>")
+	}
+	if strings.Contains(appConfig.Name, "-") {
+		log.Fatal("app name must be without '-' : it's not a valid metric name")
 	}
 
 	appConfig.Server.Port = envString("PORT", appConfig.Server.Port)

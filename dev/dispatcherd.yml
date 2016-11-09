@@ -1,3 +1,5 @@
+name: mumbai-dispatcherd
+
 server:
   port: 50300
   path: /var/www/xmp.linkit360.ru/web/
