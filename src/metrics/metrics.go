@@ -19,11 +19,11 @@ var (
 )
 
 func newGaugeHttpRequests(name, help string) m.Gauge {
-	return m.NewCustomMetric("http_requests", name, "http_requests "+help)
+	return m.NewGaugeMetric("http_requests", name, "http_requests "+help)
 }
 
 func newGaugeContentd(name, help string) m.Gauge {
-	return m.NewCustomMetric("contentd", name, "contentd "+help)
+	return m.NewGaugeMetric("contentd", name, "contentd "+help)
 }
 func Init(appName string) {
 

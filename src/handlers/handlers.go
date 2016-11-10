@@ -159,14 +159,13 @@ func AddCampaignHandlers(r *gin.Engine) {
 	for _, v := range campaigns.Get().Map {
 		log.WithField("route", v.Link).Info("adding route")
 		rg := r.Group("/" + v.Link)
-		rg.Use(sessions.AddSessionTidHandler)
 		rg.Use(NotifyAccessCampaignHandler)
 		rg.GET("", v.Serve)
 	}
 }
 
 func NotifyAccessCampaignHandler(c *gin.Context) {
-
+	sessions.SetSession(c)
 	tid := sessions.GetTid(c)
 
 	paths := strings.Split(c.Request.URL.Path, "/")

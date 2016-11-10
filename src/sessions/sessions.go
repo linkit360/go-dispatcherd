@@ -37,11 +37,6 @@ func Init(conf SessionsConfig, r *gin.Engine) {
 	r.Use(sessions.Sessions("sess", store))
 }
 
-func AddSessionTidHandler(c *gin.Context) {
-	SetSession(c)
-	c.Next()
-}
-
 // tid example 1477597462-3f66f7ea-afef-42a2-69ad-549a6a38b5ff
 func SetSession(c *gin.Context) {
 	log.WithFields(log.Fields{"path": c.Request.URL.String()}).Debug("set session")

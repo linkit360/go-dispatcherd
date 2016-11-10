@@ -48,7 +48,7 @@ func init() {
 func NewNotifierService(conf NotifierConfig) Notifier {
 	var n Notifier
 	{
-		rabbit := rabbit.NewPublisher(conf.Rbmq, rabbit.InitMetrics("dispatcher"))
+		rabbit := rabbit.NewPublisher(conf.Rbmq, rabbit.InitPublisherMetrics())
 		n = &notifier{
 			q: queues{
 				newSubscription: conf.Queues.NewSubscriptionQueueName,
