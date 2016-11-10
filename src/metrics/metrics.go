@@ -4,102 +4,54 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-
 	m "github.com/vostrok/metrics"
 )
 
 var (
-	Overall               int64
-	Acess                 int64
-	Agree                 int64
-	Errors                int64
-	PageNotFoundError     int64
-	ContentDeliveryErrors int64
-	ContentdRPCDialError  int64
-)
-var (
-	rpmOverall               prometheus.Gauge
-	rpmAccess                prometheus.Gauge
-	rpmAgree                 prometheus.Gauge
-	rpmErrors                prometheus.Gauge
-	rpmPageNotFoundError     prometheus.Gauge
-	rpmContentDeliveryErrors prometheus.Gauge
-	rpmContentdRPCDialError  prometheus.Gauge
-	LoadCampaignError        prometheus.Gauge
+	Overall               m.Gauge
+	Access                m.Gauge
+	Agree                 m.Gauge
+	Errors                m.Gauge
+	PageNotFoundError     m.Gauge
+	ContentDeliveryErrors m.Gauge
+	ContentdRPCDialError  m.Gauge
+	LoadCampaignError     prometheus.Gauge
 )
 
+func newGaugeHttpRequests(name, help string) m.Gauge {
+	return m.NewCustomMetric("http_requests", name, "http_requests "+help)
+}
+
+func newGaugeContentd(name, help string) m.Gauge {
+	return m.NewCustomMetric("contentd", name, "contentd "+help)
+}
 func Init(appName string) {
 
 	m.Init(appName)
-	rpmOverall = m.NewGauge(
+	Overall = newGaugeHttpRequests("overall", "rpm, overall")
+	Access = newGaugeHttpRequests("access", "rpm, opened static")
+	Agree = newGaugeHttpRequests("agreed", "rpm, pressed the button 'agree'")
+	Errors = newGaugeHttpRequests("errors", "rpm, errors")
+	ContentDeliveryErrors = newGaugeHttpRequests("serve_errors", "rpm, content delivery errors")
+	PageNotFoundError = newGaugeHttpRequests("error404", "rpm, 404 requests")
+	ContentdRPCDialError = newGaugeContentd("connect_errors", "rpm, number of connect errors ")
+	LoadCampaignError = m.PrometheusGauge(
 		"",
-		"",
-		"http_requests_rpm",
-		"rpm, overall",
-	)
-	rpmAccess = m.NewGauge(
-		"",
-		"",
-		"http_open_rpm",
-		"rpm, opened static",
-	)
-	rpmAgree = m.NewGauge(
-		"",
-		"",
-		"http_requests_agreed_rpm",
-		"rpm, pressed the button 'agree'",
-	)
-	rpmErrors = m.NewGauge(
-		"",
-		"",
-		"http_requests_errors_rpm",
-		"rpm, errors",
-	)
-
-	rpmContentDeliveryErrors = m.NewGauge(
-		"",
-		"contentd",
-		"content_delivery_errors",
-		"rpm, content delivery errors",
-	)
-	rpmPageNotFoundError = m.NewGauge(
-		"",
-		"",
-		"http_requests_error404",
-		"rpm, 404 requests",
-	)
-	rpmContentdRPCDialError = m.NewGauge(
-		"",
-		"contentd",
-		"rpc_contentd_errors",
-		"rpm, number of errors connected with RPC contentd",
-	)
-
-	LoadCampaignError = m.NewGauge(
-		"",
-		"",
-		"load_campaign_html_error",
+		"campaign",
+		"load_error",
 		"Load campaign HTML error",
 	)
 	go func() {
 		// metrics in prometheus as for 15s (default)
 		// so make for minute interval
 		for range time.Tick(time.Minute) {
-			rpmOverall.Set(float64(Overall))
-			rpmAccess.Set(float64(Acess))
-			rpmAgree.Set(float64(Agree))
-			rpmErrors.Set(float64(Errors))
-			rpmPageNotFoundError.Set(float64(PageNotFoundError))
-			rpmContentDeliveryErrors.Set(float64(ContentDeliveryErrors))
-			rpmContentdRPCDialError.Set(float64(ContentdRPCDialError))
-
-			Overall = 0
-			Acess = 0
-			Agree = 0
-			Errors = 0
-			PageNotFoundError = 0
-			ContentDeliveryErrors = 0
-			ContentdRPCDialError = 0
+			Overall.Update()
+			Access.Update()
+			Agree.Update()
+			Errors.Update()
+			PageNotFoundError.Update()
+			ContentDeliveryErrors.Update()
+			ContentdRPCDialError.Update()
 		}
 	}()
 }

@@ -65,8 +65,8 @@ type Campaign struct {
 }
 
 func (campaign Campaign) Serve(c *gin.Context) {
-	m.Overall++
-	m.Acess++
+	m.Overall.Inc()
+	m.Access.Inc()
 	utils.ServeBytes(campaign.Content, c)
 }
 
@@ -98,6 +98,7 @@ func Reload() (err error) {
 	}
 	defer rows.Close()
 
+	loadCampaignError := false
 	var records []Campaign
 	for rows.Next() {
 		record := Campaign{}
@@ -114,6 +115,7 @@ func Reload() (err error) {
 		filePath := camp.staticPath + "campaign/" + record.Hash + "/" + record.PageWelcome + ".html"
 		record.Content, err = ioutil.ReadFile(filePath)
 		if err != nil {
+			loadCampaignError = true
 			m.LoadCampaignError.Set(1.)
 			err := fmt.Errorf("ioutil.ReadFile: %s", err.Error())
 			log.WithField("error", err.Error()).Error("ioutil.ReadFile serve file error")
@@ -126,6 +128,9 @@ func Reload() (err error) {
 	if rows.Err() != nil {
 		err = fmt.Errorf("rows.Err: %s", err.Error())
 		return
+	}
+	if loadCampaignError == false {
+		m.LoadCampaignError.Set(0.)
 	}
 
 	camp.campaigns.Map = make(map[string]Campaign, len(records))

@@ -36,8 +36,8 @@ func Init(conf config.AppConfig) {
 
 // uniq links generation ??
 func HandlePull(c *gin.Context) {
-	m.Overall++
-	m.Agree++
+	m.Overall.Inc()
+	m.Agree.Inc()
 
 	sessions.SetSession(c)
 	tid := sessions.GetTid(c)
@@ -55,7 +55,7 @@ func HandlePull(c *gin.Context) {
 	var err error
 	defer func() {
 		if err != nil {
-			m.Errors++
+			m.Errors.Inc()
 		}
 		if err := notifierService.ActionNotify(action); err != nil {
 			logCtx.WithField("error", err.Error()).Error("notify user action")
@@ -102,20 +102,20 @@ func HandlePull(c *gin.Context) {
 		Pixel:        sessions.GetFromSession("pixel", c),
 	})
 	if err != nil {
-		m.ContentdRPCDialError++
+		m.ContentdRPCDialError.Inc()
 
 		err = fmt.Errorf("contentClient.Get: %s", err.Error())
 		logCtx.WithField("error", err.Error()).Error("contentClient.Get")
 		c.Error(err)
 		msg.Error = err.Error()
 		action.Error = err.Error()
-		m.ContentDeliveryErrors++
+		m.ContentDeliveryErrors.Inc()
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 		logCtx.Fatal("contentd fatal: trying to free all resources")
 		return
 	}
 	if contentProperties.Error != "" {
-		m.ContentDeliveryErrors++
+		m.ContentDeliveryErrors.Inc()
 
 		err = fmt.Errorf("contentClient.Get: %s", err.Error())
 		logCtx.WithField("error", err.Error()).Error("contentClient.Get")
@@ -141,7 +141,7 @@ func HandlePull(c *gin.Context) {
 		logCtx,
 	)
 	if err != nil {
-		m.ContentDeliveryErrors++
+		m.ContentDeliveryErrors.Inc()
 
 		err := fmt.Errorf("serveContentFile: %s", err.Error())
 		logCtx.WithField("error", err.Error()).Error("serveContentFile")
