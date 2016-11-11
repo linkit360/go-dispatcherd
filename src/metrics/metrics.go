@@ -13,6 +13,10 @@ var (
 	Agree                 m.Gauge
 	Errors                m.Gauge
 	PageNotFoundError     m.Gauge
+	IPNotFoundError       m.Gauge
+	MsisdnNotFoundError   m.Gauge
+	NotSupported          m.Gauge
+	CampaignHashWrong     m.Gauge
 	ContentDeliveryErrors m.Gauge
 	ContentdRPCDialError  m.Gauge
 	LoadCampaignError     prometheus.Gauge
@@ -21,20 +25,27 @@ var (
 func newGaugeHttpRequests(name, help string) m.Gauge {
 	return m.NewGaugeMetric("http_requests", name, "http_requests "+help)
 }
-
+func newGaugeIncomingTraffic(name, help string) m.Gauge {
+	return m.NewGaugeMetric("incoming", name, "incoming "+help)
+}
 func newGaugeContentd(name, help string) m.Gauge {
 	return m.NewGaugeMetric("contentd", name, "contentd "+help)
 }
 func Init(appName string) {
 
 	m.Init(appName)
-	Overall = newGaugeHttpRequests("overall", "rpm, overall")
-	Access = newGaugeHttpRequests("access", "rpm, opened static")
-	Agree = newGaugeHttpRequests("agreed", "rpm, pressed the button 'agree'")
-	Errors = newGaugeHttpRequests("errors", "rpm, errors")
-	ContentDeliveryErrors = newGaugeHttpRequests("serve_errors", "rpm, content delivery errors")
-	PageNotFoundError = newGaugeHttpRequests("error404", "rpm, 404 requests")
-	ContentdRPCDialError = newGaugeContentd("connect_errors", "rpm, number of connect errors ")
+	Overall = newGaugeHttpRequests("overall", "overall")
+	Access = newGaugeHttpRequests("access", "opened static")
+	Agree = newGaugeHttpRequests("agreed", "pressed the button 'agree'")
+	Errors = newGaugeHttpRequests("error", "error")
+
+	CampaignHashWrong = newGaugeHttpRequests("campaign_hash_wrong", "campaign hash wrong")
+	IPNotFoundError = newGaugeIncomingTraffic("ip_not_found", "ip not found")
+	MsisdnNotFoundError = newGaugeIncomingTraffic("msisdn_not_found", "msisdn not found")
+	NotSupported = newGaugeIncomingTraffic("not_supported", " operator is not supported")
+	ContentDeliveryErrors = newGaugeHttpRequests("serve_errors", "content delivery errors")
+	PageNotFoundError = newGaugeHttpRequests("error404", "404 requests")
+	ContentdRPCDialError = newGaugeContentd("connect_errors", "number of connect errors ")
 	LoadCampaignError = m.PrometheusGauge(
 		"",
 		"campaign",
@@ -49,6 +60,10 @@ func Init(appName string) {
 			Access.Update()
 			Agree.Update()
 			Errors.Update()
+			CampaignHashWrong.Update()
+			IPNotFoundError.Update()
+			MsisdnNotFoundError.Update()
+			NotSupported.Update()
 			PageNotFoundError.Update()
 			ContentDeliveryErrors.Update()
 			ContentdRPCDialError.Update()

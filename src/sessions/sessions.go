@@ -57,24 +57,43 @@ func SetSession(c *gin.Context) {
 		log.WithField("tid", v).Debug("already have tid")
 		tid = string(v.(string))
 	}
-	if msisdn, ok := c.GetQuery("msisdn"); ok {
-		log.WithField("msisdn", msisdn).Debug("found msisdn in get params")
-		session.Set("msisdn", msisdn)
-	}
-	if pixel, ok := c.GetQuery("aff_sub"); ok {
-		log.WithField("pixel", pixel).Debug("found pixel in get params")
-		session.Set("pixel", pixel)
-	}
-	if publisher, ok := c.GetQuery("aff_pr"); ok {
-		log.WithField("publisher", publisher).Debug("found publisher in get params")
-		session.Set("publisher", publisher)
-	}
-
 	session.Set("tid", tid)
+
+	msisdn := getFromParamsOrSession(c, "msisdn", session, "msisdn", 5)
+	session.Set("msisdn", msisdn)
+
+	pixel := getFromParamsOrSession(c, "aff_sub", session, "pixel", 5)
+	session.Set("pixel", pixel)
+
+	publisher := getFromParamsOrSession(c, "aff_pr", session, "publisher", 5)
+	session.Set("publisher", publisher)
+
 	session.Save()
 	log.WithFields(log.Fields{"tid": tid, "path": c.Request.URL.Path}).Info("session saved")
 }
 
+func getFromParamsOrSession(
+	c *gin.Context,
+	getParamName string,
+	session sessions.Session,
+	sessParamName string,
+	length int,
+) string {
+	val, ok := c.GetQuery(getParamName)
+	if ok {
+		log.WithField(sessParamName, val).Debug("found " + sessParamName + " in get params")
+		return val
+	}
+
+	v := session.Get(sessParamName)
+	if v == nil || len(string(v.(string))) < length {
+		log.WithField("sesskey", sessParamName).Debug("not found")
+		return ""
+	}
+	log.WithField(sessParamName, v).Debug("found in session")
+	return string(v.(string))
+
+}
 func GetTid(c *gin.Context) string {
 	session := sessions.Default(c)
 	v := session.Get("tid")

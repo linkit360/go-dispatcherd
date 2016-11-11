@@ -56,6 +56,7 @@ func HandlePull(c *gin.Context) {
 	defer func() {
 		if err != nil {
 			m.Errors.Inc()
+			action.Error = err.Error()
 		}
 		if err := notifierService.ActionNotify(action); err != nil {
 			logCtx.WithField("error", err.Error()).Error("notify user action")
@@ -68,6 +69,8 @@ func HandlePull(c *gin.Context) {
 
 	campaignHash := c.Params.ByName("campaign_hash")
 	if len(campaignHash) != cnf.Subscriptions.CampaignHashLength {
+		m.CampaignHashWrong.Inc()
+
 		logCtx.WithFields(log.Fields{
 			"campaignHash": campaignHash,
 			"length":       len(campaignHash),
@@ -75,7 +78,6 @@ func HandlePull(c *gin.Context) {
 		err := errors.New("Wrong campaign length")
 		c.Error(err)
 		msg.Error = err.Error()
-		action.Error = err.Error()
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 		return
 	}
@@ -103,13 +105,12 @@ func HandlePull(c *gin.Context) {
 	})
 	if err != nil {
 		m.ContentdRPCDialError.Inc()
+		m.ContentDeliveryErrors.Inc()
 
 		err = fmt.Errorf("contentClient.Get: %s", err.Error())
 		logCtx.WithField("error", err.Error()).Error("contentClient.Get")
 		c.Error(err)
 		msg.Error = err.Error()
-		action.Error = err.Error()
-		m.ContentDeliveryErrors.Inc()
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 		logCtx.Fatal("contentd fatal: trying to free all resources")
 		return
@@ -121,7 +122,6 @@ func HandlePull(c *gin.Context) {
 		logCtx.WithField("error", err.Error()).Error("contentClient.Get")
 		c.Error(err)
 		msg.Error = err.Error()
-		action.Error = err.Error()
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 		return
 	}

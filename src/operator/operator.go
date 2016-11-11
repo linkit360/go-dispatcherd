@@ -99,14 +99,13 @@ func Reload() (err error) {
 	log.WithFields(log.Fields{}).Debug("operators reload...")
 	begin := time.Now()
 	defer func(err error) {
-		errStr := ""
-		if err != nil {
-			errStr = err.Error()
+		fields := log.Fields{
+			"took": time.Since(begin),
 		}
-		log.WithFields(log.Fields{
-			"error": errStr,
-			"took":  time.Since(begin),
-		}).Debug("operators reload")
+		if err != nil {
+			fields["error"] = err.Error()
+		}
+		log.WithFields(fields).Debug("operators reload")
 	}(err)
 
 	query := fmt.Sprintf(""+

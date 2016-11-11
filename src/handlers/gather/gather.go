@@ -10,6 +10,7 @@ import (
 
 	"encoding/json"
 	"github.com/gin-gonic/gin"
+	m "github.com/vostrok/dispatcherd/src/metrics"
 	"github.com/vostrok/dispatcherd/src/operator"
 	"github.com/vostrok/dispatcherd/src/rbmq"
 	"github.com/vostrok/dispatcherd/src/sessions"
@@ -36,6 +37,7 @@ func Gather(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampaignNo
 
 	ip := getIPAdress(r)
 	if ip == nil {
+		m.IPNotFoundError.Inc()
 		err = errors.New("Cannot determine IP address")
 		msg.Error = err.Error()
 		logCtx.Error("cannot determine IP address")
@@ -55,6 +57,7 @@ func Gather(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampaignNo
 	msg.Supported = info.Supported
 
 	if !info.Supported {
+		m.NotSupported.Inc()
 		err = errors.New("Not supported")
 		msg.Error = err.Error()
 		logCtx.WithFields(log.Fields{"info": info}).Error("operator is not supported")
@@ -71,12 +74,10 @@ func Gather(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampaignNo
 		}).Debug("check header")
 
 		if len(msg.Msisdn) > 0 {
-			break
+			return
 		}
 	}
-	if len(msg.Msisdn) != 0 {
-		return
-	}
+
 	var ok bool
 	if msg.Msisdn, ok = c.GetQuery("msisdn"); ok {
 		logCtx.WithFields(log.Fields{
@@ -93,6 +94,7 @@ func Gather(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampaignNo
 		return
 	}
 
+	m.MsisdnNotFoundError.Inc()
 	err = errors.New("Msisdn not found")
 	msg.Error = err.Error()
 	logCtx.WithFields(log.Fields{

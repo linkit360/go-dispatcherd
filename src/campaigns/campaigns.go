@@ -77,14 +77,13 @@ func Reload() (err error) {
 	log.WithFields(log.Fields{}).Debug("campaigns reload...")
 	begin := time.Now()
 	defer func(err error) {
-		errStr := ""
-		if err != nil {
-			errStr = err.Error()
+		fields := log.Fields{
+			"took": time.Since(begin),
 		}
-		log.WithFields(log.Fields{
-			"error": errStr,
-			"took":  time.Since(begin),
-		}).Debug("campaigns reload")
+		if err != nil {
+			fields["error"] = err.Error()
+		}
+		log.WithFields(fields).Debug("campaigns reload")
 	}(err)
 
 	query := fmt.Sprintf("select id, link, hash, page_welcome from %scampaigns where status = $1",
