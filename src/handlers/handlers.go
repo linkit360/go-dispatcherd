@@ -159,6 +159,7 @@ func AddCampaignHandlers(r *gin.Engine) {
 	for _, v := range campaigns.Get().Map {
 		log.WithField("route", v.Link).Info("adding route")
 		rg := r.Group("/" + v.Link)
+		rg.Use(AccessHandler)
 		rg.Use(NotifyAccessCampaignHandler)
 		rg.GET("", v.Serve)
 	}
@@ -218,4 +219,32 @@ func NotifyAccessCampaignHandler(c *gin.Context) {
 		}).Info("done notify access campaign")
 	}
 
+}
+
+func AccessHandler(c *gin.Context) {
+	begin := time.Now()
+	c.Next()
+
+	responseTime := time.Since(begin)
+	tid := sessions.GetTid(c)
+
+	if len(c.Errors) > 0 {
+		log.WithFields(log.Fields{
+			"tid":    tid,
+			"method": c.Request.Method,
+			"path":   c.Request.URL.Path,
+			"req":    c.Request.URL.RawQuery,
+			"error":  c.Errors.String(),
+			"since":  responseTime,
+		}).Error(c.Errors.String())
+	} else {
+		log.WithFields(log.Fields{
+			"tid":    tid,
+			"method": c.Request.Method,
+			"path":   c.Request.URL.Path,
+			"req":    c.Request.URL.RawQuery,
+			"since":  responseTime,
+		}).Info("access")
+	}
+	c.Header("X-Response-Time", responseTime.String())
 }

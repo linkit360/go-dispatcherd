@@ -106,7 +106,7 @@ func Gather(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampaignNo
 }
 
 func getIPAdress(r *http.Request) net.IP {
-	for _, h := range []string{"X-Real-Ip", "X-Forwarded-For"} {
+	for _, h := range []string{"X-Forwarded-For", "X-Real-Ip"} {
 		addresses := strings.Split(r.Header.Get(h), ",")
 		for i := len(addresses) - 1; i >= 0; i-- {
 			ip := strings.TrimSpace(addresses[i])

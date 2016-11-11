@@ -98,7 +98,7 @@ func GetTid(c *gin.Context) string {
 	session := sessions.Default(c)
 	v := session.Get("tid")
 	if v == nil || len(string(v.(string))) < 40 {
-		log.WithField("headers", c.Request.Header).Error("no tid")
+		log.WithField("headers", c.Request.Header).Debug("no tid")
 		return ""
 	} else {
 		log.WithField("tid", v).Debug("found tid")
