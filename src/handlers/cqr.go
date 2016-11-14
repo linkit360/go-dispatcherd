@@ -41,8 +41,8 @@ func Reload(c *gin.Context) {
 	}
 
 	switch {
-	case strings.Contains(table, "operator_ip"):
-		if err := operator.Reload(); err != nil {
+	case strings.Contains(table, "operator"):
+		if err := operator.CQR(table); err != nil {
 			r.Success = false
 			r.Status = http.StatusInternalServerError
 			log.WithField("error", err.Error()).Error("Load IP ranges fail")

@@ -1,72 +1,57 @@
 package metrics
 
 import (
-	"time"
-
 	"github.com/prometheus/client_golang/prometheus"
 	m "github.com/vostrok/metrics"
 )
 
 var (
-	Overall               m.Gauge
-	Access                m.Gauge
-	Agree                 m.Gauge
-	Errors                m.Gauge
-	PageNotFoundError     m.Gauge
-	IPNotFoundError       m.Gauge
-	MsisdnNotFoundError   m.Gauge
-	NotSupported          m.Gauge
-	CampaignHashWrong     m.Gauge
-	ContentDeliveryErrors m.Gauge
-	ContentdRPCDialError  m.Gauge
+	Overall               prometheus.Counter
+	Access                prometheus.Counter
+	Agree                 prometheus.Counter
+	Errors                prometheus.Counter
+	PageNotFoundError     prometheus.Counter
+	IPNotFoundError       prometheus.Counter
+	MsisdnNotFoundError   prometheus.Counter
+	GetInfoByMsisdn       prometheus.Counter
+	NotSupported          prometheus.Counter
+	CampaignHashWrong     prometheus.Counter
+	ContentDeliveryErrors prometheus.Counter
+	ContentdRPCDialError  prometheus.Counter
 	LoadCampaignError     prometheus.Gauge
 )
 
-func newGaugeHttpRequests(name, help string) m.Gauge {
-	return m.NewGaugeMetric("http_requests", name, "http_requests "+help)
+func newCounterHttpRequests(name, help string) prometheus.Counter {
+	return m.NewCounter("http_requests_"+name, "http_requests "+help)
 }
-func newGaugeIncomingTraffic(name, help string) m.Gauge {
-	return m.NewGaugeMetric("incoming", name, "incoming "+help)
+func newCounterIncomingTraffic(name, help string) prometheus.Counter {
+	return m.NewCounter("incoming_"+name, "incoming "+help)
 }
-func newGaugeContentd(name, help string) m.Gauge {
-	return m.NewGaugeMetric("contentd", name, "contentd "+help)
+func newCounterContentd(name, help string) prometheus.Counter {
+	return m.NewCounter("contentd_"+name, "contentd "+help)
 }
+
 func Init(appName string) {
 
 	m.Init(appName)
-	Overall = newGaugeHttpRequests("overall", "overall")
-	Access = newGaugeHttpRequests("access", "opened static")
-	Agree = newGaugeHttpRequests("agreed", "pressed the button 'agree'")
-	Errors = newGaugeHttpRequests("error", "error")
+	Overall = newCounterHttpRequests("overall", "overall")
+	Access = newCounterHttpRequests("access", "opened static")
+	Agree = newCounterHttpRequests("agreed", "pressed the button 'agree'")
+	Errors = newCounterHttpRequests("error", "error")
+	CampaignHashWrong = newCounterHttpRequests("campaign_hash_wrong", "campaign hash wrong")
 
-	CampaignHashWrong = newGaugeHttpRequests("campaign_hash_wrong", "campaign hash wrong")
-	IPNotFoundError = newGaugeIncomingTraffic("ip_not_found", "ip not found")
-	MsisdnNotFoundError = newGaugeIncomingTraffic("msisdn_not_found", "msisdn not found")
-	NotSupported = newGaugeIncomingTraffic("not_supported", " operator is not supported")
-	ContentDeliveryErrors = newGaugeHttpRequests("serve_errors", "content delivery errors")
-	PageNotFoundError = newGaugeHttpRequests("error404", "404 requests")
-	ContentdRPCDialError = newGaugeContentd("connect_errors", "number of connect errors ")
+	IPNotFoundError = newCounterIncomingTraffic("ip_not_found", "ip not found")
+	MsisdnNotFoundError = newCounterIncomingTraffic("msisdn_not_found", "msisdn not found")
+	NotSupported = newCounterIncomingTraffic("not_supported", " operator is not supported")
+	GetInfoByMsisdn = newCounterIncomingTraffic("info_by_msisdn", "cannot find info by msisdn")
+
+	ContentDeliveryErrors = newCounterHttpRequests("serve_errors", "content delivery errors")
+	PageNotFoundError = newCounterHttpRequests("error404", "404 requests")
+	ContentdRPCDialError = newCounterContentd("connect_errors", "number of connect errors ")
 	LoadCampaignError = m.PrometheusGauge(
 		"",
 		"campaign",
 		"load_error",
 		"Load campaign HTML error",
 	)
-	go func() {
-		// metrics in prometheus as for 15s (default)
-		// so make for minute interval
-		for range time.Tick(time.Minute) {
-			Overall.Update()
-			Access.Update()
-			Agree.Update()
-			Errors.Update()
-			CampaignHashWrong.Update()
-			IPNotFoundError.Update()
-			MsisdnNotFoundError.Update()
-			NotSupported.Update()
-			PageNotFoundError.Update()
-			ContentDeliveryErrors.Update()
-			ContentdRPCDialError.Update()
-		}
-	}()
 }

@@ -19,6 +19,7 @@ import (
 	"github.com/vostrok/dispatcherd/src/rbmq"
 	"github.com/vostrok/dispatcherd/src/sessions"
 	"github.com/vostrok/dispatcherd/src/utils"
+	//"github.com/vostrok/mt_manager/src/service/mobilink"
 )
 
 var cnf config.AppConfig
@@ -64,7 +65,6 @@ func HandlePull(c *gin.Context) {
 		}
 		sessions.RemoveTid(c)
 	}()
-
 	logCtx.Debug(c.Request.Header)
 
 	campaignHash := c.Params.ByName("campaign_hash")
@@ -107,7 +107,7 @@ func HandlePull(c *gin.Context) {
 		m.ContentdRPCDialError.Inc()
 		m.ContentDeliveryErrors.Inc()
 
-		err = fmt.Errorf("contentClient.Get: %s", err.Error())
+		err = fmt.Errorf("content.Get: %s", err.Error())
 		logCtx.WithField("error", err.Error()).Error("contentClient.Get")
 		c.Error(err)
 		msg.Error = err.Error()
@@ -118,10 +118,11 @@ func HandlePull(c *gin.Context) {
 	if contentProperties.Error != "" {
 		m.ContentDeliveryErrors.Inc()
 
-		err = fmt.Errorf("contentClient.Get: %s", err.Error())
-		logCtx.WithField("error", err.Error()).Error("contentClient.Get")
+		err = fmt.Errorf("contentClient.Get: %s", contentProperties.Error)
+		logCtx.WithField("error", contentProperties.Error).Error("contentClient.Get")
+		err = errors.New(contentProperties.Error)
 		c.Error(err)
-		msg.Error = err.Error()
+		msg.Error = contentProperties.Error
 		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
 		return
 	}
