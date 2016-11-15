@@ -154,6 +154,7 @@ func HandlePull(c *gin.Context) {
 		return
 	}
 	logCtx.WithFields(log.Fields{}).Debug("served file ok")
+	m.AgreeSuccess.Inc()
 }
 
 func AddCampaignHandlers(r *gin.Engine) {
@@ -215,11 +216,8 @@ func NotifyAccessCampaignHandler(c *gin.Context) {
 	if err := notifierService.AccessCampaignNotify(msg); err != nil {
 		logCtx.WithField("error", err.Error()).Error("notify access campaign")
 	} else {
-		logCtx.WithFields(log.Fields{
-			"accessCampaign": msg,
-		}).Info("done notify access campaign")
+		logCtx.WithFields(log.Fields{}).Info("done notify access campaign")
 	}
-
 }
 
 func AccessHandler(c *gin.Context) {

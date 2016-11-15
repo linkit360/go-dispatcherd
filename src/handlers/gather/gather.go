@@ -36,9 +36,11 @@ func Gather(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampaignNo
 		Method:       r.Method,
 		Headers:      string(headers),
 	}
+
 	//get all IP addresses
 	//get supported IP-s
 	// in common, this branch of code in action
+	flagFoundIpInfo := false
 	IPs := getIPAdress(r)
 	if len(IPs) != 0 {
 		infos := operator.GetIpInfo(IPs)
@@ -54,6 +56,7 @@ func Gather(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampaignNo
 				"headers":       info.MsisdnHeaders,
 			}).Debug("got IP info")
 
+			flagFoundIpInfo = true
 			msg.IP = info.IP
 			msg.OperatorCode = info.OperatorCode
 			msg.CountryCode = info.CountryCode
@@ -70,6 +73,9 @@ func Gather(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampaignNo
 
 				if len(msg.Msisdn) > 0 {
 					// here is everything is ok
+					log.WithFields(log.Fields{
+						"msisdn": msg.Msisdn,
+					}).Debug("found in header")
 					return msg, nil
 				}
 			}
@@ -92,7 +98,7 @@ func Gather(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampaignNo
 		if len(msg.Msisdn) >= 5 {
 			logCtx.WithFields(log.Fields{
 				"msisdn": msg.Msisdn,
-			}).Debug("took from sessions")
+			}).Debug("took from session")
 		}
 	}
 	// we worked hard and haven't found msisdn
@@ -104,6 +110,10 @@ func Gather(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampaignNo
 			"Header": r.Header,
 		}).Error("msisdn is empty")
 		return msg, errors.New("Msisdn not found")
+	}
+
+	if flagFoundIpInfo {
+		return msg, nil
 	}
 
 	info, err := operator.GetInfoByMsisdn(msg.Msisdn)
@@ -129,7 +139,7 @@ func Gather(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampaignNo
 
 	logCtx.WithFields(log.Fields{
 		"msisdn": msg.Msisdn,
-	}).Debug("took prefixes table")
+	}).Debug("took from prefixes table")
 	return
 }
 

@@ -91,9 +91,11 @@ func GetIpInfo(ipAddresses []net.IP) []IPInfo {
 			}
 		}
 		log.WithFields(log.Fields{
-			"info":  info.IP,
-			"from ": info.Range.IpFrom,
-			"to":    info.Range.IpTo,
+			"info":         info.IP,
+			"from":         info.Range.IpFrom,
+			"to":           info.Range.IpTo,
+			"supported":    info.Supported,
+			"operatorCode": info.OperatorCode,
 		}).Debug("found ip info")
 
 		infos = append(infos, info)

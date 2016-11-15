@@ -45,7 +45,7 @@ func Reload(c *gin.Context) {
 		if err := operator.CQR(table); err != nil {
 			r.Success = false
 			r.Status = http.StatusInternalServerError
-			log.WithField("error", err.Error()).Error("Load IP ranges fail")
+			log.WithField("error", err.Error()).Error("Load IP ranges failed")
 		} else {
 			r.Success = true
 		}
@@ -53,7 +53,7 @@ func Reload(c *gin.Context) {
 		if err := campaigns.Reload(); err != nil {
 			r.Success = false
 			r.Status = http.StatusInternalServerError
-			log.WithField("error", err.Error()).Error("Load IP ranges fail")
+			log.WithField("error", err.Error()).Error("load campaigns failed")
 		} else {
 			r.Success = true
 		}

@@ -9,6 +9,7 @@ var (
 	Overall               prometheus.Counter
 	Access                prometheus.Counter
 	Agree                 prometheus.Counter
+	AgreeSuccess          prometheus.Counter
 	Errors                prometheus.Counter
 	PageNotFoundError     prometheus.Counter
 	IPNotFoundError       prometheus.Counter
@@ -37,6 +38,7 @@ func Init(appName string) {
 	Overall = newCounterHttpRequests("overall", "overall")
 	Access = newCounterHttpRequests("access", "opened static")
 	Agree = newCounterHttpRequests("agreed", "pressed the button 'agree'")
+	AgreeSuccess = newCounterHttpRequests("agree_success", "pressed the button 'agree' and successfully processed")
 	Errors = newCounterHttpRequests("error", "error")
 	CampaignHashWrong = newCounterHttpRequests("campaign_hash_wrong", "campaign hash wrong")
 

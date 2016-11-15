@@ -87,7 +87,7 @@ func getFromParamsOrSession(
 
 	v := session.Get(sessParamName)
 	if v == nil || len(string(v.(string))) < length {
-		log.WithField("sesskey", sessParamName).Debug("not found")
+		log.WithField("sesskey", sessParamName).Debug(sessParamName + " not found")
 		return ""
 	}
 	log.WithField(sessParamName, v).Debug("found in session")
