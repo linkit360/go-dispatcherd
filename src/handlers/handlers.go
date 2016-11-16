@@ -155,6 +155,11 @@ func HandlePull(c *gin.Context) {
 	}
 	logCtx.WithFields(log.Fields{}).Debug("served file ok")
 	m.AgreeSuccess.Inc()
+
+	if err = notifierService.NewSubscriptionNotify(*contentProperties); err != nil {
+		logCtx.WithField("error", err.Error()).Error("notify new subscription")
+	}
+
 }
 
 func AddCampaignHandlers(r *gin.Engine) {

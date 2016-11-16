@@ -23,7 +23,7 @@ type NotifierConfig struct {
 		AccessCampaignQueueName  string `yaml:"access_campaign" default:"access_campaign"`
 		UserActionsQueueName     string `yaml:"user_actions" default:"user_actions"`
 	} `yaml:"queues"`
-	Rbmq rabbit.RBMQConfig `yaml:"rbmq"`
+	RBMQNotifier rabbit.NotifierConfig `yaml:"rbmq"`
 }
 type queues struct {
 	newSubscription      string
@@ -33,7 +33,7 @@ type queues struct {
 }
 type notifier struct {
 	q  queues
-	mq rabbit.AMQPService
+	mq *rabbit.Notifier
 }
 
 type EventNotify struct {
@@ -48,7 +48,7 @@ func init() {
 func NewNotifierService(conf NotifierConfig) Notifier {
 	var n Notifier
 	{
-		rabbit := rabbit.NewPublisher(conf.Rbmq, rabbit.InitPublisherMetrics())
+		rabbit := rabbit.NewNotifier(conf.RBMQNotifier)
 		n = &notifier{
 			q: queues{
 				newSubscription: conf.Queues.NewSubscriptionQueueName,
