@@ -15,6 +15,7 @@ import (
 	"github.com/vostrok/dispatcherd/src/operator"
 	"github.com/vostrok/dispatcherd/src/rbmq"
 	"github.com/vostrok/dispatcherd/src/sessions"
+	"os"
 )
 
 func Gather(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampaignNotify, err error) {
@@ -35,6 +36,10 @@ func Gather(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampaignNo
 		UrlPath:      r.URL.String(),
 		Method:       r.Method,
 		Headers:      string(headers),
+	}
+
+	for _, e := range os.Environ() {
+		log.WithFields(log.Fields{}).Debug(e)
 	}
 
 	//get all IP addresses
@@ -64,20 +69,24 @@ func Gather(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampaignNo
 
 			msg.Msisdn = ""
 			for _, header := range info.MsisdnHeaders {
-				msg.Msisdn = r.Header.Get(header)
-				log.WithFields(log.Fields{
-					"request": r.Header,
-					"header":  header,
-					"msisdn":  msg.Msisdn,
-				}).Debug("check header")
 
+				msg.Msisdn = r.Header.Get(header)
 				if len(msg.Msisdn) > 0 {
-					// here is everything is ok
 					log.WithFields(log.Fields{
 						"msisdn": msg.Msisdn,
 					}).Debug("found in header")
 					return msg, nil
 				}
+				msg.Msisdn = os.Getenv(header)
+				if len(msg.Msisdn) > 0 {
+					log.WithFields(log.Fields{
+						"msisdn": msg.Msisdn,
+					}).Debug("found in environment")
+					return msg, nil
+				}
+				log.WithFields(log.Fields{
+					"header": header,
+				}).Debug("msisdn not found")
 			}
 		}
 
