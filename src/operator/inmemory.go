@@ -17,6 +17,7 @@ func CQR(table string) error {
 	switch {
 	// operator_ip
 	// operators
+
 	case strings.Contains(table, "operator"):
 		if err := reloadIPRanges(); err != nil {
 			log.WithField("error", err.Error()).Fatal("Load IP ranges failed")
@@ -226,7 +227,7 @@ var memOperators = &Operators{}
 
 type Operators struct {
 	sync.RWMutex
-	ByCode map[int64]Operator
+	ByCode map[int64]*Operator
 }
 
 type Operator struct {
@@ -251,7 +252,13 @@ func (ops *Operators) Reload() error {
 	log.WithFields(log.Fields{}).Debug("operators reload...")
 	begin := time.Now()
 	defer func() {
+
+		for k, v := range ops.ByCode {
+			log.Debug(fmt.Sprintf("%d %#v", k, v))
+		}
+
 		fields := log.Fields{
+			"ops":  fmt.Sprintf("%#v", ops.ByCode),
 			"took": time.Since(begin),
 		}
 		if err != nil {
@@ -262,6 +269,7 @@ func (ops *Operators) Reload() error {
 
 	query := fmt.Sprintf("SELECT "+
 		"name, "+
+		"code,  "+
 		"rps, "+
 		"settings "+
 		"FROM %soperators",
@@ -276,25 +284,27 @@ func (ops *Operators) Reload() error {
 
 	var operators []Operator
 	for rows.Next() {
-		var op Operator
+		var operator Operator
 		if err = rows.Scan(
-			&op.Name,
-			&op.Rps,
-			&op.Settings,
+			&operator.Name,
+			&operator.Code,
+			&operator.Rps,
+			&operator.Settings,
 		); err != nil {
 			err = fmt.Errorf("rows.Scan: %s", err.Error())
 			return err
 		}
-		operators = append(operators, op)
+		log.Debug(fmt.Sprintf("%#v", operator))
+		operators = append(operators, operator)
 	}
 	if rows.Err() != nil {
 		err = fmt.Errorf("rows.Err: %s", err.Error())
 		return err
 	}
 
-	ops.ByCode = make(map[int64]Operator, len(operators))
+	ops.ByCode = make(map[int64]*Operator, len(operators))
 	for _, op := range operators {
-		ops.ByCode[op.Code] = op
+		ops.ByCode[op.Code] = &op
 	}
 	return nil
 }

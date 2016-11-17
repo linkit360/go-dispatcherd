@@ -1,4 +1,4 @@
-name: mumbai-dispatcherd
+name: mumbai_dispatcherd
 
 server:
   port: 50300

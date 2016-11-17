@@ -39,7 +39,9 @@ func Gather(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampaignNo
 	}
 
 	for _, e := range os.Environ() {
-		log.WithFields(log.Fields{}).Debug(e)
+		log.WithFields(log.Fields{
+			"tid": tid,
+		}).Debug(e)
 	}
 
 	//get all IP addresses

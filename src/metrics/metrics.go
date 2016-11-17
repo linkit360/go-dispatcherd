@@ -23,6 +23,8 @@ var (
 	CampaignHashWrong     m.Gauge
 	ContentDeliveryErrors m.Gauge
 	ContentdRPCDialError  m.Gauge
+	//OperatorNotApplicable m.Gauge
+	//OperatorNotEnabled    m.Gauge
 )
 
 func newGaugeHttpRequests(name, help string) m.Gauge {
@@ -60,6 +62,8 @@ func Init(appName string) {
 		"load_error",
 		"Load campaign HTML error",
 	)
+	//OperatorNotApplicable = m.NewGauge("", "", "not_applicable", "operator not applicable ")
+	//OperatorNotEnabled = m.NewGauge("", "", "not_enabled", "operator not enabled ")
 
 	go func() {
 		for range time.Tick(time.Minute) {
@@ -77,6 +81,8 @@ func Init(appName string) {
 			CampaignHashWrong.Update()
 			ContentDeliveryErrors.Update()
 			ContentdRPCDialError.Update()
+			//OperatorNotEnabled.Update()
+			//OperatorNotApplicable.Update()
 		}
 	}()
 }

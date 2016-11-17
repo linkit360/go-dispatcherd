@@ -4,11 +4,11 @@ import (
 	"database/sql"
 	"errors"
 	"net"
+	"strings"
 
 	log "github.com/Sirupsen/logrus"
 
 	"github.com/vostrok/db"
-	"strings"
 )
 
 var op *operator
@@ -53,7 +53,7 @@ func Init(privateNetworks []IpRange, dbConfig db.DataBaseConfig) {
 		log.WithField("error", err.Error()).Fatal("prefixes reload failed")
 	}
 
-	op.loadPrivateNetworks(conf.Private)
+	op.loadPrivateNetworks(privateNetworks)
 }
 func GetSupported(infos []IPInfo) (IPInfo, error) {
 	for _, v := range infos {

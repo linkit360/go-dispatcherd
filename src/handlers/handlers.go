@@ -128,7 +128,8 @@ func HandlePull(c *gin.Context) {
 		return
 	}
 	logCtx.WithFields(log.Fields{
-		"contentPropertities": contentProperties,
+		"contentId": contentProperties.ContentId,
+		"path":      contentProperties.ContentPath,
 	}).Debug("contentd response")
 
 	msg.CampaignId = contentProperties.CampaignId
@@ -159,11 +160,13 @@ func HandlePull(c *gin.Context) {
 
 	op := operator.GetOperatorNameByCode(msg.OperatorCode)
 	if op == "" {
+		logCtx.WithField("operator_code", msg.OperatorCode).Error("cannot find operator")
 		m.OperatorNameError.Inc()
 		return
 	}
 	queue := queue_config.GetNewSubscriptionQueueName(op)
-	if err = notifierService.NewSubscriptionNotify(queue, *contentProperties); err != nil {
+	logCtx.WithField("queue", queue).Debug("inform new subscritpion")
+	if err = notifierService.NewSubscriptionNotify(queue, contentProperties); err != nil {
 		logCtx.WithField("error", err.Error()).Error("notify new subscription")
 	}
 }

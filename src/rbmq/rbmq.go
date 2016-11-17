@@ -10,7 +10,7 @@ import (
 )
 
 type Notifier interface {
-	NewSubscriptionNotify(string, service.ContentSentProperties) error
+	NewSubscriptionNotify(string, *service.ContentSentProperties) error
 
 	AccessCampaignNotify(msg AccessCampaignNotify) error
 
@@ -25,7 +25,6 @@ type NotifierConfig struct {
 	RBMQNotifier rabbit.NotifierConfig `yaml:"rbmq"`
 }
 type queues struct {
-	newSubscription      string
 	accessCampaign       string
 	userAction           string
 	accessCampaignUpdate string
@@ -59,7 +58,12 @@ func NewNotifierService(conf NotifierConfig) Notifier {
 	return n
 }
 
-func (service notifier) NewSubscriptionNotify(queue string, msg service.ContentSentProperties) error {
+func (service notifier) NewSubscriptionNotify(queue string, msg *service.ContentSentProperties) error {
+	log.WithFields(log.Fields{
+		"event":  "new_subscription",
+		"tid":    msg.Tid,
+		"msisdn": msg.Msisdn,
+	}).Debug("got event")
 
 	event := EventNotify{
 		EventName: "new_subscription",
@@ -71,7 +75,8 @@ func (service notifier) NewSubscriptionNotify(queue string, msg service.ContentS
 		return fmt.Errorf("json.Marshal: %s", err.Error())
 	}
 
-	service.mq.Publish(rabbit.AMQPMessage{service.q.newSubscription, body})
+	log.WithField("body", string(body)).Debug("sent")
+	service.mq.Publish(rabbit.AMQPMessage{queue, body})
 	return nil
 }
 
@@ -117,8 +122,6 @@ type UserActionsNotify struct {
 }
 
 func (service notifier) ActionNotify(msg UserActionsNotify) error {
-	log.WithField("msg", msg).Debug("got msg")
-
 	event := EventNotify{
 		EventName: "user_actions",
 		EventData: msg,
@@ -128,7 +131,7 @@ func (service notifier) ActionNotify(msg UserActionsNotify) error {
 	if err != nil {
 		return fmt.Errorf("json.Marshal: %s", err.Error())
 	}
-	log.WithField("body", string(body)).Debug("sent body")
+	log.WithField("body", string(body)).Debug("sent")
 	service.mq.Publish(rabbit.AMQPMessage{service.q.userAction, body})
 	return nil
 }
