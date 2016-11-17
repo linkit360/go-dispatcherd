@@ -19,9 +19,8 @@ type Notifier interface {
 
 type NotifierConfig struct {
 	Queues struct {
-		NewSubscriptionQueueName string `yaml:"new_subscription" default:"new_subscription"`
-		AccessCampaignQueueName  string `yaml:"access_campaign" default:"access_campaign"`
-		UserActionsQueueName     string `yaml:"user_actions" default:"user_actions"`
+		AccessCampaignQueueName string `yaml:"access_campaign" default:"access_campaign"`
+		UserActionsQueueName    string `yaml:"user_actions" default:"user_actions"`
 	} `yaml:"queues"`
 	RBMQNotifier rabbit.NotifierConfig `yaml:"rbmq"`
 }
@@ -51,9 +50,8 @@ func NewNotifierService(conf NotifierConfig) Notifier {
 		rabbit := rabbit.NewNotifier(conf.RBMQNotifier)
 		n = &notifier{
 			q: queues{
-				newSubscription: conf.Queues.NewSubscriptionQueueName,
-				accessCampaign:  conf.Queues.AccessCampaignQueueName,
-				userAction:      conf.Queues.UserActionsQueueName,
+				accessCampaign: conf.Queues.AccessCampaignQueueName,
+				userAction:     conf.Queues.UserActionsQueueName,
 			},
 			mq: rabbit,
 		}

@@ -20,6 +20,7 @@ import (
 	"github.com/vostrok/dispatcherd/src/rbmq"
 	"github.com/vostrok/dispatcherd/src/sessions"
 	"github.com/vostrok/dispatcherd/src/utils"
+	queue_config "github.com/vostrok/utils/config"
 )
 
 var cnf config.AppConfig
@@ -161,7 +162,7 @@ func HandlePull(c *gin.Context) {
 		m.OperatorNameError.Inc()
 		return
 	}
-	queue := op + "_new_subscription"
+	queue := queue_config.GetNewSubscriptionQueueName(op)
 	if err = notifierService.NewSubscriptionNotify(queue, *contentProperties); err != nil {
 		logCtx.WithField("error", err.Error()).Error("notify new subscription")
 	}

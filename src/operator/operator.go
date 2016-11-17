@@ -35,12 +35,12 @@ type IPInfo struct {
 	Range         IpRange
 }
 
-func Init(conf OperatorConfig, dbConfig db.DataBaseConfig) {
+func Init(privateNetworks []IpRange, dbConfig db.DataBaseConfig) {
 	log.SetLevel(log.DebugLevel)
 
 	op = &operator{
 		db:     db.Init(dbConfig),
-		conf:   conf,
+		conf:   OperatorConfig{Private: privateNetworks},
 		dbConf: dbConfig,
 	}
 	if err := reloadIPRanges(); err != nil {

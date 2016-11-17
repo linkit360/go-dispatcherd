@@ -17,13 +17,13 @@ import (
 )
 
 type AppConfig struct {
-	Name          string                  `yaml:"name"`
-	Server        ServerConfig            `yaml:"server"`
-	ContentClient content.RPCClientConfig `yaml:"content_client"`
-	Notifier      rbmq.NotifierConfig     `yaml:"notifier"`
-	Subscriptions SubscriptionsConfig     `yaml:"subscriptions"`
-	Operator      operator.OperatorConfig `yaml:"operator"`
-	Db            db.DataBaseConfig       `yaml:"db"`
+	Name            string                  `yaml:"name"`
+	Server          ServerConfig            `yaml:"server"`
+	ContentClient   content.RPCClientConfig `yaml:"content_client"`
+	Notifier        rbmq.NotifierConfig     `yaml:"notifier"`
+	Subscriptions   SubscriptionsConfig     `yaml:"subscriptions"`
+	PrivateNetworks []operator.IpRange      `yaml:"private_networks"`
+	Db              db.DataBaseConfig       `yaml:"db"`
 }
 
 type ServerConfig struct {

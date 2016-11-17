@@ -19,7 +19,6 @@ content_client:
 notifier:
   queues:
     access_campaign: access_campaign
-    new_subscription: new_subscription
     user_actions: user_actions
 
   rbmq:
@@ -44,20 +43,19 @@ subscriptions:
   error_redirect_url: http://id.slypee.com
   campaign_hash_length: 32
 
-operator:
-  private_networks:
-  - start: 10.0.0.0
-    end: 10.255.255.255
-  - start: 100.64.0.0
-    end: 100.127.255.255
-  - start: 172.16.0.0
-    end: 172.31.255.255
-  - start: 192.0.0.0
-    end: 192.0.0.255
-  - start: 192.168.0.0
-    end: 192.168.255.255
-  - start: 198.18.0.0
-    end: 198.19.255.255
+private_networks:
+- start: 10.0.0.0
+  end: 10.255.255.255
+- start: 100.64.0.0
+  end: 100.127.255.255
+- start: 172.16.0.0
+  end: 172.31.255.255
+- start: 192.0.0.0
+  end: 192.0.0.255
+- start: 192.168.0.0
+  end: 192.168.255.255
+- start: 198.18.0.0
+  end: 198.19.255.255
 
 db:
   conn_ttl: -1

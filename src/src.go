@@ -20,7 +20,7 @@ func RunServer() {
 	appConfig := config.LoadConfig()
 	m.Init(appConfig.Name)
 
-	operator.Init(appConfig.Operator, appConfig.Db)
+	operator.Init(appConfig.PrivateNetworks, appConfig.Db)
 	campaigns.Init(appConfig.Server.Path, appConfig.Db)
 
 	handlers.Init(appConfig)
