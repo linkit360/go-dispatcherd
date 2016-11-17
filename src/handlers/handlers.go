@@ -16,10 +16,10 @@ import (
 	"github.com/vostrok/dispatcherd/src/config"
 	"github.com/vostrok/dispatcherd/src/handlers/gather"
 	m "github.com/vostrok/dispatcherd/src/metrics"
+	"github.com/vostrok/dispatcherd/src/operator"
 	"github.com/vostrok/dispatcherd/src/rbmq"
 	"github.com/vostrok/dispatcherd/src/sessions"
 	"github.com/vostrok/dispatcherd/src/utils"
-	//"github.com/vostrok/mt_manager/src/service/mobilink"
 )
 
 var cnf config.AppConfig
@@ -156,13 +156,20 @@ func HandlePull(c *gin.Context) {
 	logCtx.WithFields(log.Fields{}).Debug("served file ok")
 	m.AgreeSuccess.Inc()
 
-	//if err = notifierService.NewSubscriptionNotify(*contentProperties); err != nil {
-	//	logCtx.WithField("error", err.Error()).Error("notify new subscription")
-	//}
+	op := operator.GetOperatorNameByCode(msg.OperatorCode)
+	if op == "" {
+		m.OperatorNameError.Inc()
+		return
+	}
+	queue := op + "_new_subscription"
+	if err = notifierService.NewSubscriptionNotify(queue, *contentProperties); err != nil {
+		logCtx.WithField("error", err.Error()).Error("notify new subscription")
+	}
 }
 
+// backward compatibility
 func AddCampaignHandlers(r *gin.Engine) {
-	for _, v := range campaigns.Get().Map {
+	for _, v := range campaigns.Get().ByLink {
 		log.WithField("route", v.Link).Info("adding route")
 		rg := r.Group("/" + v.Link)
 		rg.Use(AccessHandler)
@@ -171,13 +178,36 @@ func AddCampaignHandlers(r *gin.Engine) {
 	}
 }
 
+// further
+func AddCampaignHandler(r *gin.Engine) {
+	log.WithField("route", "lp").Info("adding lp route")
+	rg := r.Group("/lp/:campaign_link")
+	rg.Use(AccessHandler)
+	rg.Use(NotifyAccessCampaignHandler)
+	rg.GET("", serveCampaigns)
+}
+
+func serveCampaigns(c *gin.Context) {
+	m.Overall.Inc()
+	m.Access.Inc()
+
+	campaignLink := c.Params.ByName("campaign_link")
+	campaign, ok := campaigns.Get().ByLink[campaignLink]
+	if !ok {
+		m.PageNotFoundError.Inc()
+		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
+	}
+	utils.ServeBytes(campaign.Content, c)
+}
+
+// on each access page
 func NotifyAccessCampaignHandler(c *gin.Context) {
 	sessions.SetSession(c)
 	tid := sessions.GetTid(c)
 
 	paths := strings.Split(c.Request.URL.Path, "/")
 	campaignLink := paths[len(paths)-1]
-	campaign, ok := campaigns.Get().Map[campaignLink]
+	campaign, ok := campaigns.Get().ByLink[campaignLink]
 	campaignHash := ""
 	if !ok {
 		log.WithFields(log.Fields{

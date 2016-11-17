@@ -33,6 +33,7 @@ func RunServer() {
 	sessions.Init(appConfig.Server.Sessions, r)
 
 	handlers.AddCampaignHandlers(r)
+	handlers.AddCampaignHandler(r)
 	handlers.AddCQRHandler(r)
 
 	metrics.AddHandler(r)

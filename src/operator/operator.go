@@ -46,6 +46,9 @@ func Init(conf OperatorConfig, dbConfig db.DataBaseConfig) {
 	if err := reloadIPRanges(); err != nil {
 		log.WithField("error", err.Error()).Fatal("Load IP ranges failed")
 	}
+	if err := memOperators.Reload(); err != nil {
+		log.WithField("error", err.Error()).Fatal("operators load failed")
+	}
 	if err := memPrefixes.Reload(); err != nil {
 		log.WithField("error", err.Error()).Fatal("prefixes reload failed")
 	}

@@ -15,15 +15,15 @@ import (
 
 func CQR(table string) error {
 	switch {
-	case strings.Contains(table, "operator_ip"):
+	// operator_ip
+	// operators
+	case strings.Contains(table, "operator"):
 		if err := reloadIPRanges(); err != nil {
 			log.WithField("error", err.Error()).Fatal("Load IP ranges failed")
 			return err
 		}
-
-	case strings.Contains(table, "operators"):
-		if err := reloadIPRanges(); err != nil {
-			log.WithField("error", err.Error()).Fatal("Load IP ranges failed")
+		if err := memOperators.Reload(); err != nil {
+			log.WithField("error", err.Error()).Fatal("repoad operators info failed")
 			return err
 		}
 
@@ -136,7 +136,7 @@ type InfoByOperatorCode struct {
 
 // msisdn could be in many headers
 func reloadIPRanges() (err error) {
-	log.WithFields(log.Fields{}).Debug("operators reload...")
+	log.WithFields(log.Fields{}).Debug("operators ip ranges reload...")
 	begin := time.Now()
 	defer func(err error) {
 		fields := log.Fields{
@@ -145,7 +145,7 @@ func reloadIPRanges() (err error) {
 		if err != nil {
 			fields["error"] = err.Error()
 		}
-		log.WithFields(fields).Debug("operators reload")
+		log.WithFields(fields).Debug("operators ip ranges reload")
 	}(err)
 
 	query := fmt.Sprintf(""+
@@ -214,5 +214,87 @@ func reloadIPRanges() (err error) {
 		"IpRangesLen": len(memIpRanges),
 		"IpRanges":    memIpRanges,
 	}).Info("IpRanges loaded")
+	return nil
+}
+
+// Tasks:
+// Keep in memory all operators names and configuration
+// Reload when changes to operators table are done
+// todo: same code in mt_manager
+
+var memOperators = &Operators{}
+
+type Operators struct {
+	sync.RWMutex
+	ByCode map[int64]Operator
+}
+
+type Operator struct {
+	Name     string
+	Rps      int
+	Settings string
+	Code     int64
+}
+
+func GetOperatorNameByCode(code int64) string {
+	if operator, ok := memOperators.ByCode[code]; ok {
+		return strings.ToLower(operator.Name)
+	}
+	return ""
+}
+
+func (ops *Operators) Reload() error {
+	ops.Lock()
+	defer ops.Unlock()
+
+	var err error
+	log.WithFields(log.Fields{}).Debug("operators reload...")
+	begin := time.Now()
+	defer func() {
+		fields := log.Fields{
+			"took": time.Since(begin),
+		}
+		if err != nil {
+			fields["error"] = err.Error()
+		}
+		log.WithFields(fields).Debug("operators reload")
+	}()
+
+	query := fmt.Sprintf("SELECT "+
+		"name, "+
+		"rps, "+
+		"settings "+
+		"FROM %soperators",
+		op.dbConf.TablePrefix)
+	var rows *sql.Rows
+	rows, err = op.db.Query(query)
+	if err != nil {
+		err = fmt.Errorf("db.Query: %s, query: %s", err.Error(), query)
+		return err
+	}
+	defer rows.Close()
+
+	var operators []Operator
+	for rows.Next() {
+		var op Operator
+		if err = rows.Scan(
+			&op.Name,
+			&op.Rps,
+			&op.Settings,
+		); err != nil {
+			err = fmt.Errorf("rows.Scan: %s", err.Error())
+			return err
+		}
+		operators = append(operators, op)
+	}
+	if rows.Err() != nil {
+		err = fmt.Errorf("rows.Err: %s", err.Error())
+		return err
+	}
+
+	ops.ByCode = make(map[int64]Operator, len(operators))
+	for _, op := range operators {
+		ops.ByCode[op.Code] = op
+	}
 	return nil
 }

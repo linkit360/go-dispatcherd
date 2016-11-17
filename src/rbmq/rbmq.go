@@ -10,7 +10,7 @@ import (
 )
 
 type Notifier interface {
-	NewSubscriptionNotify(service.ContentSentProperties) error
+	NewSubscriptionNotify(string, service.ContentSentProperties) error
 
 	AccessCampaignNotify(msg AccessCampaignNotify) error
 
@@ -61,7 +61,7 @@ func NewNotifierService(conf NotifierConfig) Notifier {
 	return n
 }
 
-func (service notifier) NewSubscriptionNotify(msg service.ContentSentProperties) error {
+func (service notifier) NewSubscriptionNotify(queue string, msg service.ContentSentProperties) error {
 
 	event := EventNotify{
 		EventName: "new_subscription",

@@ -54,7 +54,7 @@ func Init(static string, conf db.DataBaseConfig) {
 
 type Campaigns struct {
 	sync.RWMutex
-	Map map[string]Campaign
+	ByLink map[string]Campaign
 }
 type Campaign struct {
 	Id          int64
@@ -132,9 +132,10 @@ func Reload() (err error) {
 		m.LoadCampaignError.Set(0.)
 	}
 
-	camp.campaigns.Map = make(map[string]Campaign, len(records))
+	camp.campaigns.ByLink = make(map[string]Campaign, len(records))
 	for _, campaign := range records {
-		camp.campaigns.Map[campaign.Link] = campaign
+		camp.campaigns.ByLink[campaign.Link] = campaign
 	}
+
 	return nil
 }

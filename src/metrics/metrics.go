@@ -13,6 +13,7 @@ var (
 	Access                m.Gauge
 	Agree                 m.Gauge
 	AgreeSuccess          m.Gauge
+	OperatorNameError     m.Gauge
 	Errors                m.Gauge
 	PageNotFoundError     m.Gauge
 	IPNotFoundError       m.Gauge
@@ -27,7 +28,7 @@ var (
 func newGaugeHttpRequests(name, help string) m.Gauge {
 	return m.NewGauge("", "http_requests", name, "http_requests "+help)
 }
-func neGaugeIncomingTraffic(name, help string) m.Gauge {
+func newGaugeIncomingTraffic(name, help string) m.Gauge {
 	return m.NewGauge("", "incoming", name, "incoming "+help)
 }
 func newGaugeContentd(name, help string) m.Gauge {
@@ -44,10 +45,11 @@ func Init(appName string) {
 	Errors = m.NewGauge("", "", "errors", "http_requests errors")
 	CampaignHashWrong = newGaugeHttpRequests("campaign_hash_wrong", "campaign hash wrong")
 
-	IPNotFoundError = neGaugeIncomingTraffic("ip_not_found", "ip not found")
-	MsisdnNotFoundError = neGaugeIncomingTraffic("msisdn_not_found", "msisdn not found")
-	NotSupported = neGaugeIncomingTraffic("not_supported", " operator is not supported")
-	GetInfoByMsisdn = neGaugeIncomingTraffic("info_by_msisdn", "cannot find info by msisdn")
+	IPNotFoundError = newGaugeIncomingTraffic("ip_not_found", "ip not found")
+	MsisdnNotFoundError = newGaugeIncomingTraffic("msisdn_not_found", "msisdn not found")
+	NotSupported = newGaugeIncomingTraffic("not_supported", " operator is not supported")
+	GetInfoByMsisdn = newGaugeIncomingTraffic("info_by_msisdn", "cannot find info by msisdn")
+	OperatorNameError = newGaugeIncomingTraffic("operator_name", "cannot determine operator name by code")
 
 	ContentDeliveryErrors = newGaugeHttpRequests("serve_errors", "content delivery errors")
 	PageNotFoundError = newGaugeHttpRequests("error404", "404 requests")
@@ -65,6 +67,7 @@ func Init(appName string) {
 			Access.Update()
 			Agree.Update()
 			AgreeSuccess.Update()
+			OperatorNameError.Update()
 			Errors.Update()
 			PageNotFoundError.Update()
 			IPNotFoundError.Update()
