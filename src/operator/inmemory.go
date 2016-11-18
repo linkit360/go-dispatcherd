@@ -13,26 +13,22 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-func CQR(table string) error {
-	switch {
-	// operator_ip
-	// operators
-
-	case strings.Contains(table, "operator"):
-		if err := reloadIPRanges(); err != nil {
-			log.WithField("error", err.Error()).Fatal("Load IP ranges failed")
-			return err
-		}
-		if err := memOperators.Reload(); err != nil {
-			log.WithField("error", err.Error()).Fatal("repoad operators info failed")
-			return err
-		}
-
-	case strings.Contains(table, "operator_msisdn_prefix"):
-		if err := memPrefixes.Reload(); err != nil {
-			log.WithField("error", err.Error()).Fatal("prefixes reload failed")
-			return err
-		}
+// reload all:
+// operator_ip
+// operators
+// operator_msisdn_prefix
+func Reload() error {
+	if err := reloadIPRanges(); err != nil {
+		log.WithField("error", err.Error()).Fatal("Load IP ranges failed")
+		return err
+	}
+	if err := memOperators.Reload(); err != nil {
+		log.WithField("error", err.Error()).Fatal("repoad operators info failed")
+		return err
+	}
+	if err := memPrefixes.Reload(); err != nil {
+		log.WithField("error", err.Error()).Fatal("prefixes reload failed")
+		return err
 	}
 	return nil
 }

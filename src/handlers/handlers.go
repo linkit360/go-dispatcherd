@@ -21,6 +21,7 @@ import (
 	"github.com/vostrok/dispatcherd/src/sessions"
 	"github.com/vostrok/dispatcherd/src/utils"
 	queue_config "github.com/vostrok/utils/config"
+	"github.com/vostrok/utils/cqr"
 )
 
 var cnf config.AppConfig
@@ -34,6 +35,24 @@ func Init(conf config.AppConfig) {
 	notifierService = rbmq.NewNotifierService(conf.Notifier)
 
 	content.Init(conf.ContentClient)
+}
+
+func AddCQRHandlers(r *gin.Engine) {
+	cqr.AddCQRHandler(reloadCQRFunc, r)
+}
+
+func reloadCQRFunc(c *gin.Context) {
+	conf := []cqr.CQRConfig{
+		{
+			Table:      "campaigns",
+			ReloadFunc: campaigns.Reload,
+		},
+		{
+			Table:      "operator",
+			ReloadFunc: operator.Reload,
+		},
+	}
+	cqr.CQRReloadFunc(conf, c)(c)
 }
 
 // uniq links generation ??

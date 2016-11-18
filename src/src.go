@@ -34,7 +34,7 @@ func RunServer() {
 
 	handlers.AddCampaignHandlers(r)
 	handlers.AddCampaignHandler(r)
-	handlers.AddCQRHandler(r)
+	handlers.AddCQRHandlers(r)
 
 	metrics.AddHandler(r)
 
