@@ -11,9 +11,9 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
 
-	"github.com/vostrok/db"
 	m "github.com/vostrok/dispatcherd/src/metrics"
 	"github.com/vostrok/dispatcherd/src/utils"
+	"github.com/vostrok/utils/db"
 )
 
 var camp *campaign

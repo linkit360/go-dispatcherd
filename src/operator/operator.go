@@ -8,7 +8,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/vostrok/db"
+	"github.com/vostrok/utils/db"
 )
 
 var op *operator

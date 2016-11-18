@@ -13,7 +13,7 @@ import (
 	m "github.com/vostrok/dispatcherd/src/metrics"
 	"github.com/vostrok/dispatcherd/src/operator"
 	"github.com/vostrok/dispatcherd/src/sessions"
-	"github.com/vostrok/metrics"
+	"github.com/vostrok/utils/metrics"
 )
 
 func RunServer() {

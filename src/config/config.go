@@ -10,10 +10,10 @@ import (
 	"github.com/jinzhu/configor"
 
 	content "github.com/vostrok/contentd/rpcclient"
-	"github.com/vostrok/db"
 	"github.com/vostrok/dispatcherd/src/operator"
 	"github.com/vostrok/dispatcherd/src/rbmq"
 	"github.com/vostrok/dispatcherd/src/sessions"
+	"github.com/vostrok/utils/db"
 )
 
 type AppConfig struct {

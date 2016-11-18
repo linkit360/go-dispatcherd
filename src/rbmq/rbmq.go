@@ -6,7 +6,7 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/vostrok/contentd/service"
-	"github.com/vostrok/rabbit"
+	"github.com/vostrok/utils/amqp"
 )
 
 type Notifier interface {

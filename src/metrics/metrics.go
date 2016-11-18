@@ -1,10 +1,9 @@
 package metrics
 
 import (
-	"time"
-
 	"github.com/prometheus/client_golang/prometheus"
-	m "github.com/vostrok/metrics"
+
+	m "github.com/vostrok/utils/metrics"
 )
 
 var (
@@ -64,25 +63,4 @@ func Init(appName string) {
 	)
 	//OperatorNotApplicable = m.NewGauge("", "", "not_applicable", "operator not applicable ")
 	//OperatorNotEnabled = m.NewGauge("", "", "not_enabled", "operator not enabled ")
-
-	go func() {
-		for range time.Tick(time.Minute) {
-			Overall.Update()
-			Access.Update()
-			Agree.Update()
-			AgreeSuccess.Update()
-			OperatorNameError.Update()
-			Errors.Update()
-			PageNotFoundError.Update()
-			IPNotFoundError.Update()
-			MsisdnNotFoundError.Update()
-			GetInfoByMsisdn.Update()
-			NotSupported.Update()
-			CampaignHashWrong.Update()
-			ContentDeliveryErrors.Update()
-			ContentdRPCDialError.Update()
-			//OperatorNotEnabled.Update()
-			//OperatorNotApplicable.Update()
-		}
-	}()
 }
