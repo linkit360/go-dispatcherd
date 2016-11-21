@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
 
@@ -32,7 +31,7 @@ func Get() *Campaigns {
 }
 
 func Init(static string, conf db.DataBaseConfig) {
-	logrus.SetLevel(logrus.DebugLevel)
+	log.SetLevel(log.DebugLevel)
 
 	camp = &campaign{
 		dbConn:     db.Init(conf),
@@ -43,7 +42,7 @@ func Init(static string, conf db.DataBaseConfig) {
 
 	err := Reload()
 	if err != nil {
-		logrus.WithField("error", err.Error()).Fatal("reload campaigns failed")
+		log.WithField("error", err.Error()).Fatal("reload campaigns failed")
 	}
 }
 

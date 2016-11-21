@@ -22,7 +22,7 @@ type NotifierConfig struct {
 		AccessCampaignQueueName string `yaml:"access_campaign" default:"access_campaign"`
 		UserActionsQueueName    string `yaml:"user_actions" default:"user_actions"`
 	} `yaml:"queues"`
-	RBMQNotifier rabbit.NotifierConfig `yaml:"rbmq"`
+	RBMQNotifier amqp.NotifierConfig `yaml:"rbmq"`
 }
 type queues struct {
 	accessCampaign       string
@@ -31,7 +31,7 @@ type queues struct {
 }
 type notifier struct {
 	q  queues
-	mq *rabbit.Notifier
+	mq *amqp.Notifier
 }
 
 type EventNotify struct {
@@ -46,7 +46,7 @@ func init() {
 func NewNotifierService(conf NotifierConfig) Notifier {
 	var n Notifier
 	{
-		rabbit := rabbit.NewNotifier(conf.RBMQNotifier)
+		rabbit := amqp.NewNotifier(conf.RBMQNotifier)
 		n = &notifier{
 			q: queues{
 				accessCampaign: conf.Queues.AccessCampaignQueueName,
@@ -76,7 +76,7 @@ func (service notifier) NewSubscriptionNotify(queue string, msg *service.Content
 	}
 
 	log.WithField("body", string(body)).Debug("sent")
-	service.mq.Publish(rabbit.AMQPMessage{queue, body})
+	service.mq.Publish(amqp.AMQPMessage{queue, body})
 	return nil
 }
 
@@ -111,7 +111,7 @@ func (service notifier) AccessCampaignNotify(msg AccessCampaignNotify) error {
 		return fmt.Errorf("json.Marshal: %s", err.Error())
 	}
 
-	service.mq.Publish(rabbit.AMQPMessage{service.q.accessCampaign, body})
+	service.mq.Publish(amqp.AMQPMessage{service.q.accessCampaign, body})
 	return nil
 }
 
@@ -132,6 +132,6 @@ func (service notifier) ActionNotify(msg UserActionsNotify) error {
 		return fmt.Errorf("json.Marshal: %s", err.Error())
 	}
 	log.WithField("body", string(body)).Debug("sent")
-	service.mq.Publish(rabbit.AMQPMessage{service.q.userAction, body})
+	service.mq.Publish(amqp.AMQPMessage{service.q.userAction, body})
 	return nil
 }
