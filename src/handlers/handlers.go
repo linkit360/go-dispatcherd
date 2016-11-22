@@ -35,7 +35,6 @@ func Init(conf config.AppConfig) {
 	inmem_client.Init(conf.InMemConfig)
 }
 
-// uniq links generation ??
 func HandlePull(c *gin.Context) {
 	m.Overall.Inc()
 	m.Agree.Inc()
@@ -174,9 +173,128 @@ func HandlePull(c *gin.Context) {
 	}
 }
 
+func ContentGet(c *gin.Context) {
+	m.Overall.Inc()
+
+	sessions.SetSession(c)
+	tid := sessions.GetTid(c)
+	if tid == "" {
+		tid = "testtid"
+	}
+	logCtx := log.WithFields(log.Fields{
+		"tid": tid,
+	})
+	var msg rbmq.AccessCampaignNotify
+	action := rbmq.UserActionsNotify{
+		Action: "content_get",
+		Tid:    tid,
+	}
+	var err error
+	defer func() {
+		if err != nil {
+			m.Errors.Inc()
+			action.Error = err.Error()
+		}
+		if err := notifierService.ActionNotify(action); err != nil {
+			logCtx.WithField("error", err.Error()).Error("notify user action")
+		} else {
+		}
+		sessions.RemoveTid(c)
+	}()
+	logCtx.Debug(c.Request.Header)
+
+	campaignHash := c.Params.ByName("campaign_hash")
+	if len(campaignHash) != cnf.Service.CampaignHashLength {
+		m.CampaignHashWrong.Inc()
+
+		logCtx.WithFields(log.Fields{
+			"campaignHash": campaignHash,
+			"length":       len(campaignHash),
+		}).Error("Length is too small")
+
+		err := errors.New("Wrong campaign length")
+		c.Error(err)
+		msg.Error = err.Error()
+		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+		return
+	}
+	logCtx = logCtx.WithField("campaignHash", campaignHash)
+
+	msg, err = gatherInfo(tid, campaignHash, c)
+	if err != nil {
+		msg.Error = err.Error()
+		action.Error = err.Error()
+		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+		return
+	}
+	logCtx = logCtx.WithField("msisdn", msg.Msisdn)
+	logCtx.WithFields(log.Fields{}).Debug("gathered info, get content id..")
+
+	contentProperties := &content_service.ContentSentProperties{}
+	contentProperties, err = content.Get(content_service.GetUrlByCampaignHashParams{
+		Msisdn:       msg.Msisdn,
+		Tid:          tid,
+		CampaignHash: campaignHash,
+		CountryCode:  msg.CountryCode,
+		OperatorCode: msg.OperatorCode,
+		Publisher:    sessions.GetFromSession("publisher", c),
+		Pixel:        sessions.GetFromSession("pixel", c),
+	})
+	if err != nil {
+		m.ContentdRPCDialError.Inc()
+		m.ContentDeliveryErrors.Inc()
+
+		err = fmt.Errorf("content.Get: %s", err.Error())
+		logCtx.WithField("error", err.Error()).Error("contentClient.Get")
+		c.Error(err)
+		msg.Error = err.Error()
+		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+		logCtx.Fatal("contentd fatal: trying to free all resources")
+		return
+	}
+	if contentProperties.Error != "" {
+		m.ContentDeliveryErrors.Inc()
+
+		err = fmt.Errorf("contentClient.Get: %s", contentProperties.Error)
+		logCtx.WithField("error", contentProperties.Error).Error("contentClient.Get")
+		err = errors.New(contentProperties.Error)
+		c.Error(err)
+		msg.Error = contentProperties.Error
+		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+		return
+	}
+	logCtx.WithFields(log.Fields{
+		"contentId": contentProperties.ContentId,
+		"path":      contentProperties.ContentPath,
+	}).Debug("contentd response")
+
+	msg.CampaignId = contentProperties.CampaignId
+	msg.ContentId = contentProperties.ContentId
+	msg.ServiceId = contentProperties.ServiceId
+
+	// todo one time url-s
+	err = utils.ServeAttachment(
+		cnf.Server.Path+"uploaded_content/"+contentProperties.ContentPath,
+		contentProperties.ContentName,
+		c,
+		logCtx,
+	)
+	if err != nil {
+		m.ContentDeliveryErrors.Inc()
+		err := fmt.Errorf("serveContentFile: %s", err.Error())
+		logCtx.WithField("error", err.Error()).Error("serveContentFile")
+		c.Error(err)
+		msg.Error = err.Error()
+		action.Error = err.Error()
+		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+		return
+	}
+	logCtx.WithFields(log.Fields{}).Debug("served file ok")
+	m.ContentGetSuccess.Inc()
+}
+
 // backward compatibility
 func AddCampaignHandlers(r *gin.Engine) {
-
 	campaigns, err := inmem_client.GetAllCampaigns()
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -235,7 +353,7 @@ func NotifyAccessCampaignHandler(c *gin.Context) {
 		"tid":          tid,
 		"campaignHash": campaignHash,
 	})
-	logCtx.Info("notify user action")
+
 	begin := time.Now()
 	action := rbmq.UserActionsNotify{
 		Action: "access",

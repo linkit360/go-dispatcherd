@@ -32,7 +32,10 @@ func RunServer() {
 
 	metrics.AddHandler(r)
 
-	r.GET("/campaign/:campaign_hash", handlers.AccessHandler, handlers.HandlePull)
+	rg := r.Group("/campaign/:campaign_hash")
+	rg.GET("", handlers.AccessHandler, handlers.HandlePull)
+	rg.GET("/contentget", handlers.AccessHandler, handlers.ContentGet)
+
 	r.Static("/static/", appConfig.Server.Path+"/static/")
 	r.StaticFile("/favicon.ico", appConfig.Server.Path+"/favicon.ico")
 	r.StaticFile("/robots.txt", appConfig.Server.Path+"/robots.txt")

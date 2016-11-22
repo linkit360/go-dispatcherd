@@ -1,17 +1,15 @@
 package metrics
 
 import (
-	"github.com/prometheus/client_golang/prometheus"
-
 	m "github.com/vostrok/utils/metrics"
 )
 
 var (
-	LoadCampaignError     prometheus.Gauge
 	Overall               m.Gauge
 	Access                m.Gauge
 	Agree                 m.Gauge
 	AgreeSuccess          m.Gauge
+	ContentGetSuccess     m.Gauge
 	OperatorNameError     m.Gauge
 	Errors                m.Gauge
 	PageNotFoundError     m.Gauge
@@ -22,8 +20,6 @@ var (
 	CampaignHashWrong     m.Gauge
 	ContentDeliveryErrors m.Gauge
 	ContentdRPCDialError  m.Gauge
-	//OperatorNotApplicable m.Gauge
-	//OperatorNotEnabled    m.Gauge
 )
 
 func newGaugeHttpRequests(name, help string) m.Gauge {
@@ -43,6 +39,8 @@ func Init(appName string) {
 	Access = newGaugeHttpRequests("access", "opened static")
 	Agree = newGaugeHttpRequests("agreed", "pressed the button 'agree'")
 	AgreeSuccess = newGaugeHttpRequests("agree_success", "pressed the button 'agree' and successfully processed")
+	ContentGetSuccess = newGaugeHttpRequests("content_get", "pressed the button 'get content' and successfully processed")
+
 	Errors = m.NewGauge("", "", "errors", "http_requests errors")
 	CampaignHashWrong = newGaugeHttpRequests("campaign_hash_wrong", "campaign hash wrong")
 
@@ -55,12 +53,4 @@ func Init(appName string) {
 	ContentDeliveryErrors = newGaugeHttpRequests("serve_errors", "content delivery errors")
 	PageNotFoundError = newGaugeHttpRequests("error404", "404 requests")
 	ContentdRPCDialError = newGaugeContentd("connect_errors", "number of connect errors ")
-	LoadCampaignError = m.PrometheusGauge(
-		"",
-		"campaign",
-		"load_error",
-		"Load campaign HTML error",
-	)
-	//OperatorNotApplicable = m.NewGauge("", "", "not_applicable", "operator not applicable ")
-	//OperatorNotEnabled = m.NewGauge("", "", "not_enabled", "operator not enabled ")
 }
