@@ -43,7 +43,6 @@ func RunServer() {
 	r.NoRoute(notFound)
 
 	r.RedirectTrailingSlash = true
-	r.RedirectFixedPath = true
 
 	r.Run(":" + appConfig.Server.Port)
 }
