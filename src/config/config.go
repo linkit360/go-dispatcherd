@@ -10,19 +10,21 @@ import (
 	"github.com/jinzhu/configor"
 
 	content "github.com/vostrok/contentd/rpcclient"
-	"github.com/vostrok/dispatcherd/src/operator"
 	"github.com/vostrok/dispatcherd/src/rbmq"
 	"github.com/vostrok/dispatcherd/src/sessions"
+	inmem "github.com/vostrok/inmem/rpcclient"
+	inmem_service "github.com/vostrok/inmem/service"
 	"github.com/vostrok/utils/db"
 )
 
 type AppConfig struct {
 	Name            string                  `yaml:"name"`
 	Server          ServerConfig            `yaml:"server"`
+	Service         ServiceConfig           `yaml:"service"`
 	ContentClient   content.RPCClientConfig `yaml:"content_client"`
+	InMemConfig     inmem.RPCClientConfig   `yaml:"inmem_client"`
 	Notifier        rbmq.NotifierConfig     `yaml:"notifier"`
-	Subscriptions   SubscriptionsConfig     `yaml:"subscriptions"`
-	PrivateNetworks []operator.IpRange      `yaml:"private_networks"`
+	PrivateNetworks []inmem_service.IpRange `yaml:"private_networks"`
 	Db              db.DataBaseConfig       `yaml:"db"`
 }
 
@@ -31,7 +33,7 @@ type ServerConfig struct {
 	Path     string                  `default:"/var/www/xmp.linkit360.ru/web/" yaml:"path"`
 	Sessions sessions.SessionsConfig `yaml:"sessions"`
 }
-type SubscriptionsConfig struct {
+type ServiceConfig struct {
 	ErrorRedirectUrl   string `default:"http://id.slypee.com" yaml:"error_redirect_url"`
 	CampaignHashLength int    `default:"32" yaml:"campaign_hash_length"`
 }

@@ -12,16 +12,13 @@ import (
 
 	content "github.com/vostrok/contentd/rpcclient"
 	content_service "github.com/vostrok/contentd/service"
-	"github.com/vostrok/dispatcherd/src/campaigns"
 	"github.com/vostrok/dispatcherd/src/config"
-	"github.com/vostrok/dispatcherd/src/handlers/gather"
 	m "github.com/vostrok/dispatcherd/src/metrics"
-	"github.com/vostrok/dispatcherd/src/operator"
 	"github.com/vostrok/dispatcherd/src/rbmq"
 	"github.com/vostrok/dispatcherd/src/sessions"
 	"github.com/vostrok/dispatcherd/src/utils"
+	inmem_client "github.com/vostrok/inmem/rpcclient"
 	queue_config "github.com/vostrok/utils/config"
-	"github.com/vostrok/utils/cqr"
 )
 
 var cnf config.AppConfig
@@ -35,24 +32,7 @@ func Init(conf config.AppConfig) {
 	notifierService = rbmq.NewNotifierService(conf.Notifier)
 
 	content.Init(conf.ContentClient)
-}
-
-func AddCQRHandlers(r *gin.Engine) {
-	cqr.AddCQRHandler(reloadCQRFunc, r)
-}
-
-func reloadCQRFunc(c *gin.Context) {
-	conf := []cqr.CQRConfig{
-		{
-			Table:      "campaigns",
-			ReloadFunc: campaigns.Reload,
-		},
-		{
-			Table:      "operator",
-			ReloadFunc: operator.Reload,
-		},
-	}
-	cqr.CQRReloadFunc(conf, c)(c)
+	inmem_client.Init(conf.InMemConfig)
 }
 
 // uniq links generation ??
@@ -88,26 +68,27 @@ func HandlePull(c *gin.Context) {
 	logCtx.Debug(c.Request.Header)
 
 	campaignHash := c.Params.ByName("campaign_hash")
-	if len(campaignHash) != cnf.Subscriptions.CampaignHashLength {
+	if len(campaignHash) != cnf.Service.CampaignHashLength {
 		m.CampaignHashWrong.Inc()
 
 		logCtx.WithFields(log.Fields{
 			"campaignHash": campaignHash,
 			"length":       len(campaignHash),
 		}).Error("Length is too small")
+
 		err := errors.New("Wrong campaign length")
 		c.Error(err)
 		msg.Error = err.Error()
-		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
+		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
 	logCtx = logCtx.WithField("campaignHash", campaignHash)
 
-	msg, err = gather.Gather(tid, campaignHash, c)
+	msg, err = gatherInfo(tid, campaignHash, c)
 	if err != nil {
 		msg.Error = err.Error()
 		action.Error = err.Error()
-		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
+		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
 	logCtx = logCtx.WithField("msisdn", msg.Msisdn)
@@ -131,7 +112,7 @@ func HandlePull(c *gin.Context) {
 		logCtx.WithField("error", err.Error()).Error("contentClient.Get")
 		c.Error(err)
 		msg.Error = err.Error()
-		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
+		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		logCtx.Fatal("contentd fatal: trying to free all resources")
 		return
 	}
@@ -143,7 +124,7 @@ func HandlePull(c *gin.Context) {
 		err = errors.New(contentProperties.Error)
 		c.Error(err)
 		msg.Error = contentProperties.Error
-		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
+		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
 	logCtx.WithFields(log.Fields{
@@ -171,19 +152,22 @@ func HandlePull(c *gin.Context) {
 		msg.Error = err.Error()
 		msg.Error = err.Error()
 		action.Error = err.Error()
-		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
+		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
 	logCtx.WithFields(log.Fields{}).Debug("served file ok")
 	m.AgreeSuccess.Inc()
 
-	op := operator.GetOperatorNameByCode(msg.OperatorCode)
-	if op == "" {
-		logCtx.WithField("operator_code", msg.OperatorCode).Error("cannot find operator")
+	operator, err := inmem_client.GetOperatorByCode(msg.OperatorCode)
+	if err != nil {
+		logCtx.WithFields(log.Fields{
+			"error":         err.Error(),
+			"operator_code": msg.OperatorCode,
+		}).Error("cannot get operator")
 		m.OperatorNameError.Inc()
 		return
 	}
-	queue := queue_config.GetNewSubscriptionQueueName(op)
+	queue := queue_config.GetNewSubscriptionQueueName(operator.Name)
 	logCtx.WithField("queue", queue).Debug("inform new subscritpion")
 	if err = notifierService.NewSubscriptionNotify(queue, contentProperties); err != nil {
 		logCtx.WithField("error", err.Error()).Error("notify new subscription")
@@ -192,7 +176,15 @@ func HandlePull(c *gin.Context) {
 
 // backward compatibility
 func AddCampaignHandlers(r *gin.Engine) {
-	for _, v := range campaigns.Get().ByLink {
+
+	campaigns, err := inmem_client.GetAllCampaigns()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Error("cannot ad campaign handlers")
+		return
+	}
+	for _, v := range campaigns {
 		log.WithField("route", v.Link).Info("adding route")
 		rg := r.Group("/" + v.Link)
 		rg.Use(AccessHandler)
@@ -213,12 +205,11 @@ func AddCampaignHandler(r *gin.Engine) {
 func serveCampaigns(c *gin.Context) {
 	m.Overall.Inc()
 	m.Access.Inc()
-
 	campaignLink := c.Params.ByName("campaign_link")
-	campaign, ok := campaigns.Get().ByLink[campaignLink]
-	if !ok {
+	campaign, err := inmem_client.GetCampaignByLink(campaignLink)
+	if err != nil {
 		m.PageNotFoundError.Inc()
-		http.Redirect(c.Writer, c.Request, cnf.Subscriptions.ErrorRedirectUrl, 303)
+		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 	}
 	utils.ServeBytes(campaign.Content, c)
 }
@@ -230,9 +221,9 @@ func NotifyAccessCampaignHandler(c *gin.Context) {
 
 	paths := strings.Split(c.Request.URL.Path, "/")
 	campaignLink := paths[len(paths)-1]
-	campaign, ok := campaigns.Get().ByLink[campaignLink]
+	campaign, err := inmem_client.GetCampaignByLink(campaignLink)
 	campaignHash := ""
-	if !ok {
+	if err != nil {
 		log.WithFields(log.Fields{
 			"error": "unknown campaign",
 			"path":  campaignLink,
@@ -263,7 +254,7 @@ func NotifyAccessCampaignHandler(c *gin.Context) {
 		}).Info("done notify user action")
 	}
 
-	msg, err := gather.Gather(tid, campaign.Hash, c)
+	msg, err := gatherInfo(tid, campaign.Hash, c)
 	if err != nil {
 		logCtx.WithFields(log.Fields{
 			"error":          err.Error(),

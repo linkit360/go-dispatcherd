@@ -7,11 +7,9 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
 
-	"github.com/vostrok/dispatcherd/src/campaigns"
 	"github.com/vostrok/dispatcherd/src/config"
 	"github.com/vostrok/dispatcherd/src/handlers"
 	m "github.com/vostrok/dispatcherd/src/metrics"
-	"github.com/vostrok/dispatcherd/src/operator"
 	"github.com/vostrok/dispatcherd/src/sessions"
 	"github.com/vostrok/utils/metrics"
 )
@@ -19,9 +17,6 @@ import (
 func RunServer() {
 	appConfig := config.LoadConfig()
 	m.Init(appConfig.Name)
-
-	operator.Init(appConfig.PrivateNetworks, appConfig.Db)
-	campaigns.Init(appConfig.Server.Path, appConfig.Db)
 
 	handlers.Init(appConfig)
 
@@ -34,7 +29,6 @@ func RunServer() {
 
 	handlers.AddCampaignHandlers(r)
 	handlers.AddCampaignHandler(r)
-	handlers.AddCQRHandlers(r)
 
 	metrics.AddHandler(r)
 

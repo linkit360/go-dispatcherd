@@ -12,8 +12,16 @@ server: # linkit-mobilink.cb2q7f7mvbwr.ap-south-1.rds.amazonaws.com
     secure: false
     http_only: false
 
+service:
+  error_redirect_url: http://id.slypee.com
+  campaign_hash_length: 32
+
 content_client:
   dsn: localhost:50301
+  timeout: 10
+
+inmem_client:
+  dsn: localhost:50307
   timeout: 10
 
 notifier:
@@ -29,23 +37,6 @@ notifier:
       port: 5672
     chan_capacity: 10000000
 
-subscriptions:
-  error_redirect_url: http://id.slypee.com
-  campaign_hash_length: 32
-
-private_networks:
-- start: 10.0.0.0
-  end: 10.255.255.255
-- start: 100.64.0.0
-  end: 100.127.255.255
-- start: 172.16.0.0
-  end: 172.31.255.255
-- start: 192.0.0.0
-  end: 192.0.0.255
-- start: 192.168.0.0
-  end: 192.168.255.255
-- start: 198.18.0.0
-  end: 198.19.255.255
 
 db:
   conn_ttl: -1

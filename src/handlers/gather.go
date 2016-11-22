@@ -1,4 +1,4 @@
-package gather
+package handlers
 
 import (
 	"encoding/json"
@@ -13,12 +13,13 @@ import (
 	"github.com/gin-gonic/gin"
 
 	m "github.com/vostrok/dispatcherd/src/metrics"
-	"github.com/vostrok/dispatcherd/src/operator"
 	"github.com/vostrok/dispatcherd/src/rbmq"
 	"github.com/vostrok/dispatcherd/src/sessions"
+	inmem_client "github.com/vostrok/inmem/rpcclient"
+	inmem_service "github.com/vostrok/inmem/service"
 )
 
-func Gather(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampaignNotify, err error) {
+func gatherInfo(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampaignNotify, err error) {
 	logCtx := log.WithFields(log.Fields{"tid": tid, "campaign": campaignHash})
 
 	r := c.Request
@@ -50,45 +51,51 @@ func Gather(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampaignNo
 	flagFoundIpInfo := false
 	IPs := getIPAdress(r)
 	if len(IPs) != 0 {
-		infos := operator.GetIpInfo(IPs)
-		info, err := operator.GetSupported(infos)
+		infos, err := inmem_client.GetIPInfoByIps(IPs)
 		if err != nil {
 			m.IPNotFoundError.Inc()
-			logCtx.Error("cannot determine IP address")
-		} else {
-			log.WithFields(log.Fields{
-				"ip":            info.IP,
-				"operator_code": info.OperatorCode,
-				"supported":     info.Supported,
-				"headers":       info.MsisdnHeaders,
-			}).Debug("got IP info")
-
-			flagFoundIpInfo = true
-			msg.IP = info.IP
-			msg.OperatorCode = info.OperatorCode
-			msg.CountryCode = info.CountryCode
-			msg.Supported = info.Supported
-
-			msg.Msisdn = ""
-			for _, header := range info.MsisdnHeaders {
-
-				msg.Msisdn = r.Header.Get(header)
-				if len(msg.Msisdn) > 0 {
-					log.WithFields(log.Fields{
-						"msisdn": msg.Msisdn,
-					}).Debug("found in header")
-					return msg, nil
-				}
-				msg.Msisdn = os.Getenv(header)
-				if len(msg.Msisdn) > 0 {
-					log.WithFields(log.Fields{
-						"msisdn": msg.Msisdn,
-					}).Debug("found in environment")
-					return msg, nil
-				}
+			logCtx.Error("cannot get ip infos")
+		}
+		if len(infos) > 0 {
+			info := inmem_service.GetSupportedIPInfo(infos)
+			if info.Supported == false {
+				m.IPNotFoundError.Inc()
+				logCtx.Error("cannot determine IP address")
+			} else {
 				log.WithFields(log.Fields{
-					"header": header,
-				}).Debug("msisdn not found")
+					"ip":            info.IP,
+					"operator_code": info.OperatorCode,
+					"supported":     info.Supported,
+					"headers":       info.MsisdnHeaders,
+				}).Debug("got IP info")
+
+				flagFoundIpInfo = true
+				msg.IP = info.IP
+				msg.OperatorCode = info.OperatorCode
+				msg.CountryCode = info.CountryCode
+				msg.Supported = info.Supported
+
+				msg.Msisdn = ""
+				for _, header := range info.MsisdnHeaders {
+
+					msg.Msisdn = r.Header.Get(header)
+					if len(msg.Msisdn) > 0 {
+						log.WithFields(log.Fields{
+							"msisdn": msg.Msisdn,
+						}).Debug("found in header")
+						return msg, nil
+					}
+					msg.Msisdn = os.Getenv(header)
+					if len(msg.Msisdn) > 0 {
+						log.WithFields(log.Fields{
+							"msisdn": msg.Msisdn,
+						}).Debug("found in environment")
+						return msg, nil
+					}
+					log.WithFields(log.Fields{
+						"header": header,
+					}).Debug("msisdn not found")
+				}
 			}
 		}
 
@@ -127,7 +134,7 @@ func Gather(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampaignNo
 		return msg, nil
 	}
 
-	info, err := operator.GetInfoByMsisdn(msg.Msisdn)
+	info, err := inmem_client.GetIPInfoByMsisdn(msg.Msisdn)
 	if err != nil {
 		m.GetInfoByMsisdn.Inc()
 		err = fmt.Errorf("operator.GetInfoByMsisdn: %s", err.Error())
@@ -162,7 +169,7 @@ func getIPAdress(r *http.Request) []net.IP {
 		for i := len(addresses) - 1; i >= 0; i-- {
 			ip := strings.TrimSpace(addresses[i])
 			realIP := net.ParseIP(ip)
-			if !realIP.IsGlobalUnicast() || operator.IsPrivateSubnet(realIP) {
+			if !realIP.IsGlobalUnicast() { //|| IsPrivateSubnet(realIP)
 				// bad address, go to next
 				continue
 			}
