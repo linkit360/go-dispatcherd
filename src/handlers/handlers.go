@@ -36,7 +36,6 @@ func Init(conf config.AppConfig) {
 }
 
 func HandlePull(c *gin.Context) {
-	m.Overall.Inc()
 	m.Agree.Inc()
 
 	sessions.SetSession(c)
@@ -170,11 +169,13 @@ func HandlePull(c *gin.Context) {
 	logCtx.WithField("queue", queue).Debug("inform new subscritpion")
 	if err = notifierService.NewSubscriptionNotify(queue, contentProperties); err != nil {
 		logCtx.WithField("error", err.Error()).Error("notify new subscription")
+		return
 	}
+	m.Success.Inc()
 }
 
 func ContentGet(c *gin.Context) {
-	m.Overall.Inc()
+	m.CampaignAccess.Inc()
 
 	sessions.SetSession(c)
 	tid := sessions.GetTid(c)
@@ -291,6 +292,7 @@ func ContentGet(c *gin.Context) {
 	}
 	logCtx.WithFields(log.Fields{}).Debug("served file ok")
 	m.ContentGetSuccess.Inc()
+	m.Success.Inc()
 }
 
 // backward compatibility
@@ -321,7 +323,6 @@ func AddCampaignHandler(r *gin.Engine) {
 }
 
 func serveCampaigns(c *gin.Context) {
-	m.Overall.Inc()
 	m.Access.Inc()
 	campaignLink := c.Params.ByName("campaign_link")
 	campaign, err := inmem_client.GetCampaignByLink(campaignLink)
@@ -329,7 +330,10 @@ func serveCampaigns(c *gin.Context) {
 		m.PageNotFoundError.Inc()
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 	}
+	m.CampaignAccess.Inc()
+	m.Success.Inc()
 	utils.ServeBytes(campaign.Content, c)
+
 }
 
 // on each access page
@@ -387,6 +391,7 @@ func NotifyAccessCampaignHandler(c *gin.Context) {
 }
 
 func AccessHandler(c *gin.Context) {
+	m.Overall.Inc()
 	begin := time.Now()
 	c.Next()
 

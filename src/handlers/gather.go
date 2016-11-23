@@ -119,6 +119,7 @@ func gatherInfo(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampai
 			}).Debug("took from session")
 		}
 	}
+
 	// we worked hard and haven't found msisdn
 	if len(msg.Msisdn) <= 5 {
 		m.MsisdnNotFoundError.Inc()
@@ -136,7 +137,7 @@ func gatherInfo(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampai
 
 	info, err := inmem_client.GetIPInfoByMsisdn(msg.Msisdn)
 	if err != nil {
-		m.GetInfoByMsisdn.Inc()
+		m.GetInfoByMsisdnError.Inc()
 		err = fmt.Errorf("operator.GetInfoByMsisdn: %s", err.Error())
 		msg.Error = err.Error()
 		logCtx.WithFields(log.Fields{}).Error("cannot find info by msisdn")
