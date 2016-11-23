@@ -39,11 +39,11 @@ func gatherInfo(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampai
 		Headers:      string(headers),
 	}
 
-	for _, e := range os.Environ() {
-		log.WithFields(log.Fields{
-			"tid": tid,
-		}).Debug(e)
-	}
+	//for _, e := range os.Environ() {
+	//	log.WithFields(log.Fields{
+	//		"tid": tid,
+	//	}).Debug(e)
+	//}
 
 	//get all IP addresses
 	//get supported IP-s

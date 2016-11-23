@@ -14,40 +14,54 @@ import (
 	"github.com/vostrok/utils/metrics"
 )
 
-func RunServer() {
-	appConfig := config.LoadConfig()
-	m.Init(appConfig.Name)
+var e *gin.Engine
+var conf config.AppConfig
 
-	handlers.Init(appConfig)
+func RunServer() {
+	conf = config.LoadConfig()
+	m.Init(conf.Name)
+
+	handlers.Init(conf)
 
 	nuCPU := runtime.NumCPU()
 	runtime.GOMAXPROCS(nuCPU)
 	log.WithField("CPUCount", nuCPU)
 
-	r := gin.New()
-	sessions.Init(appConfig.Server.Sessions, r)
+	e = gin.New()
+	e.LoadHTMLGlob(conf.Server.Path + "campaign/**/*")
+	e.GET("/updateTemplates", updateTemplates)
 
-	handlers.AddCampaignHandlers(r)
-	handlers.AddCampaignHandler(r)
+	sessions.Init(conf.Server.Sessions, e)
 
-	metrics.AddHandler(r)
+	handlers.AddCampaignHandlers(e)
+	handlers.AddCampaignHandler(e)
 
-	rg := r.Group("/campaign/:campaign_hash")
+	metrics.AddHandler(e)
+
+	rg := e.Group("/campaign/:campaign_hash")
 	rg.GET("", handlers.AccessHandler, handlers.HandlePull)
 	rg.GET("/contentget", handlers.AccessHandler, handlers.ContentGet)
 
-	r.Static("/static/", appConfig.Server.Path+"/static/")
-	r.StaticFile("/favicon.ico", appConfig.Server.Path+"/favicon.ico")
-	r.StaticFile("/robots.txt", appConfig.Server.Path+"/robots.txt")
+	e.Static("/static/", conf.Server.Path+"/static/")
+	e.StaticFile("/favicon.ico", conf.Server.Path+"/favicon.ico")
+	e.StaticFile("/robots.txt", conf.Server.Path+"/robots.txt")
 
-	r.NoRoute(notFound)
+	e.NoRoute(notFound)
 
-	r.RedirectTrailingSlash = true
+	e.RedirectTrailingSlash = true
 
-	r.Run(":" + appConfig.Server.Port)
+	e.Run(":" + conf.Server.Port)
 }
 
 func notFound(c *gin.Context) {
 	c.Error(errors.New("Not found"))
 	m.PageNotFoundError.Inc()
+}
+
+func updateTemplates(c *gin.Context) {
+	path := conf.Server.Path + "campaign/**/*"
+	log.Debug("update templates path: " + path)
+	e.LoadHTMLGlob(path)
+	handlers.UpdateCampaignByLink()
+	c.JSON(200, struct{}{})
 }

@@ -18,12 +18,15 @@ import (
 	"github.com/vostrok/dispatcherd/src/sessions"
 	"github.com/vostrok/dispatcherd/src/utils"
 	inmem_client "github.com/vostrok/inmem/rpcclient"
+	inmem_service "github.com/vostrok/inmem/service"
 	queue_config "github.com/vostrok/utils/config"
 )
 
 var cnf config.AppConfig
 
 var notifierService rbmq.Notifier
+
+var campaignByLink map[string]inmem_service.Campaign
 
 func Init(conf config.AppConfig) {
 	log.SetLevel(log.DebugLevel)
@@ -33,6 +36,30 @@ func Init(conf config.AppConfig) {
 
 	content.Init(conf.ContentClient)
 	inmem_client.Init(conf.InMemConfig)
+
+	campaignByLink = make(map[string]inmem_service.Campaign)
+	UpdateCampaignByLink()
+}
+func UpdateCampaignByLink() error {
+	campaigns, err := inmem_client.GetAllCampaigns()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Error("cannot add campaign handlers")
+		return err
+	}
+
+	for key, _ := range campaignByLink {
+		delete(campaignByLink, key)
+	}
+	campaignByLink = make(map[string]inmem_service.Campaign, len(campaigns))
+	for _, campaign := range campaigns {
+		campaignByLink[campaign.Link] = campaign
+	}
+	log.WithFields(log.Fields{
+		"len": len(campaigns),
+	}).Info("campaigns updated")
+	return nil
 }
 
 func HandlePull(c *gin.Context) {
@@ -296,19 +323,13 @@ func ContentGet(c *gin.Context) {
 }
 
 // backward compatibility
-func AddCampaignHandlers(r *gin.Engine) {
-	campaigns, err := inmem_client.GetAllCampaigns()
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Error("cannot ad campaign handlers")
-		return
-	}
-	for _, v := range campaigns {
+func AddCampaignHandlers(e *gin.Engine) {
+	for campaignLink, v := range campaignByLink {
 		log.WithField("route", v.Link).Info("adding route")
-		rg := r.Group("/" + v.Link)
+		rg := e.Group("/" + v.Link)
 		rg.Use(AccessHandler)
 		rg.Use(NotifyAccessCampaignHandler)
+		campaignByLink[campaignLink].IncRatio()
 		rg.GET("", v.Serve)
 	}
 }
@@ -325,15 +346,23 @@ func AddCampaignHandler(r *gin.Engine) {
 func serveCampaigns(c *gin.Context) {
 	m.Access.Inc()
 	campaignLink := c.Params.ByName("campaign_link")
-	campaign, err := inmem_client.GetCampaignByLink(campaignLink)
-	if err != nil {
-		m.PageNotFoundError.Inc()
-		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+
+	if _, ok := campaignByLink[campaignLink]; !ok {
+		campaign, err := inmem_client.GetCampaignByLink(campaignLink)
+		if err != nil {
+			m.PageNotFoundError.Inc()
+			http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+		} else {
+			campaignByLink[campaignLink] = campaign
+		}
 	}
+
+	campaignByLink[campaignLink].IncRatio()
+
 	m.CampaignAccess.Inc()
 	m.Success.Inc()
-	utils.ServeBytes(campaign.Content, c)
 
+	campaignByLink[campaignLink].Serve(c)
 }
 
 // on each access page

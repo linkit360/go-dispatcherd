@@ -29,9 +29,10 @@ type AppConfig struct {
 }
 
 type ServerConfig struct {
-	Port     string                  `default:"50300"`
-	Path     string                  `default:"/var/www/xmp.linkit360.ru/web/" yaml:"path"`
-	Sessions sessions.SessionsConfig `yaml:"sessions"`
+	Port                  string                  `default:"50300"`
+	Path                  string                  `default:"/var/www/xmp.linkit360.ru/web/" yaml:"path"`
+	Sessions              sessions.SessionsConfig `yaml:"sessions"`
+	TemplatesUpdatePeriod int                     `yaml:"templates_update_period" default:"600"`
 }
 type ServiceConfig struct {
 	ErrorRedirectUrl   string `default:"http://id.slypee.com" yaml:"error_redirect_url"`
