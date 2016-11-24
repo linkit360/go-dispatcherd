@@ -21,11 +21,11 @@ type AppConfig struct {
 	Name            string                  `yaml:"name"`
 	Server          ServerConfig            `yaml:"server"`
 	Service         ServiceConfig           `yaml:"service"`
+	Db              db.DataBaseConfig       `yaml:"db"`
 	ContentClient   content.RPCClientConfig `yaml:"content_client"`
 	InMemConfig     inmem.RPCClientConfig   `yaml:"inmem_client"`
 	Notifier        rbmq.NotifierConfig     `yaml:"notifier"`
 	PrivateNetworks []inmem_service.IpRange `yaml:"private_networks"`
-	Db              db.DataBaseConfig       `yaml:"db"`
 }
 
 type ServerConfig struct {

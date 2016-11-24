@@ -1,5 +1,11 @@
 package handlers
 
+// handlers of dispatcher:
+// handle pull
+// handle get content
+// handle campaigns
+// access notify handler
+// access middleware
 import (
 	"errors"
 	"fmt"
@@ -201,6 +207,8 @@ func HandlePull(c *gin.Context) {
 	m.Success.Inc()
 }
 
+// same as handle pull, but do not create subscription
+// and has different metrics in the end
 func ContentGet(c *gin.Context) {
 	m.CampaignAccess.Inc()
 
@@ -419,6 +427,7 @@ func NotifyAccessCampaignHandler(c *gin.Context) {
 	}
 }
 
+// just log and count all requests
 func AccessHandler(c *gin.Context) {
 	m.Overall.Inc()
 	begin := time.Now()

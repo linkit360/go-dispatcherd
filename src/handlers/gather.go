@@ -1,5 +1,6 @@
 package handlers
 
+// gather information from headers, etc
 import (
 	"encoding/json"
 	"errors"
