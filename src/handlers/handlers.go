@@ -41,7 +41,9 @@ func Init(conf config.AppConfig) {
 	notifierService = rbmq.NewNotifierService(conf.Notifier)
 
 	content.Init(conf.ContentClient)
-	inmem_client.Init(conf.InMemConfig)
+	if err := inmem_client.Init(conf.InMemConfig); err != nil {
+		log.Fatal("cannot init inmem client")
+	}
 
 	campaignByLink = make(map[string]inmem_service.Campaign)
 	UpdateCampaignByLink()
