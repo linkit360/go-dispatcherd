@@ -32,7 +32,7 @@ var cnf config.AppConfig
 
 var notifierService rbmq.Notifier
 
-var campaignByLink map[string]inmem_service.Campaign
+var campaignByLink map[string]*inmem_service.Campaign
 
 func Init(conf config.AppConfig) {
 	log.SetLevel(log.DebugLevel)
@@ -45,7 +45,6 @@ func Init(conf config.AppConfig) {
 		log.Fatal("cannot init inmem client")
 	}
 
-	campaignByLink = make(map[string]inmem_service.Campaign)
 	UpdateCampaignByLink()
 }
 func UpdateCampaignByLink() error {
@@ -60,9 +59,9 @@ func UpdateCampaignByLink() error {
 	for key, _ := range campaignByLink {
 		delete(campaignByLink, key)
 	}
-	campaignByLink = make(map[string]inmem_service.Campaign, len(campaigns))
+	campaignByLink = make(map[string]*inmem_service.Campaign, len(campaigns))
 	for _, campaign := range campaigns {
-		campaignByLink[campaign.Link] = campaign
+		campaignByLink[campaign.Link] = &campaign
 	}
 	log.WithFields(log.Fields{
 		"len": len(campaigns),
@@ -334,12 +333,11 @@ func ContentGet(c *gin.Context) {
 
 // backward compatibility
 func AddCampaignHandlers(e *gin.Engine) {
-	for campaignLink, v := range campaignByLink {
+	for _, v := range campaignByLink {
 		log.WithField("route", v.Link).Info("adding route")
 		rg := e.Group("/" + v.Link)
 		rg.Use(AccessHandler)
 		rg.Use(NotifyAccessCampaignHandler)
-		campaignByLink[campaignLink].IncRatio()
 		rg.GET("", v.Serve)
 	}
 }
@@ -363,12 +361,9 @@ func serveCampaigns(c *gin.Context) {
 			m.PageNotFoundError.Inc()
 			http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		} else {
-			campaignByLink[campaignLink] = campaign
+			campaignByLink[campaignLink] = &campaign
 		}
 	}
-
-	campaignByLink[campaignLink].IncRatio()
-
 	m.CampaignAccess.Inc()
 	m.Success.Inc()
 
