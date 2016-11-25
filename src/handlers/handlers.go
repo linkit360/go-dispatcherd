@@ -61,10 +61,13 @@ func UpdateCampaignByLink() error {
 	}
 	campaignByLink = make(map[string]*inmem_service.Campaign, len(campaigns))
 	for _, campaign := range campaigns {
-		campaignByLink[campaign.Link] = &campaign
+		// todo:
+		camp := campaign
+		campaignByLink[campaign.Link] = &camp
 	}
 	log.WithFields(log.Fields{
 		"len": len(campaigns),
+		"c":   fmt.Sprintf("%#v", campaignByLink),
 	}).Info("campaigns updated")
 	return nil
 }

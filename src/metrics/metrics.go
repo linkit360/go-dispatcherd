@@ -2,6 +2,7 @@ package metrics
 
 import (
 	m "github.com/vostrok/utils/metrics"
+	"time"
 )
 
 var (
@@ -53,4 +54,25 @@ func Init(appName string) {
 	NotSupported = newGaugeGatherErrors("not_supported", " operator is not supported")
 	GetInfoByMsisdnError = newGaugeGatherErrors("info_by_msisdn", "cannot find info by msisdn")
 	OperatorNameError = newGaugeGatherErrors("operator_name", "cannot determine operator name by code")
+
+	go func() {
+		for range time.Tick(time.Minute) {
+			Success.Update()
+			Errors.Update()
+			Overall.Update()
+			Agree.Update()
+			AgreeSuccess.Update()
+			CampaignAccess.Update()
+			ContentGetSuccess.Update()
+			PageNotFoundError.Update()
+			CampaignHashWrong.Update()
+			ContentDeliveryErrors.Update()
+			ContentdRPCDialError.Update()
+			IPNotFoundError.Update()
+			MsisdnNotFoundError.Update()
+			NotSupported.Update()
+			GetInfoByMsisdnError.Update()
+			OperatorNameError.Update()
+		}
+	}()
 }
