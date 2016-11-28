@@ -94,7 +94,7 @@ type AccessCampaignNotify struct {
 	UrlPath      string    `json:"url_path,omitempty"`
 	Method       string    `json:"method,omitempty"`
 	Headers      string    `json:"headers,omitempty"`
-	Error        string    `json:"error,omitempty"`
+	Error        string    `json:"err,omitempty"`
 	CampaignId   int64     `json:"campaign_id,omitempty"`
 	ContentId    int64     `json:"content_id,omitempty"`
 	ServiceId    int64     `json:"service_id,omitempty"`
@@ -119,7 +119,7 @@ func (service notifier) AccessCampaignNotify(msg AccessCampaignNotify) error {
 
 type UserActionsNotify struct {
 	Tid    string    `json:"tid,omitempty"`
-	Error  string    `json:"error,omitempty"`
+	Error  string    `json:"err,omitempty"`
 	Action string    `json:"action,omitempty"`
 	SentAt time.Time `json:"sent_at,omitempty"`
 }

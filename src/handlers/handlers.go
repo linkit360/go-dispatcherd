@@ -416,9 +416,9 @@ func NotifyAccessCampaignHandler(c *gin.Context) {
 	msg, err := gatherInfo(tid, campaign.Hash, c)
 	if err != nil {
 		logCtx.WithFields(log.Fields{
-			"error":          err.Error(),
+			"gatherInfo":     err.Error(),
 			"accessCampaign": msg,
-		}).Error("gather access campaign error")
+		}).Debug("gather access campaign")
 	}
 	if err := notifierService.AccessCampaignNotify(msg); err != nil {
 		logCtx.WithField("error", err.Error()).Error("notify access campaign")

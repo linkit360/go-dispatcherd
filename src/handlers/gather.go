@@ -55,13 +55,13 @@ func gatherInfo(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampai
 		infos, err := inmem_client.GetIPInfoByIps(IPs)
 		if err != nil {
 			m.IPNotFoundError.Inc()
-			logCtx.Error("cannot get ip infos")
+			logCtx.Debug("cannot get ip infos")
 		}
 		if len(infos) > 0 {
 			info := inmem_service.GetSupportedIPInfo(infos)
 			if info.Supported == false {
 				m.IPNotFoundError.Inc()
-				logCtx.Error("cannot determine IP address")
+				logCtx.Debug("cannot determine IP address")
 			} else {
 				log.WithFields(log.Fields{
 					"ip":            info.IP,
@@ -128,7 +128,7 @@ func gatherInfo(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampai
 		msg.Error = err.Error()
 		logCtx.WithFields(log.Fields{
 			"Header": r.Header,
-		}).Error("msisdn is empty")
+		}).Debug("msisdn is empty")
 		return msg, errors.New("Msisdn not found")
 	}
 
@@ -139,9 +139,10 @@ func gatherInfo(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampai
 	info, err := inmem_client.GetIPInfoByMsisdn(msg.Msisdn)
 	if err != nil {
 		m.GetInfoByMsisdnError.Inc()
+
 		err = fmt.Errorf("operator.GetInfoByMsisdn: %s", err.Error())
 		msg.Error = err.Error()
-		logCtx.WithFields(log.Fields{}).Error("cannot find info by msisdn")
+		logCtx.WithFields(log.Fields{}).Debug("cannot find info by msisdn")
 		return msg, err
 	}
 	msg.IP = info.IP
