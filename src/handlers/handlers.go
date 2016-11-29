@@ -83,6 +83,7 @@ func HandlePull(c *gin.Context) {
 	logCtx := log.WithFields(log.Fields{
 		"tid": tid,
 	})
+	logCtx.Debug("handle pull")
 	var msg rbmq.AccessCampaignNotify
 	action := rbmq.UserActionsNotify{
 		Action: "pull_click",
@@ -171,26 +172,6 @@ func HandlePull(c *gin.Context) {
 	msg.ContentId = contentProperties.ContentId
 	msg.ServiceId = contentProperties.ServiceId
 
-	// todo one time url-s
-	err = utils.ServeAttachment(
-		cnf.Server.Path+"uploaded_content/"+contentProperties.ContentPath,
-		contentProperties.ContentName,
-		c,
-		logCtx,
-	)
-	if err != nil {
-		m.ContentDeliveryErrors.Inc()
-
-		err := fmt.Errorf("serveContentFile: %s", err.Error())
-		logCtx.WithField("error", err.Error()).Error("serveContentFile")
-		c.Error(err)
-		msg.Error = err.Error()
-		msg.Error = err.Error()
-		action.Error = err.Error()
-		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
-		return
-	}
-	logCtx.WithFields(log.Fields{}).Debug("served file ok")
 	m.AgreeSuccess.Inc()
 
 	operator, err := inmem_client.GetOperatorByCode(msg.OperatorCode)
@@ -224,6 +205,7 @@ func ContentGet(c *gin.Context) {
 	logCtx := log.WithFields(log.Fields{
 		"tid": tid,
 	})
+	logCtx.Debug("handle get content")
 	var msg rbmq.AccessCampaignNotify
 	action := rbmq.UserActionsNotify{
 		Action: "content_get",
@@ -384,7 +366,7 @@ func NotifyAccessCampaignHandler(c *gin.Context) {
 	campaignHash := ""
 	if err != nil {
 		log.WithFields(log.Fields{
-			"error": "unknown campaign",
+			"error": err.Error(),
 			"path":  campaignLink,
 		}).Error("campaign is unknown")
 	} else {
