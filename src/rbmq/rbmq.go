@@ -6,12 +6,11 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/vostrok/contentd/service"
 	"github.com/vostrok/utils/amqp"
 )
 
 type Notifier interface {
-	NewSubscriptionNotify(string, *service.ContentSentProperties) error
+	NewSubscriptionNotify(string, interface{}) error
 
 	AccessCampaignNotify(msg AccessCampaignNotify) error
 
@@ -59,12 +58,7 @@ func NewNotifierService(conf NotifierConfig) Notifier {
 	return n
 }
 
-func (service notifier) NewSubscriptionNotify(queue string, msg *service.ContentSentProperties) error {
-	log.WithFields(log.Fields{
-		"event":  "new_subscription",
-		"tid":    msg.Tid,
-		"msisdn": msg.Msisdn,
-	}).Debug("got event")
+func (service notifier) NewSubscriptionNotify(queue string, msg interface{}) error {
 
 	event := EventNotify{
 		EventName: "new_subscription",
@@ -76,7 +70,11 @@ func (service notifier) NewSubscriptionNotify(queue string, msg *service.Content
 		return fmt.Errorf("json.Marshal: %s", err.Error())
 	}
 
-	log.WithField("body", string(body)).Debug("sent")
+	log.WithFields(log.Fields{
+		"queue": queue,
+		"event": "new_subscription",
+		"body":  string(body),
+	}).Debug("sent")
 	service.mq.Publish(amqp.AMQPMessage{queue, 0, body})
 	return nil
 }

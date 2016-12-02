@@ -26,6 +26,7 @@ import (
 	inmem_client "github.com/vostrok/inmem/rpcclient"
 	inmem_service "github.com/vostrok/inmem/service"
 	queue_config "github.com/vostrok/utils/config"
+	"github.com/vostrok/utils/rec"
 )
 
 var cnf config.AppConfig
@@ -74,9 +75,9 @@ func UpdateCampaignByLink() error {
 
 func HandlePull(c *gin.Context) {
 	m.Agree.Inc()
-
 	sessions.SetSession(c)
 	tid := sessions.GetTid(c)
+
 	if tid == "" {
 		tid = "testtid"
 	}
@@ -84,11 +85,12 @@ func HandlePull(c *gin.Context) {
 		"tid": tid,
 	})
 	logCtx.Debug("handle pull")
-	var msg rbmq.AccessCampaignNotify
+
 	action := rbmq.UserActionsNotify{
 		Action: "pull_click",
 		Tid:    tid,
 	}
+
 	var err error
 	defer func() {
 		if err != nil {
@@ -101,94 +103,85 @@ func HandlePull(c *gin.Context) {
 		}
 		sessions.RemoveTid(c)
 	}()
-	logCtx.Debug(c.Request.Header)
 
 	campaignHash := c.Params.ByName("campaign_hash")
 	if len(campaignHash) != cnf.Service.CampaignHashLength {
 		m.CampaignHashWrong.Inc()
 
+		err := errors.New("Wrong campaign length")
+		c.Error(err)
+
 		logCtx.WithFields(log.Fields{
 			"campaignHash": campaignHash,
 			"length":       len(campaignHash),
 		}).Error("Length is too small")
-
-		err := errors.New("Wrong campaign length")
-		c.Error(err)
-		msg.Error = err.Error()
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
 	logCtx = logCtx.WithField("campaignHash", campaignHash)
 
-	msg, err = gatherInfo(tid, campaignHash, c)
+	msg, err := gatherInfo(tid, campaignHash, c)
 	if err != nil {
-		msg.Error = err.Error()
 		action.Error = err.Error()
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
 	logCtx = logCtx.WithField("msisdn", msg.Msisdn)
-	logCtx.WithFields(log.Fields{}).Debug("gathered info, get content id..")
 
-	contentProperties := &content_service.ContentSentProperties{}
-	contentProperties, err = content.Get(content_service.GetUrlByCampaignHashParams{
-		Msisdn:       msg.Msisdn,
-		Tid:          tid,
-		CampaignHash: campaignHash,
-		CountryCode:  msg.CountryCode,
-		OperatorCode: msg.OperatorCode,
-		Publisher:    sessions.GetFromSession("publisher", c),
-		Pixel:        sessions.GetFromSession("pixel", c),
-	})
+	campaign, err := inmem_client.GetCampaignByHash(campaignHash)
 	if err != nil {
-		m.ContentdRPCDialError.Inc()
-		m.ContentDeliveryErrors.Inc()
-
-		err = fmt.Errorf("content.Get: %s", err.Error())
-		logCtx.WithField("error", err.Error()).Error("contentClient.Get")
-		c.Error(err)
-		msg.Error = err.Error()
-		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
-		logCtx.Fatal("contentd fatal: trying to free all resources")
-		return
-	}
-	if contentProperties.Error != "" {
-		m.ContentDeliveryErrors.Inc()
-
-		err = fmt.Errorf("contentClient.Get: %s", contentProperties.Error)
-		logCtx.WithField("error", contentProperties.Error).Error("contentClient.Get")
-		err = errors.New(contentProperties.Error)
-		c.Error(err)
-		msg.Error = contentProperties.Error
+		action.Error = err.Error()
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
-	logCtx.WithFields(log.Fields{
-		"contentId": contentProperties.ContentId,
-		"path":      contentProperties.ContentPath,
-	}).Debug("contentd response")
 
-	msg.CampaignId = contentProperties.CampaignId
-	msg.ContentId = contentProperties.ContentId
-	msg.ServiceId = contentProperties.ServiceId
+	service, err := inmem_client.GetServiceById(campaign.ServiceId)
+	if err != nil {
+		m.ServiceError.Inc()
 
-	m.AgreeSuccess.Inc()
+		logCtx.WithFields(log.Fields{
+			"error":      err.Error(),
+			"service_id": campaign.ServiceId,
+		}).Error("cannot get service by id")
+		return
+	}
+	r := rec.Record{
+		Msisdn:             msg.Msisdn,
+		Tid:                tid,
+		SubscriptionStatus: "",
+		CountryCode:        msg.CountryCode,
+		OperatorCode:       msg.OperatorCode,
+		Publisher:          sessions.GetFromSession("publisher", c),
+		Pixel:              sessions.GetFromSession("pixel", c),
+		CampaignId:         campaign.Id,
+		ServiceId:          campaign.ServiceId,
+		DelayHours:         service.DelayHours,
+		PaidHours:          service.PaidHours,
+		KeepDays:           service.KeepDays,
+		Price:              100 * int(service.Price),
+		Type:               "rec",
+	}
 
 	operator, err := inmem_client.GetOperatorByCode(msg.OperatorCode)
 	if err != nil {
-		logCtx.WithFields(log.Fields{
-			"error":         err.Error(),
-			"operator_code": msg.OperatorCode,
-		}).Error("cannot get operator")
 		m.OperatorNameError.Inc()
+
+		logCtx.WithFields(log.Fields{
+			"error": err.Error(),
+			"code":  msg.OperatorCode,
+		}).Error("cannot get operator by code")
 		return
 	}
 	queue := queue_config.GetNewSubscriptionQueueName(operator.Name)
 	logCtx.WithField("queue", queue).Debug("inform new subscritpion")
-	if err = notifierService.NewSubscriptionNotify(queue, contentProperties); err != nil {
+	if err = notifierService.NewSubscriptionNotify(queue, r); err != nil {
+		m.NotifyNewSubscriptionError.Inc()
+
 		logCtx.WithField("error", err.Error()).Error("notify new subscription")
 		return
 	}
+
+	m.AgreeSuccess.Inc()
 	m.Success.Inc()
 }
 

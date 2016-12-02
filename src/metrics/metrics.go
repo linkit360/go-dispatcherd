@@ -15,15 +15,17 @@ var (
 	CampaignAccess    m.Gauge
 	ContentGetSuccess m.Gauge
 
-	PageNotFoundError     m.Gauge
-	CampaignHashWrong     m.Gauge
-	ContentDeliveryErrors m.Gauge
-	ContentdRPCDialError  m.Gauge
-	IPNotFoundError       m.Gauge
-	MsisdnNotFoundError   m.Gauge
-	NotSupported          m.Gauge
-	GetInfoByMsisdnError  m.Gauge
-	OperatorNameError     m.Gauge
+	PageNotFoundError          m.Gauge
+	CampaignHashWrong          m.Gauge
+	ContentDeliveryErrors      m.Gauge
+	ContentdRPCDialError       m.Gauge
+	IPNotFoundError            m.Gauge
+	MsisdnNotFoundError        m.Gauge
+	NotSupported               m.Gauge
+	GetInfoByMsisdnError       m.Gauge
+	OperatorNameError          m.Gauge
+	ServiceError               m.Gauge
+	NotifyNewSubscriptionError m.Gauge
 )
 
 func newGaugeCommon(name, help string) m.Gauge {
@@ -54,6 +56,8 @@ func Init(appName string) {
 	NotSupported = newGaugeGatherErrors("not_supported", " operator is not supported")
 	GetInfoByMsisdnError = newGaugeGatherErrors("info_by_msisdn", "cannot find info by msisdn")
 	OperatorNameError = newGaugeGatherErrors("operator_name", "cannot determine operator name by code")
+	ServiceError = newGaugeGatherErrors("service", "cannot determine service by id")
+	NotifyNewSubscriptionError = newGaugeCommon("notify_new_subscription_error", "cannot notify new subscription")
 
 	go func() {
 		for range time.Tick(time.Minute) {
@@ -73,6 +77,8 @@ func Init(appName string) {
 			NotSupported.Update()
 			GetInfoByMsisdnError.Update()
 			OperatorNameError.Update()
+			ServiceError.Update()
+			NotifyNewSubscriptionError.Update()
 		}
 	}()
 }
