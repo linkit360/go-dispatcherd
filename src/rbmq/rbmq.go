@@ -116,10 +116,12 @@ func (service notifier) AccessCampaignNotify(msg AccessCampaignNotify) error {
 }
 
 type UserActionsNotify struct {
-	Tid    string    `json:"tid,omitempty"`
-	Error  string    `json:"err,omitempty"`
-	Action string    `json:"action,omitempty"`
-	SentAt time.Time `json:"sent_at,omitempty"`
+	Tid        string    `json:"tid,omitempty"`
+	CampaignId int64     `json:"campaign_id,omitempty"`
+	Msisdn     string    `json:"msisdn,omitempty"`
+	Error      string    `json:"err,omitempty"`
+	Action     string    `json:"action,omitempty"`
+	SentAt     time.Time `json:"sent_at,omitempty"`
 }
 
 func (service notifier) ActionNotify(msg UserActionsNotify) error {

@@ -126,6 +126,7 @@ func HandlePull(c *gin.Context) {
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
+	action.Msisdn = msg.Msisdn
 	logCtx = logCtx.WithField("msisdn", msg.Msisdn)
 
 	campaign, err := inmem_client.GetCampaignByHash(campaignHash)
@@ -134,6 +135,7 @@ func HandlePull(c *gin.Context) {
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
+	action.CampaignId = campaign.Id
 
 	service, err := inmem_client.GetServiceById(campaign.ServiceId)
 	if err != nil {
@@ -242,6 +244,7 @@ func ContentGet(c *gin.Context) {
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
+	action.Msisdn = msg.Msisdn
 	logCtx = logCtx.WithField("msisdn", msg.Msisdn)
 	logCtx.WithFields(log.Fields{}).Debug("gathered info, get content id..")
 
@@ -286,6 +289,8 @@ func ContentGet(c *gin.Context) {
 	msg.CampaignId = contentProperties.CampaignId
 	msg.ContentId = contentProperties.ContentId
 	msg.ServiceId = contentProperties.ServiceId
+
+	action.CampaignId = contentProperties.CampaignId
 
 	// todo one time url-s
 	err = utils.ServeAttachment(
