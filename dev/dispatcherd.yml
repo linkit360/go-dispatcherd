@@ -32,6 +32,7 @@ notifier:
       host: localhost
       port: 5672
     chan_capacity: 10000000
+    pending_buffer_path: /home/centos/linkit/dispatcherd_pending.json
 
 consumer:
   conn:

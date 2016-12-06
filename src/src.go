@@ -5,6 +5,7 @@ import (
 	"runtime"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/fvbock/endless"
 	"github.com/gin-gonic/gin"
 
 	"github.com/vostrok/dispatcherd/src/config"
@@ -50,7 +51,8 @@ func RunServer() {
 
 	e.RedirectTrailingSlash = true
 
-	e.Run(":" + conf.Server.Port)
+	endless.ListenAndServe(":"+conf.Server.Port, e)
+	//e.Run(":" + conf.Server.Port)
 }
 
 func notFound(c *gin.Context) {
