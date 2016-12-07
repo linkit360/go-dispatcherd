@@ -74,13 +74,18 @@ func UpdateCampaignByLink() error {
 }
 
 func HandlePull(c *gin.Context) {
-	if _, err := startNewSubscription(c); err != nil {
+	campaignHash := getCampaignHash(c)
+	if len(campaignHash) != cnf.Service.CampaignHashLength {
+		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+		return
+	}
+	if _, err := startNewSubscription(c, campaignHash); err != nil {
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
 }
 
-func startNewSubscription(c *gin.Context) (r rec.Record, err error) {
+func startNewSubscription(c *gin.Context, campaignHash string) (r rec.Record, err error) {
 	m.Agree.Inc()
 	sessions.SetSession(c)
 	tid := sessions.GetTid(c)
@@ -106,25 +111,12 @@ func startNewSubscription(c *gin.Context) (r rec.Record, err error) {
 		}
 		sessions.RemoveTid(c)
 	}()
-
-	campaignHash := c.Params.ByName("campaign_hash")
-	if len(campaignHash) != cnf.Service.CampaignHashLength {
-		m.CampaignHashWrong.Inc()
-
-		err = errors.New("Wrong campaign length")
-		c.Error(err)
-
-		logCtx.WithFields(log.Fields{
-			"campaignHash": campaignHash,
-			"length":       len(campaignHash),
-		}).Error("campaign hash length is too small")
-		return
-	}
-	msg, err := gatherInfo(tid, campaignHash, c)
+	msg, err := gatherInfo(tid, c)
 	if err != nil {
 		action.Error = err.Error()
 
 	}
+	msg.CampaignHash = campaignHash
 	action.Msisdn = msg.Msisdn
 	logCtx = logCtx.WithField("msisdn", msg.Msisdn)
 
@@ -139,6 +131,7 @@ func startNewSubscription(c *gin.Context) (r rec.Record, err error) {
 	if err != nil {
 		m.ServiceError.Inc()
 
+		err = fmt.Errorf("inmem_client.GetServiceById: %s", err.Error())
 		logCtx.WithFields(log.Fields{
 			"error":      err.Error(),
 			"service_id": campaign.ServiceId,
@@ -165,6 +158,7 @@ func startNewSubscription(c *gin.Context) (r rec.Record, err error) {
 	if err != nil {
 		m.OperatorNameError.Inc()
 
+		err = fmt.Errorf("inmem_client.GetOperatorByCode: %s", err.Error())
 		logCtx.WithFields(log.Fields{
 			"error": err.Error(),
 			"code":  msg.OperatorCode,
@@ -176,6 +170,7 @@ func startNewSubscription(c *gin.Context) (r rec.Record, err error) {
 	if err = notifierService.NewSubscriptionNotify(queue, r); err != nil {
 		m.NotifyNewSubscriptionError.Inc()
 
+		err = fmt.Errorf("notifierService.NewSubscriptionNotify: %s", err.Error())
 		logCtx.WithField("error", err.Error()).Error("notify new subscription")
 		return
 	}
@@ -198,8 +193,8 @@ func ContentGet(c *gin.Context) {
 	logCtx := log.WithFields(log.Fields{
 		"tid": tid,
 	})
-	logCtx.Debug("handle get content")
-	var msg rbmq.AccessCampaignNotify
+	logCtx.Debug("get content")
+
 	action := rbmq.UserActionsNotify{
 		Action: "content_get",
 		Tid:    tid,
@@ -218,7 +213,7 @@ func ContentGet(c *gin.Context) {
 	}()
 	logCtx.Debug(c.Request.Header)
 
-	campaignHash := c.Params.ByName("campaign_hash")
+	campaignHash := getCampaignHash(c)
 	if len(campaignHash) != cnf.Service.CampaignHashLength {
 		m.CampaignHashWrong.Inc()
 
@@ -229,19 +224,17 @@ func ContentGet(c *gin.Context) {
 
 		err := errors.New("Wrong campaign length")
 		c.Error(err)
-		msg.Error = err.Error()
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
-	logCtx = logCtx.WithField("campaignHash", campaignHash)
-
-	msg, err = gatherInfo(tid, campaignHash, c)
+	msg, err := gatherInfo(tid, c)
 	if err != nil {
 		msg.Error = err.Error()
 		action.Error = err.Error()
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
+	msg.CampaignHash = campaignHash
 	action.Msisdn = msg.Msisdn
 	logCtx = logCtx.WithField("msisdn", msg.Msisdn)
 	logCtx.WithFields(log.Fields{}).Debug("gathered info, get content id..")
@@ -312,6 +305,18 @@ func ContentGet(c *gin.Context) {
 	m.Success.Inc()
 }
 
+func getCampaignHash(c *gin.Context) string {
+	campaignHash := c.Params.ByName("campaign_hash")
+	if len(campaignHash) == cnf.Service.CampaignHashLength {
+		return campaignHash
+	}
+
+	if campaignHash == "" {
+		m.CampaignHashWrong.Inc()
+	}
+	return campaignHash
+}
+
 func AddCampaignHandler(r *gin.Engine) {
 	log.WithField("route", "lp").Info("adding lp route")
 	rg := r.Group("/lp/:campaign_link")
@@ -347,7 +352,7 @@ func serveCampaigns(c *gin.Context) {
 	campaignByLink[campaignLink].Serve(c)
 
 	if campaignByLink[campaignLink].CanAutoClick {
-		r, err := startNewSubscription(c)
+		r, err := startNewSubscription(c, campaignByLink[campaignLink].Hash)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"campaignid": campaignByLink[campaignLink].Id,
@@ -385,12 +390,22 @@ func NotifyAccessCampaignHandler(c *gin.Context) {
 		"campaignHash": campaignHash,
 	})
 
+	msg, err := gatherInfo(tid, c)
+	if err != nil {
+		logCtx.WithFields(log.Fields{
+			"gatherInfo":     err.Error(),
+			"accessCampaign": msg,
+		}).Debug("gather access campaign")
+	}
+	msg.CampaignHash = campaign.Hash
+
 	begin := time.Now()
 	action := rbmq.UserActionsNotify{
-		Action: "access",
-		Tid:    tid,
+		Action:     "access",
+		Tid:        tid,
+		Msisdn:     msg.Msisdn,
+		CampaignId: campaign.Id,
 	}
-
 	if err := notifierService.ActionNotify(action); err != nil {
 		logCtx.WithFields(log.Fields{
 			"error":  err.Error(),
@@ -401,14 +416,6 @@ func NotifyAccessCampaignHandler(c *gin.Context) {
 			"action": action,
 			"took":   time.Since(begin),
 		}).Info("done notify user action")
-	}
-
-	msg, err := gatherInfo(tid, campaign.Hash, c)
-	if err != nil {
-		logCtx.WithFields(log.Fields{
-			"gatherInfo":     err.Error(),
-			"accessCampaign": msg,
-		}).Debug("gather access campaign")
 	}
 	if err := notifierService.AccessCampaignNotify(msg); err != nil {
 		logCtx.WithField("error", err.Error()).Error("notify access campaign")

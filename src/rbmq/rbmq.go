@@ -7,10 +7,11 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/vostrok/utils/amqp"
+	"github.com/vostrok/utils/rec"
 )
 
 type Notifier interface {
-	NewSubscriptionNotify(string, interface{}) error
+	NewSubscriptionNotify(string, rec.Record) error
 
 	AccessCampaignNotify(msg AccessCampaignNotify) error
 
@@ -58,23 +59,16 @@ func NewNotifierService(conf NotifierConfig) Notifier {
 	return n
 }
 
-func (service notifier) NewSubscriptionNotify(queue string, msg interface{}) error {
-
+func (service notifier) NewSubscriptionNotify(queue string, msg rec.Record) error {
+	msg.SentAt = time.Now().UTC()
 	event := EventNotify{
 		EventName: "new_subscription",
 		EventData: msg,
 	}
-
 	body, err := json.Marshal(event)
 	if err != nil {
 		return fmt.Errorf("json.Marshal: %s", err.Error())
 	}
-
-	log.WithFields(log.Fields{
-		"queue": queue,
-		"event": "new_subscription",
-		"body":  string(body),
-	}).Debug("sent")
 	service.mq.Publish(amqp.AMQPMessage{queue, 0, body})
 	return nil
 }
@@ -126,17 +120,14 @@ type UserActionsNotify struct {
 
 func (service notifier) ActionNotify(msg UserActionsNotify) error {
 	msg.SentAt = time.Now().UTC()
-
 	event := EventNotify{
 		EventName: "user_actions",
 		EventData: msg,
 	}
-	log.WithField("event", event).Debug("got event")
 	body, err := json.Marshal(event)
 	if err != nil {
 		return fmt.Errorf("json.Marshal: %s", err.Error())
 	}
-	log.WithField("body", string(body)).Debug("sent")
 	service.mq.Publish(amqp.AMQPMessage{service.q.userAction, 0, body})
 	return nil
 }

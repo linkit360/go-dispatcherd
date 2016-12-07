@@ -20,8 +20,8 @@ import (
 	inmem_service "github.com/vostrok/inmem/service"
 )
 
-func gatherInfo(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampaignNotify, err error) {
-	logCtx := log.WithFields(log.Fields{"tid": tid, "campaign": campaignHash})
+func gatherInfo(tid string, c *gin.Context) (msg rbmq.AccessCampaignNotify, err error) {
+	logCtx := log.WithFields(log.Fields{"tid": tid})
 
 	r := c.Request
 	headers, err := json.Marshal(r.Header)
@@ -31,13 +31,12 @@ func gatherInfo(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampai
 	}
 
 	msg = rbmq.AccessCampaignNotify{
-		Tid:          tid,
-		CampaignHash: campaignHash,
-		UserAgent:    r.UserAgent(),
-		Referer:      r.Referer(),
-		UrlPath:      r.URL.String(),
-		Method:       r.Method,
-		Headers:      string(headers),
+		Tid:       tid,
+		UserAgent: r.UserAgent(),
+		Referer:   r.Referer(),
+		UrlPath:   r.URL.String(),
+		Method:    r.Method,
+		Headers:   string(headers),
 	}
 
 	//for _, e := range os.Environ() {
@@ -157,10 +156,10 @@ func gatherInfo(tid, campaignHash string, c *gin.Context) (msg rbmq.AccessCampai
 		logCtx.WithFields(log.Fields{"info": info}).Error("operator is not supported")
 		return msg, err
 	}
-
 	logCtx.WithFields(log.Fields{
 		"msisdn": msg.Msisdn,
-	}).Debug("took from prefixes table")
+		"code":   msg.OperatorCode,
+	}).Debug("found matched operator")
 	return
 }
 
