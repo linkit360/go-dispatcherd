@@ -34,9 +34,7 @@ func RunServer() {
 
 	sessions.Init(conf.Server.Sessions, e)
 
-	handlers.AddCampaignHandlers(e)
 	handlers.AddCampaignHandler(e)
-
 	metrics.AddHandler(e)
 
 	rg := e.Group("/campaign/:campaign_hash")

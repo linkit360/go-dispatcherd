@@ -74,24 +74,27 @@ func UpdateCampaignByLink() error {
 }
 
 func HandlePull(c *gin.Context) {
+	if _, err := startNewSubscription(c); err != nil {
+		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+		return
+	}
+}
+
+func startNewSubscription(c *gin.Context) (r rec.Record, err error) {
 	m.Agree.Inc()
 	sessions.SetSession(c)
 	tid := sessions.GetTid(c)
 
-	if tid == "" {
-		tid = "testtid"
-	}
 	logCtx := log.WithFields(log.Fields{
 		"tid": tid,
 	})
-	logCtx.Debug("handle pull")
+
+	logCtx.Debug("start new subscription")
 
 	action := rbmq.UserActionsNotify{
 		Action: "pull_click",
 		Tid:    tid,
 	}
-
-	var err error
 	defer func() {
 		if err != nil {
 			m.Errors.Inc()
@@ -108,23 +111,19 @@ func HandlePull(c *gin.Context) {
 	if len(campaignHash) != cnf.Service.CampaignHashLength {
 		m.CampaignHashWrong.Inc()
 
-		err := errors.New("Wrong campaign length")
+		err = errors.New("Wrong campaign length")
 		c.Error(err)
 
 		logCtx.WithFields(log.Fields{
 			"campaignHash": campaignHash,
 			"length":       len(campaignHash),
-		}).Error("Length is too small")
-		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+		}).Error("campaign hash length is too small")
 		return
 	}
-	logCtx = logCtx.WithField("campaignHash", campaignHash)
-
 	msg, err := gatherInfo(tid, campaignHash, c)
 	if err != nil {
 		action.Error = err.Error()
-		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
-		return
+
 	}
 	action.Msisdn = msg.Msisdn
 	logCtx = logCtx.WithField("msisdn", msg.Msisdn)
@@ -132,7 +131,6 @@ func HandlePull(c *gin.Context) {
 	campaign, err := inmem_client.GetCampaignByHash(campaignHash)
 	if err != nil {
 		action.Error = err.Error()
-		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
 	action.CampaignId = campaign.Id
@@ -147,7 +145,7 @@ func HandlePull(c *gin.Context) {
 		}).Error("cannot get service by id")
 		return
 	}
-	r := rec.Record{
+	r = rec.Record{
 		Msisdn:             msg.Msisdn,
 		Tid:                tid,
 		SubscriptionStatus: "",
@@ -161,7 +159,6 @@ func HandlePull(c *gin.Context) {
 		PaidHours:          service.PaidHours,
 		KeepDays:           service.KeepDays,
 		Price:              100 * int(service.Price),
-		Type:               "rec",
 	}
 
 	operator, err := inmem_client.GetOperatorByCode(msg.OperatorCode)
@@ -185,6 +182,7 @@ func HandlePull(c *gin.Context) {
 
 	m.AgreeSuccess.Inc()
 	m.Success.Inc()
+	return
 }
 
 // same as handle pull, but do not create subscription
@@ -314,18 +312,6 @@ func ContentGet(c *gin.Context) {
 	m.Success.Inc()
 }
 
-// backward compatibility
-func AddCampaignHandlers(e *gin.Engine) {
-	for _, v := range campaignByLink {
-		log.WithField("route", v.Link).Info("adding route")
-		rg := e.Group("/" + v.Link)
-		rg.Use(AccessHandler)
-		rg.Use(NotifyAccessCampaignHandler)
-		rg.GET("", v.Serve)
-	}
-}
-
-// further
 func AddCampaignHandler(r *gin.Engine) {
 	log.WithField("route", "lp").Info("adding lp route")
 	rg := r.Group("/lp/:campaign_link")
@@ -338,19 +324,43 @@ func serveCampaigns(c *gin.Context) {
 	m.Access.Inc()
 	campaignLink := c.Params.ByName("campaign_link")
 
+	// important, do not use campaign from this operation
+	// bcz we need to inc counter to process ratio
 	if _, ok := campaignByLink[campaignLink]; !ok {
 		campaign, err := inmem_client.GetCampaignByLink(campaignLink)
 		if err != nil {
 			m.PageNotFoundError.Inc()
+
+			log.WithFields(log.Fields{
+				"campaignLink": campaignLink,
+				"error":        err.Error(),
+			}).Error("cannot get campaign by link")
+
 			http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
-		} else {
-			campaignByLink[campaignLink] = &campaign
+			return
 		}
+		campaignByLink[campaignLink] = &campaign
 	}
 	m.CampaignAccess.Inc()
 	m.Success.Inc()
 
 	campaignByLink[campaignLink].Serve(c)
+
+	if campaignByLink[campaignLink].CanAutoClick {
+		r, err := startNewSubscription(c)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"campaignid": campaignByLink[campaignLink].Id,
+				"error":      err.Error(),
+			}).Error("cannot start new subscription")
+		} else {
+			log.WithFields(log.Fields{
+				"tid":        r.Tid,
+				"msisdn":     r.Msisdn,
+				"campaignid": campaignByLink[campaignLink].Id,
+			}).Info("added new subscritpion due to ratio")
+		}
+	}
 }
 
 // on each access page
