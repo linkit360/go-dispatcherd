@@ -39,15 +39,15 @@ func Init(conf config.AppConfig) {
 	log.SetLevel(log.DebugLevel)
 
 	cnf = conf
-	notifierService = rbmq.NewNotifierService(conf.Notifier)
 
 	content.Init(conf.ContentClient)
 	if err := inmem_client.Init(conf.InMemConfig); err != nil {
 		log.Fatal("cannot init inmem client")
 	}
-
 	UpdateCampaignByLink()
+	notifierService = rbmq.NewNotifierService(conf.Notifier)
 }
+
 func UpdateCampaignByLink() error {
 	campaigns, err := inmem_client.GetAllCampaigns()
 	if err != nil {
@@ -76,9 +76,11 @@ func UpdateCampaignByLink() error {
 func HandlePull(c *gin.Context) {
 	campaignHash := getCampaignHash(c)
 	if len(campaignHash) != cnf.Service.CampaignHashLength {
+		log.Error("unknown hash")
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
+	log.Debug("handle pull_click")
 	if _, err := startNewSubscription(c, campaignHash); err != nil {
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
@@ -114,7 +116,7 @@ func startNewSubscription(c *gin.Context, campaignHash string) (r rec.Record, er
 	msg, err := gatherInfo(tid, c)
 	if err != nil {
 		action.Error = err.Error()
-
+		return
 	}
 	msg.CampaignHash = campaignHash
 	action.Msisdn = msg.Msisdn
@@ -122,7 +124,13 @@ func startNewSubscription(c *gin.Context, campaignHash string) (r rec.Record, er
 
 	campaign, err := inmem_client.GetCampaignByHash(campaignHash)
 	if err != nil {
+		m.CampaignHashWrong.Inc()
+
 		action.Error = err.Error()
+		logCtx.WithFields(log.Fields{
+			"error": err.Error(),
+			"hash":  campaignHash,
+		}).Error("cannot get campaign by hash")
 		return
 	}
 	action.CampaignId = campaign.Id
@@ -326,25 +334,20 @@ func AddCampaignHandler(r *gin.Engine) {
 }
 
 func serveCampaigns(c *gin.Context) {
-	m.Access.Inc()
 	campaignLink := c.Params.ByName("campaign_link")
 
 	// important, do not use campaign from this operation
 	// bcz we need to inc counter to process ratio
 	if _, ok := campaignByLink[campaignLink]; !ok {
-		campaign, err := inmem_client.GetCampaignByLink(campaignLink)
-		if err != nil {
-			m.PageNotFoundError.Inc()
+		m.PageNotFoundError.Inc()
 
-			log.WithFields(log.Fields{
-				"campaignLink": campaignLink,
-				"error":        err.Error(),
-			}).Error("cannot get campaign by link")
+		log.WithFields(log.Fields{
+			"campaignLink": campaignLink,
+			"error":        "not found",
+		}).Error("cannot get campaign by link")
 
-			http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
-			return
-		}
-		campaignByLink[campaignLink] = &campaign
+		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+		return
 	}
 	m.CampaignAccess.Inc()
 	m.Success.Inc()
@@ -353,18 +356,14 @@ func serveCampaigns(c *gin.Context) {
 
 	if campaignByLink[campaignLink].CanAutoClick {
 		r, err := startNewSubscription(c, campaignByLink[campaignLink].Hash)
-		if err != nil {
-			log.WithFields(log.Fields{
-				"campaignid": campaignByLink[campaignLink].Id,
-				"error":      err.Error(),
-			}).Error("cannot start new subscription")
-		} else {
+		if err == nil {
 			log.WithFields(log.Fields{
 				"tid":        r.Tid,
 				"msisdn":     r.Msisdn,
 				"campaignid": campaignByLink[campaignLink].Id,
 			}).Info("added new subscritpion due to ratio")
 		}
+
 	}
 }
 
@@ -373,23 +372,9 @@ func NotifyAccessCampaignHandler(c *gin.Context) {
 	sessions.SetSession(c)
 	tid := sessions.GetTid(c)
 
-	paths := strings.Split(c.Request.URL.Path, "/")
-	campaignLink := paths[len(paths)-1]
-	campaign, err := inmem_client.GetCampaignByLink(campaignLink)
-	campaignHash := ""
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-			"path":  campaignLink,
-		}).Error("campaign is unknown")
-	} else {
-		campaignHash = campaign.Hash
-	}
 	logCtx := log.WithFields(log.Fields{
-		"tid":          tid,
-		"campaignHash": campaignHash,
+		"tid": tid,
 	})
-
 	msg, err := gatherInfo(tid, c)
 	if err != nil {
 		logCtx.WithFields(log.Fields{
@@ -397,15 +382,28 @@ func NotifyAccessCampaignHandler(c *gin.Context) {
 			"accessCampaign": msg,
 		}).Debug("gather access campaign")
 	}
-	msg.CampaignHash = campaign.Hash
+
+	paths := strings.Split(c.Request.URL.Path, "/")
+	campaignLink := paths[len(paths)-1]
+	campaign, ok := campaignByLink[campaignLink]
+	action := rbmq.UserActionsNotify{
+		Action: "access",
+		Tid:    tid,
+		Msisdn: msg.Msisdn,
+	}
+	if !ok {
+		log.WithFields(log.Fields{
+			"path": campaignLink,
+		}).Error("campaign is unknown")
+	} else {
+		msg.CampaignId = campaign.Id
+		action.CampaignId = campaign.Id
+
+		msg.CampaignHash = campaign.Hash
+	}
 
 	begin := time.Now()
-	action := rbmq.UserActionsNotify{
-		Action:     "access",
-		Tid:        tid,
-		Msisdn:     msg.Msisdn,
-		CampaignId: campaign.Id,
-	}
+
 	if err := notifierService.ActionNotify(action); err != nil {
 		logCtx.WithFields(log.Fields{
 			"error":  err.Error(),
@@ -427,6 +425,8 @@ func NotifyAccessCampaignHandler(c *gin.Context) {
 // just log and count all requests
 func AccessHandler(c *gin.Context) {
 	m.Overall.Inc()
+	m.Access.Inc()
+
 	begin := time.Now()
 	c.Next()
 

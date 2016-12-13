@@ -55,6 +55,7 @@ func NewNotifierService(conf NotifierConfig) Notifier {
 			},
 			mq: rabbit,
 		}
+
 	}
 	return n
 }

@@ -13,24 +13,21 @@ import (
 	"github.com/vostrok/dispatcherd/src/rbmq"
 	"github.com/vostrok/dispatcherd/src/sessions"
 	inmem "github.com/vostrok/inmem/rpcclient"
-	inmem_service "github.com/vostrok/inmem/service"
 )
 
 type AppConfig struct {
-	Name            string                  `yaml:"name"`
-	Server          ServerConfig            `yaml:"server"`
-	Service         ServiceConfig           `yaml:"service"`
-	ContentClient   content.RPCClientConfig `yaml:"content_client"`
-	InMemConfig     inmem.RPCClientConfig   `yaml:"inmem_client"`
-	Notifier        rbmq.NotifierConfig     `yaml:"notifier"`
-	PrivateNetworks []inmem_service.IpRange `yaml:"private_networks"`
+	Name          string                  `yaml:"name"`
+	Server        ServerConfig            `yaml:"server"`
+	Service       ServiceConfig           `yaml:"service"`
+	ContentClient content.RPCClientConfig `yaml:"content_client"`
+	InMemConfig   inmem.RPCClientConfig   `yaml:"inmem_client"`
+	Notifier      rbmq.NotifierConfig     `yaml:"notifier"`
 }
 
 type ServerConfig struct {
-	Port                  string                  `default:"50300"`
-	Path                  string                  `default:"/var/www/xmp.linkit360.ru/web/" yaml:"path"`
-	Sessions              sessions.SessionsConfig `yaml:"sessions"`
-	TemplatesUpdatePeriod int                     `yaml:"templates_update_period" default:"600"`
+	Port     string                  `default:"50300"`
+	Path     string                  `default:"/var/www/xmp.linkit360.ru/web/" yaml:"path"`
+	Sessions sessions.SessionsConfig `yaml:"sessions"`
 }
 type ServiceConfig struct {
 	ErrorRedirectUrl   string `default:"http://id.slypee.com" yaml:"error_redirect_url"`
