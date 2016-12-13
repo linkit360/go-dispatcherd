@@ -161,6 +161,10 @@ func startNewSubscription(c *gin.Context, campaignHash string) (r rec.Record, er
 		KeepDays:           service.KeepDays,
 		Price:              100 * int(service.Price),
 	}
+	if service.SMSSend == 1 {
+		r.SMSSend = true
+		r.SMSText = service.SMSNotPaidText
+	}
 
 	operator, err := inmem_client.GetOperatorByCode(msg.OperatorCode)
 	if err != nil {
@@ -173,7 +177,7 @@ func startNewSubscription(c *gin.Context, campaignHash string) (r rec.Record, er
 		}).Error("cannot get operator by code")
 		return
 	}
-	queue := queue_config.GetNewSubscriptionQueueName(operator.Name)
+	queue := queue_config.NewSubscriptionQueueName(operator.Name)
 	logCtx.WithField("queue", queue).Debug("inform new subscritpion")
 	if err = notifierService.NewSubscriptionNotify(queue, r); err != nil {
 		m.NotifyNewSubscriptionError.Inc()
