@@ -49,6 +49,7 @@ func Init(conf config.AppConfig) {
 }
 
 func UpdateCampaignByLink() error {
+	log.WithFields(log.Fields{}).Debug("get all campaigns")
 	campaigns, err := inmem_client.GetAllCampaigns()
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -62,7 +63,6 @@ func UpdateCampaignByLink() error {
 	}
 	campaignByLink = make(map[string]*inmem_service.Campaign, len(campaigns))
 	for _, campaign := range campaigns {
-		// todo:
 		camp := campaign
 		campaignByLink[campaign.Link] = &camp
 	}
