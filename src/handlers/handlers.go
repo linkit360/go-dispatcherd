@@ -363,6 +363,8 @@ func serveCampaigns(c *gin.Context) {
 		if err == nil {
 			log.WithFields(log.Fields{
 				"tid":        r.Tid,
+				"link":       campaignLink,
+				"hash":       campaignByLink[campaignLink].Hash,
 				"msisdn":     r.Msisdn,
 				"campaignid": campaignByLink[campaignLink].Id,
 			}).Info("added new subscritpion due to ratio")
