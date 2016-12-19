@@ -1,13 +1,13 @@
 package sessions
 
 import (
-	"time"
-
 	"fmt"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/contrib/sessions"
 	"github.com/gin-gonic/gin"
-	"github.com/nu7hatch/gouuid"
+
+	rec "github.com/vostrok/utils/rec"
 )
 
 var store sessions.CookieStore
@@ -47,12 +47,7 @@ func SetSession(c *gin.Context) {
 
 	if v == nil || len(string(v.(string))) < 40 {
 		log.WithField("headers", c.Request.Header).Debug("no session found")
-		u4, err := uuid.NewV4()
-		if err != nil {
-			log.WithField("error", err.Error()).Error("generate uniq id")
-		}
-		tid = fmt.Sprintf("%d-%s", time.Now().Unix(), u4)
-		log.WithField("tid", tid).Debug("generated tid")
+		tid = rec.GenerateTID()
 	} else {
 		log.WithField("tid", v).Debug("already have tid")
 		tid = string(v.(string))
