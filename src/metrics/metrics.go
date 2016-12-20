@@ -29,14 +29,17 @@ var (
 )
 
 func newGaugeCommon(name, help string) m.Gauge {
-	return m.NewGauge("", "", name, ""+help)
+	return m.NewGauge("", appName, name, ""+help)
 }
 func newGaugeGatherErrors(name, help string) m.Gauge {
-	return m.NewGauge("", "", name, ""+help)
+	return m.NewGauge("", appName, name, ""+help)
 }
 
-func Init(appName string) {
-	m.Init(appName)
+var appName string
+
+func Init(instancePrefix, name string) {
+	m.Init(instancePrefix)
+	appName = name
 
 	Success = m.NewGauge("", "", "success", "success overall")
 	Errors = m.NewGauge("", "", "errors", "errors overall")
