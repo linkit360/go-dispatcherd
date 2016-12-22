@@ -161,9 +161,9 @@ func startNewSubscription(c *gin.Context, campaignHash string) (r rec.Record, er
 		KeepDays:           service.KeepDays,
 		Price:              100 * int(service.Price),
 	}
-	if service.SMSSend == 1 {
+	if service.SendNotPaidTextEnabled {
 		r.SMSSend = true
-		r.SMSText = service.SMSNotPaidText
+		r.SMSText = service.NotPaidText
 	}
 
 	operator, err := inmem_client.GetOperatorByCode(msg.OperatorCode)
