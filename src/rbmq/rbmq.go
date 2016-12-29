@@ -6,6 +6,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	content_service "github.com/vostrok/contentd/service"
 	"github.com/vostrok/utils/amqp"
 	"github.com/vostrok/utils/rec"
 )
@@ -16,22 +17,21 @@ type Notifier interface {
 	AccessCampaignNotify(msg AccessCampaignNotify) error
 
 	ActionNotify(msg UserActionsNotify) error
+
+	ContentSentNotify(msg content_service.ContentSentProperties) error
 }
 
 type NotifierConfig struct {
-	Queues struct {
-		AccessCampaignQueueName string `yaml:"access_campaign" default:"access_campaign"`
-		UserActionsQueueName    string `yaml:"user_actions" default:"user_actions"`
-	} `yaml:"queues"`
+	Queues       Queues              `yaml:"queues"`
 	RBMQNotifier amqp.NotifierConfig `yaml:"rbmq"`
 }
-type queues struct {
-	accessCampaign       string
-	userAction           string
-	accessCampaignUpdate string
+type Queues struct {
+	AccessCampaign string `yaml:"access_campaign" default:"access_campaign"`
+	UserAction     string `yaml:"user_action" default:"user_action"`
+	ContentSent    string `yaml:"content_sent" default:"content_sent"`
 }
 type notifier struct {
-	q  queues
+	q  Queues
 	mq *amqp.Notifier
 }
 
@@ -49,10 +49,7 @@ func NewNotifierService(conf NotifierConfig) Notifier {
 	{
 		rabbit := amqp.NewNotifier(conf.RBMQNotifier)
 		n = &notifier{
-			q: queues{
-				accessCampaign: conf.Queues.AccessCampaignQueueName,
-				userAction:     conf.Queues.UserActionsQueueName,
-			},
+			q:  conf.Queues,
 			mq: rabbit,
 		}
 
@@ -70,6 +67,7 @@ func (service notifier) NewSubscriptionNotify(queue string, msg rec.Record) erro
 	if err != nil {
 		return fmt.Errorf("json.Marshal: %s", err.Error())
 	}
+	log.Debugf("new subscription %s", body)
 	service.mq.Publish(amqp.AMQPMessage{queue, 0, body})
 	return nil
 }
@@ -106,7 +104,7 @@ func (service notifier) AccessCampaignNotify(msg AccessCampaignNotify) error {
 		return fmt.Errorf("json.Marshal: %s", err.Error())
 	}
 
-	service.mq.Publish(amqp.AMQPMessage{service.q.accessCampaign, 0, body})
+	service.mq.Publish(amqp.AMQPMessage{service.q.AccessCampaign, 0, body})
 	return nil
 }
 
@@ -129,6 +127,22 @@ func (service notifier) ActionNotify(msg UserActionsNotify) error {
 	if err != nil {
 		return fmt.Errorf("json.Marshal: %s", err.Error())
 	}
-	service.mq.Publish(amqp.AMQPMessage{service.q.userAction, 0, body})
+	service.mq.Publish(amqp.AMQPMessage{service.q.UserAction, 0, body})
+	return nil
+}
+
+func (service notifier) ContentSentNotify(msg content_service.ContentSentProperties) error {
+	msg.SentAt = time.Now().UTC()
+	event := EventNotify{
+		EventName: "content_sent",
+		EventData: msg,
+	}
+
+	body, err := json.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("json.Marshal: %s", err.Error())
+	}
+
+	service.mq.Publish(amqp.AMQPMessage{service.q.ContentSent, 0, body})
 	return nil
 }

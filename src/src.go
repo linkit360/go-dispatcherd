@@ -5,7 +5,7 @@ import (
 	"runtime"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/fvbock/endless"
+	//"github.com/fvbock/endless"
 	"github.com/gin-gonic/gin"
 
 	"github.com/vostrok/dispatcherd/src/config"
@@ -40,6 +40,7 @@ func RunServer() {
 	rg := e.Group("/campaign/:campaign_hash")
 	rg.GET("", handlers.AccessHandler, handlers.HandlePull)
 	rg.GET("/contentget", handlers.AccessHandler, handlers.ContentGet)
+	rg.GET("/uniq/:uniqueurl", handlers.AccessHandler, handlers.UniqueUrlGet)
 
 	e.Static("/static/", conf.Server.Path+"/static/")
 	e.StaticFile("/favicon.ico", conf.Server.Path+"/favicon.ico")
@@ -48,9 +49,8 @@ func RunServer() {
 	e.NoRoute(notFound)
 
 	e.RedirectTrailingSlash = true
-
-	endless.ListenAndServe(":"+conf.Server.Port, e)
-	//e.Run(":" + conf.Server.Port)
+	e.Run(":" + conf.Server.Port)
+	//endless.ListenAndServe(":"+conf.Server.Port, e)
 }
 
 func notFound(c *gin.Context) {
@@ -62,6 +62,6 @@ func updateTemplates(c *gin.Context) {
 	path := conf.Server.Path + "campaign/**/*"
 	log.Debug("update templates path: " + path)
 	e.LoadHTMLGlob(path)
-	handlers.UpdateCampaignByLink()
+	handlers.UpdateCampaigns()
 	c.JSON(200, struct{}{})
 }

@@ -34,6 +34,7 @@ var cnf config.AppConfig
 var notifierService rbmq.Notifier
 
 var campaignByLink map[string]*inmem_service.Campaign
+var campaignByHash map[string]inmem_service.Campaign
 
 func Init(conf config.AppConfig) {
 	log.SetLevel(log.DebugLevel)
@@ -44,11 +45,11 @@ func Init(conf config.AppConfig) {
 	if err := inmem_client.Init(conf.InMemConfig); err != nil {
 		log.Fatal("cannot init inmem client")
 	}
-	UpdateCampaignByLink()
+	UpdateCampaigns()
 	notifierService = rbmq.NewNotifierService(conf.Notifier)
 }
 
-func UpdateCampaignByLink() error {
+func UpdateCampaigns() error {
 	log.WithFields(log.Fields{}).Debug("get all campaigns")
 	campaigns, err := inmem_client.GetAllCampaigns()
 	if err != nil {
@@ -61,10 +62,15 @@ func UpdateCampaignByLink() error {
 	for key, _ := range campaignByLink {
 		delete(campaignByLink, key)
 	}
+	for key, _ := range campaignByHash {
+		delete(campaignByHash, key)
+	}
 	campaignByLink = make(map[string]*inmem_service.Campaign, len(campaigns))
+	campaignByHash = make(map[string]inmem_service.Campaign, len(campaigns))
 	for _, campaign := range campaigns {
 		camp := campaign
 		campaignByLink[campaign.Link] = &camp
+		campaignByLink[campaign.Hash] = camp
 	}
 	log.WithFields(log.Fields{
 		"len": len(campaigns),
@@ -122,8 +128,8 @@ func startNewSubscription(c *gin.Context, campaignHash string) (r rec.Record, er
 	action.Msisdn = msg.Msisdn
 	logCtx = logCtx.WithField("msisdn", msg.Msisdn)
 
-	campaign, err := inmem_client.GetCampaignByHash(campaignHash)
-	if err != nil {
+	campaign, ok := campaignByHash[campaignHash]
+	if !ok {
 		m.CampaignHashWrong.Inc()
 
 		action.Error = err.Error()
@@ -199,9 +205,6 @@ func ContentGet(c *gin.Context) {
 
 	sessions.SetSession(c)
 	tid := sessions.GetTid(c)
-	if tid == "" {
-		tid = "testtid"
-	}
 	logCtx := log.WithFields(log.Fields{
 		"tid": tid,
 	})
@@ -248,18 +251,26 @@ func ContentGet(c *gin.Context) {
 	}
 	msg.CampaignHash = campaignHash
 	action.Msisdn = msg.Msisdn
-	logCtx = logCtx.WithField("msisdn", msg.Msisdn)
 	logCtx.WithFields(log.Fields{}).Debug("gathered info, get content id..")
 
+	campaign, ok := campaignByHash[campaignHash]
+	if !ok {
+		m.CampaignHashWrong.Inc()
+
+		action.Error = err.Error()
+		logCtx.WithFields(log.Fields{
+			"error": err.Error(),
+			"hash":  campaignHash,
+		}).Error("cannot get campaign by hash")
+		return
+	}
+
 	contentProperties := &content_service.ContentSentProperties{}
-	contentProperties, err = content.Get(content_service.GetUrlByCampaignHashParams{
-		Msisdn:       msg.Msisdn,
-		Tid:          tid,
-		CampaignHash: campaignHash,
-		CountryCode:  msg.CountryCode,
-		OperatorCode: msg.OperatorCode,
-		Publisher:    sessions.GetFromSession("publisher", c),
-		Pixel:        sessions.GetFromSession("pixel", c),
+	contentProperties, err = content.Get(content_service.GetContentParams{
+		Msisdn:     msg.Msisdn,
+		Tid:        tid,
+		CampaignId: campaign.Id,
+		ServiceId:  campaign.ServiceId,
 	})
 	if err != nil {
 		m.ContentdRPCDialError.Inc()
@@ -268,7 +279,6 @@ func ContentGet(c *gin.Context) {
 		err = fmt.Errorf("content.Get: %s", err.Error())
 		logCtx.WithField("error", err.Error()).Error("contentClient.Get")
 		c.Error(err)
-		msg.Error = err.Error()
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		logCtx.Fatal("contentd fatal: trying to free all resources")
 		return
@@ -280,7 +290,6 @@ func ContentGet(c *gin.Context) {
 		logCtx.WithField("error", contentProperties.Error).Error("contentClient.Get")
 		err = errors.New(contentProperties.Error)
 		c.Error(err)
-		msg.Error = contentProperties.Error
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
@@ -288,10 +297,6 @@ func ContentGet(c *gin.Context) {
 		"contentId": contentProperties.ContentId,
 		"path":      contentProperties.ContentPath,
 	}).Debug("contentd response")
-
-	msg.CampaignId = contentProperties.CampaignId
-	msg.ContentId = contentProperties.ContentId
-	msg.ServiceId = contentProperties.ServiceId
 
 	action.CampaignId = contentProperties.CampaignId
 
@@ -307,13 +312,109 @@ func ContentGet(c *gin.Context) {
 		err := fmt.Errorf("serveContentFile: %s", err.Error())
 		logCtx.WithField("error", err.Error()).Error("serveContentFile")
 		c.Error(err)
-		msg.Error = err.Error()
+		action.Error = err.Error()
+		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+		return
+	}
+	// record sent content
+	if err = notifierService.ContentSentNotify(msg); err != nil {
+		logCtx.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Info("notify content sent error")
+	} else {
+		logCtx.Info("notified")
+	}
+
+	logCtx.WithFields(log.Fields{}).Debug("served file ok")
+	m.ContentGetSuccess.Inc()
+	m.Success.Inc()
+}
+
+func UniqueUrlGet(c *gin.Context) {
+	m.CampaignAccess.Inc()
+
+	sessions.SetSession(c)
+	tid := sessions.GetTid(c)
+	uniqueUrl := c.Params.ByName("uniqueurl")
+
+	logCtx := log.WithFields(log.Fields{
+		"tid": tid,
+		"url": uniqueUrl,
+	})
+	logCtx.Debug("get unique url")
+
+	contentProperties := &content_service.ContentSentProperties{}
+	action := rbmq.UserActionsNotify{
+		Action: "unique_url_open",
+		Tid:    tid,
+	}
+
+	var err error
+	defer func() {
+		if err != nil {
+			m.Errors.Inc()
+			action.Error = err.Error()
+		}
+		action.Tid = contentProperties.Tid
+
+		if err := notifierService.ActionNotify(action); err != nil {
+			logCtx.WithField("error", err.Error()).Error("notify user action")
+		}
+		if err = notifierService.ContentSentNotify(contentProperties); err != nil {
+			logCtx.WithFields(log.Fields{
+				"error": err.Error(),
+			}).Error("notify content sent error")
+		}
+		sessions.RemoveTid(c)
+	}()
+	logCtx.Debug(c.Request.Header)
+
+	contentProperties, err = content.GetByUniqueUrl(uniqueUrl)
+	if err != nil {
+		m.ContentdRPCDialError.Inc()
+		m.ContentDeliveryErrors.Inc()
+
+		err = fmt.Errorf("content.GetByUniqueUrl: %s", err.Error())
+		logCtx.WithField("error", err.Error()).Error("cannot get path by url")
+		c.Error(err)
+		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+		logCtx.Fatal("contentd fatal: trying to free all resources")
+		return
+	}
+	if contentProperties.Error != "" {
+		m.ContentDeliveryErrors.Inc()
+
+		err = fmt.Errorf("content.GetByUniqueUrl: %s", contentProperties.Error)
+		logCtx.WithField("error", contentProperties.Error).Error("error while attemplting to get content")
+		err = errors.New(contentProperties.Error)
+		c.Error(err)
+		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+		return
+	}
+	logCtx.WithFields(log.Fields{
+		"contentId": contentProperties.ContentId,
+		"path":      contentProperties.ContentPath,
+	}).Debug("contentd response")
+
+	action.CampaignId = contentProperties.CampaignId
+
+	err = utils.ServeAttachment(
+		cnf.Server.Path+"uploaded_content/"+contentProperties.ContentPath,
+		contentProperties.ContentName,
+		c,
+		logCtx,
+	)
+	if err != nil {
+		m.ContentDeliveryErrors.Inc()
+		err := fmt.Errorf("serveContentFile: %s", err.Error())
+		logCtx.WithField("error", err.Error()).Error("serveContentFile")
+		c.Error(err)
 		action.Error = err.Error()
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
 	logCtx.WithFields(log.Fields{}).Debug("served file ok")
-	m.ContentGetSuccess.Inc()
+
 	m.Success.Inc()
 }
 
