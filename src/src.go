@@ -40,7 +40,7 @@ func RunServer() {
 	rg := e.Group("/campaign/:campaign_hash")
 	rg.GET("", handlers.AccessHandler, handlers.HandlePull)
 	rg.GET("/contentget", handlers.AccessHandler, handlers.ContentGet)
-	rg.GET("/uniq/:uniqueurl", handlers.AccessHandler, handlers.UniqueUrlGet)
+	rg.GET("/u/:uniqueurl", handlers.AccessHandler, handlers.UniqueUrlGet)
 
 	e.Static("/static/", conf.Server.Path+"/static/")
 	e.StaticFile("/favicon.ico", conf.Server.Path+"/favicon.ico")

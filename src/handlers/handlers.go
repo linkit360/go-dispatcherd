@@ -70,7 +70,7 @@ func UpdateCampaigns() error {
 	for _, campaign := range campaigns {
 		camp := campaign
 		campaignByLink[campaign.Link] = &camp
-		campaignByLink[campaign.Hash] = camp
+		campaignByHash[campaign.Hash] = camp
 	}
 	log.WithFields(log.Fields{
 		"len": len(campaigns),
@@ -317,7 +317,7 @@ func ContentGet(c *gin.Context) {
 		return
 	}
 	// record sent content
-	if err = notifierService.ContentSentNotify(msg); err != nil {
+	if err = notifierService.ContentSentNotify(*contentProperties); err != nil {
 		logCtx.WithFields(log.Fields{
 			"error": err.Error(),
 		}).Info("notify content sent error")
@@ -360,7 +360,7 @@ func UniqueUrlGet(c *gin.Context) {
 		if err := notifierService.ActionNotify(action); err != nil {
 			logCtx.WithField("error", err.Error()).Error("notify user action")
 		}
-		if err = notifierService.ContentSentNotify(contentProperties); err != nil {
+		if err = notifierService.ContentSentNotify(*contentProperties); err != nil {
 			logCtx.WithFields(log.Fields{
 				"error": err.Error(),
 			}).Error("notify content sent error")
