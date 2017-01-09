@@ -20,16 +20,18 @@ import (
 	inmem_service "github.com/vostrok/inmem/service"
 )
 
-func gatherInfo(tid string, c *gin.Context) (msg rbmq.AccessCampaignNotify, err error) {
-	logCtx := log.WithFields(log.Fields{"tid": tid})
-
+func gatherInfo(c *gin.Context) (msg rbmq.AccessCampaignNotify, err error) {
+	sessions.SetSession(c)
+	tid := sessions.GetTid(c)
+	logCtx := log.WithFields(log.Fields{
+		"tid": tid,
+	})
 	r := c.Request
 	headers, err := json.Marshal(r.Header)
 	if err != nil {
 		logCtx.Error("cannot marshal headers")
 		headers = []byte("{}")
 	}
-
 	msg = rbmq.AccessCampaignNotify{
 		Tid:       tid,
 		UserAgent: r.UserAgent(),
@@ -38,6 +40,28 @@ func gatherInfo(tid string, c *gin.Context) (msg rbmq.AccessCampaignNotify, err 
 		Method:    r.Method,
 		Headers:   string(headers),
 	}
+
+	campaignHash := getCampaignHash(c)
+	if len(campaignHash) != cnf.Service.CampaignHashLength {
+		m.CampaignHashWrong.Inc()
+
+		err = fmt.Errorf("Campaign hash length worng: %s", campaignHash)
+		logCtx.WithField("error", err.Error()).Error("cann't process")
+		return
+	}
+
+	msg.CampaignHash = campaignHash
+	campaign, ok := campaignByHash[campaignHash]
+	if !ok {
+		m.CampaignHashWrong.Inc()
+		err = fmt.Errorf("Cann't find campaign: %s", campaignHash)
+		logCtx.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Error("cann't process")
+		return
+	}
+	msg.CampaignId = campaign.Id
+	msg.ServiceId = campaign.ServiceId
 
 	//for _, e := range os.Environ() {
 	//	log.WithFields(log.Fields{
@@ -105,7 +129,6 @@ func gatherInfo(tid string, c *gin.Context) (msg rbmq.AccessCampaignNotify, err 
 	// and there not always could be the correct IP adress
 	// so, if operator code or country code not found
 	// we can dset them via msisdn
-	var ok bool
 	if msg.Msisdn, ok = c.GetQuery("msisdn"); ok {
 		logCtx.WithFields(log.Fields{
 			"msisdn": msg.Msisdn,

@@ -12,10 +12,12 @@ var (
 	Access            m.Gauge
 	Agree             m.Gauge
 	AgreeSuccess      m.Gauge
+	Redirected        m.Gauge
 	CampaignAccess    m.Gauge
 	ContentGetSuccess m.Gauge
 
 	PageNotFoundError          m.Gauge
+	NoMoreCampaigns            m.Gauge
 	CampaignHashWrong          m.Gauge
 	ContentDeliveryErrors      m.Gauge
 	ContentdRPCDialError       m.Gauge
@@ -45,11 +47,13 @@ func Init(instancePrefix, name string) {
 	Errors = m.NewGauge("", "", "errors", "errors overall")
 	Overall = newGaugeCommon("overall", "overall")
 	Agree = newGaugeCommon("agreed", "pressed the button 'agree'")
+	Redirected = newGaugeCommon("redirected", "redirected due to rejected")
 	AgreeSuccess = newGaugeCommon("agree_success", "pressed the button 'agree' and successfully processed")
 	CampaignAccess = newGaugeCommon("campaign_access", "campaign access success")
 	ContentGetSuccess = newGaugeCommon("content_get", "pressed the button 'get content' and successfully processed")
 
 	PageNotFoundError = newGaugeCommon("error404", "404 requests")
+	NoMoreCampaigns = newGaugeCommon("no more campaigns for msisdn - rejected", "no more campaigns")
 	CampaignHashWrong = newGaugeCommon("campaign_hash_wrong", "campaign hash wrong")
 	ContentDeliveryErrors = newGaugeCommon("serve_errors", "content delivery errors")
 	ContentdRPCDialError = newGaugeCommon("contentd_rpc_errors", "number of connect errors ")
@@ -68,10 +72,12 @@ func Init(instancePrefix, name string) {
 			Errors.Update()
 			Overall.Update()
 			Agree.Update()
+			Redirected.Update()
 			AgreeSuccess.Update()
 			CampaignAccess.Update()
 			ContentGetSuccess.Update()
 			PageNotFoundError.Update()
+			NoMoreCampaigns.Update()
 			CampaignHashWrong.Update()
 			ContentDeliveryErrors.Update()
 			ContentdRPCDialError.Update()

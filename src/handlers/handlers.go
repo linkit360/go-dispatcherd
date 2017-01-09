@@ -80,88 +80,112 @@ func UpdateCampaigns() error {
 }
 
 func HandlePull(c *gin.Context) {
-	campaignHash := getCampaignHash(c)
-	if len(campaignHash) != cnf.Service.CampaignHashLength {
-		log.Error("unknown hash")
-		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
-		return
-	}
-	log.Debug("handle pull_click")
-	if _, err := startNewSubscription(c, campaignHash); err != nil {
-		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
-		return
-	}
-}
-
-func startNewSubscription(c *gin.Context, campaignHash string) (r rec.Record, err error) {
-	m.Agree.Inc()
-	sessions.SetSession(c)
-	tid := sessions.GetTid(c)
-
-	logCtx := log.WithFields(log.Fields{
-		"tid": tid,
-	})
-
-	logCtx.Debug("start new subscription")
+	var r rec.Record
+	var err error
+	var msg rbmq.AccessCampaignNotify
 
 	action := rbmq.UserActionsNotify{
 		Action: "pull_click",
-		Tid:    tid,
+		Tid:    r.Tid,
 	}
 	defer func() {
 		if err != nil {
 			m.Errors.Inc()
 			action.Error = err.Error()
 		}
+		action.Msisdn = msg.Msisdn
+		action.CampaignId = msg.CampaignId
+
 		if err := notifierService.ActionNotify(action); err != nil {
-			logCtx.WithField("error", err.Error()).Error("notify user action")
+			log.WithFields(log.Fields{
+				"error": err.Error(),
+				"tid":   r.Tid,
+			}).Error("notify user action")
 		} else {
 		}
+	}()
+
+	msg, err = gatherInfo(c)
+	if err != nil {
+		return
+	}
+
+	if cnf.Service.Rejected.Enabled {
+		// if nextCampaignId == msg.CampaignId then it's not rejected msisdn
+		nextCampaignId, err := inmem_client.GetMsisdnCampaignCache(msg.CampaignId, msg.Msisdn)
+		if err != nil {
+			err = fmt.Errorf("inmem_client.GetMsisdnCampaignCache: %s", err.Error())
+			log.Error(err.Error())
+			http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+			return
+		}
+
+		if nextCampaignId != msg.CampaignId {
+			action.Action = "redirect"
+
+			// no more campaigns
+			if nextCampaignId == 0 {
+				m.NoMoreCampaigns.Inc()
+				action.Error = "No more campaigns"
+				http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+				return
+			}
+
+			campaign, err := inmem_client.GetCampaignById(msg.CampaignId)
+			if err != nil {
+				err = fmt.Errorf("inmem_client.GetCampaignById: %s", err.Error())
+				log.Error(err.Error())
+				http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+				return
+			}
+			m.Redirected.Inc()
+			http.Redirect(c.Writer, c.Request, cnf.Service.Rejected.RedirectUrl+campaign.Hash, 303)
+			return
+		}
+	}
+
+	log.Debug("handle pull_click")
+	if err = startNewSubscription(c, msg); err != nil {
+		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+		return
+	}
+}
+
+func startNewSubscription(c *gin.Context, msg rbmq.AccessCampaignNotify) (err error) {
+	m.Agree.Inc()
+	logCtx := log.WithFields(log.Fields{
+		"tid": msg.Tid,
+	})
+
+	logCtx.Debug("start new subscription")
+
+	defer func() {
 		sessions.RemoveTid(c)
 	}()
-	msg, err := gatherInfo(tid, c)
-	if err != nil {
-		action.Error = err.Error()
-		return
-	}
-	msg.CampaignHash = campaignHash
-	action.Msisdn = msg.Msisdn
+
 	logCtx = logCtx.WithField("msisdn", msg.Msisdn)
 
-	campaign, ok := campaignByHash[campaignHash]
-	if !ok {
-		m.CampaignHashWrong.Inc()
-
-		action.Error = err.Error()
-		logCtx.WithFields(log.Fields{
-			"error": err.Error(),
-			"hash":  campaignHash,
-		}).Error("cannot get campaign by hash")
-		return
-	}
-	action.CampaignId = campaign.Id
-
-	service, err := inmem_client.GetServiceById(campaign.ServiceId)
+	service, err := inmem_client.GetServiceById(msg.ServiceId)
 	if err != nil {
 		m.ServiceError.Inc()
 
 		err = fmt.Errorf("inmem_client.GetServiceById: %s", err.Error())
 		logCtx.WithFields(log.Fields{
 			"error":      err.Error(),
-			"service_id": campaign.ServiceId,
+			"service_id": msg.ServiceId,
 		}).Error("cannot get service by id")
 		return
 	}
-	r = rec.Record{
+	r := rec.Record{
 		Msisdn:             msg.Msisdn,
-		Tid:                tid,
+		Tid:                msg.Tid,
 		SubscriptionStatus: "",
 		CountryCode:        msg.CountryCode,
 		OperatorCode:       msg.OperatorCode,
 		Publisher:          sessions.GetFromSession("publisher", c),
 		Pixel:              sessions.GetFromSession("pixel", c),
-		CampaignId:         campaign.Id,
-		ServiceId:          campaign.ServiceId,
+		CampaignId:         msg.CampaignId,
+		ServiceId:          msg.ServiceId,
 		DelayHours:         service.DelayHours,
 		PaidHours:          service.PaidHours,
 		KeepDays:           service.KeepDays,
@@ -195,6 +219,11 @@ func startNewSubscription(c *gin.Context, campaignHash string) (r rec.Record, er
 
 	m.AgreeSuccess.Inc()
 	m.Success.Inc()
+
+	if err = inmem_client.SetMsisdnCampaignCache(msg.CampaignId, msg.Msisdn); err != nil {
+		err = fmt.Errorf("inmem_client.SetMsisdnCampaignCache: %s", err.Error())
+		log.Error(err.Error())
+	}
 	return
 }
 
@@ -242,7 +271,7 @@ func ContentGet(c *gin.Context) {
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
-	msg, err := gatherInfo(tid, c)
+	msg, err := gatherInfo(c)
 	if err != nil {
 		msg.Error = err.Error()
 		action.Error = err.Error()
@@ -460,13 +489,41 @@ func serveCampaigns(c *gin.Context) {
 	campaignByLink[campaignLink].Serve(c)
 
 	if campaignByLink[campaignLink].CanAutoClick {
-		r, err := startNewSubscription(c, campaignByLink[campaignLink].Hash)
+		var err error
+		var msg rbmq.AccessCampaignNotify
+		action := rbmq.UserActionsNotify{
+			Action: "autoclick",
+		}
+		defer func() {
+			if err != nil {
+				m.Errors.Inc()
+				action.Error = err.Error()
+			}
+			action.Tid = msg.Tid
+			action.Msisdn = msg.Msisdn
+			action.CampaignId = msg.CampaignId
+
+			if err := notifierService.ActionNotify(action); err != nil {
+				log.WithFields(log.Fields{
+					"error": err.Error(),
+					"tid":   msg.Tid,
+				}).Error("notify user action")
+			} else {
+			}
+		}()
+
+		msg, err = gatherInfo(c)
+		if err != nil {
+			return
+		}
+
+		err = startNewSubscription(c, msg)
 		if err == nil {
 			log.WithFields(log.Fields{
-				"tid":        r.Tid,
+				"tid":        msg.Tid,
 				"link":       campaignLink,
 				"hash":       campaignByLink[campaignLink].Hash,
-				"msisdn":     r.Msisdn,
+				"msisdn":     msg.Msisdn,
 				"campaignid": campaignByLink[campaignLink].Id,
 			}).Info("added new subscritpion due to ratio")
 		}
@@ -482,7 +539,7 @@ func NotifyAccessCampaignHandler(c *gin.Context) {
 	logCtx := log.WithFields(log.Fields{
 		"tid": tid,
 	})
-	msg, err := gatherInfo(tid, c)
+	msg, err := gatherInfo(c)
 	if err != nil {
 		logCtx.WithFields(log.Fields{
 			"gatherInfo":     err.Error(),

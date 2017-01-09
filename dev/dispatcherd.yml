@@ -16,6 +16,9 @@ server:
 service:
   error_redirect_url: http://id.slypee.com
   campaign_hash_length: 32
+  rejected:
+    enabled: true
+    redirect_url: http://dev.pk.linkit360.ru/campaign/
 
 content_client:
   dsn: localhost:50301

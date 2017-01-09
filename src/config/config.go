@@ -31,8 +31,14 @@ type ServerConfig struct {
 	Sessions sessions.SessionsConfig `yaml:"sessions"`
 }
 type ServiceConfig struct {
-	ErrorRedirectUrl   string `default:"http://id.slypee.com" yaml:"error_redirect_url"`
-	CampaignHashLength int    `default:"32" yaml:"campaign_hash_length"`
+	ErrorRedirectUrl   string         `default:"http://id.slypee.com" yaml:"error_redirect_url"`
+	CampaignHashLength int            `default:"32" yaml:"campaign_hash_length"`
+	Rejected           RejectedConfig `yaml:"rejected"`
+}
+
+type RejectedConfig struct {
+	Enabled     bool   `default:"true" yaml:"enabled"`
+	RedirectUrl string `default:"http://dev.pk.linkit360.ru/campaign/" yaml:"redirect_url"`
 }
 
 func LoadConfig() AppConfig {
