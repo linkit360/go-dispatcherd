@@ -4,6 +4,7 @@ app_name: dispatcherd
 server:
   port: 50300
   path: /var/www/xmp.linkit360.ru/web/
+  url: http://dev.pk.linkit360.ru
 
   sessions:
     secret: rCs7h2h_NqB5Kx-
@@ -18,7 +19,6 @@ service:
   campaign_hash_length: 32
   rejected:
     enabled: true
-    redirect_url: http://dev.pk.linkit360.ru/campaign/
 
 content_client:
   dsn: localhost:50301

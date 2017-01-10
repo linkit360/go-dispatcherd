@@ -29,6 +29,7 @@ type AppConfig struct {
 type ServerConfig struct {
 	Port     string                  `default:"50300"`
 	Path     string                  `default:"/var/www/xmp.linkit360.ru/web/" yaml:"path"`
+	Url      string                  `default:"http://dev.pk.linkit360.ru/" yaml:"url"`
 	Sessions sessions.SessionsConfig `yaml:"sessions"`
 }
 type ServiceConfig struct {
@@ -38,8 +39,7 @@ type ServiceConfig struct {
 }
 
 type RejectedConfig struct {
-	Enabled     bool   `default:"true" yaml:"enabled"`
-	RedirectUrl string `default:"http://dev.pk.linkit360.ru/campaign/" yaml:"redirect_url"`
+	Enabled bool `default:"true" yaml:"enabled"`
 }
 
 func LoadConfig() AppConfig {
