@@ -2,6 +2,7 @@ package config
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -75,7 +76,7 @@ func LoadConfig() AppConfig {
 
 	appConfig.Notifier.RBMQNotifier.Conn.Host = envString("RBMQ_HOST", appConfig.Notifier.RBMQNotifier.Conn.Host)
 
-	log.WithField("config", appConfig).Info("Config loaded")
+	log.WithField("config", fmt.Sprintf("%#v", appConfig)).Info("Config")
 	return appConfig
 }
 
