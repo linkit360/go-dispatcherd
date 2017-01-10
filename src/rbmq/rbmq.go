@@ -6,7 +6,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	content_service "github.com/vostrok/contentd/service"
+	inmem_service "github.com/vostrok/inmem/service"
 	"github.com/vostrok/utils/amqp"
 	"github.com/vostrok/utils/rec"
 )
@@ -18,7 +18,7 @@ type Notifier interface {
 
 	ActionNotify(msg UserActionsNotify) error
 
-	ContentSentNotify(msg content_service.ContentSentProperties) error
+	ContentSentNotify(msg inmem_service.ContentSentProperties) error
 }
 
 type NotifierConfig struct {
@@ -131,7 +131,7 @@ func (service notifier) ActionNotify(msg UserActionsNotify) error {
 	return nil
 }
 
-func (service notifier) ContentSentNotify(msg content_service.ContentSentProperties) error {
+func (service notifier) ContentSentNotify(msg inmem_service.ContentSentProperties) error {
 	msg.SentAt = time.Now().UTC()
 	event := EventNotify{
 		EventName: "content_sent",

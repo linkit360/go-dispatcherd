@@ -302,6 +302,7 @@ func ContentGet(c *gin.Context) {
 		}).Error("cann't process")
 		return
 	}
+	action.CampaignId = campaign.Id
 	msg, err := gatherInfo(c, campaign)
 	if err != nil {
 		msg.Error = err.Error()
@@ -313,7 +314,7 @@ func ContentGet(c *gin.Context) {
 	action.Msisdn = msg.Msisdn
 	logCtx.WithFields(log.Fields{}).Debug("gathered info, get content id..")
 
-	contentProperties := &content_service.ContentSentProperties{}
+	contentProperties := &inmem_service.ContentSentProperties{}
 	contentProperties, err = content.Get(content_service.GetContentParams{
 		Msisdn:     msg.Msisdn,
 		Tid:        tid,
@@ -391,7 +392,7 @@ func UniqueUrlGet(c *gin.Context) {
 	})
 	logCtx.Debug("get unique url")
 
-	contentProperties := &content_service.ContentSentProperties{}
+	contentProperties := &inmem_service.ContentSentProperties{}
 	action := rbmq.UserActionsNotify{
 		Action: "unique_url_open",
 		Tid:    tid,
