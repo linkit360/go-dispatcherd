@@ -27,7 +27,7 @@ type NotifierConfig struct {
 }
 type Queues struct {
 	AccessCampaign string `yaml:"access_campaign" default:"access_campaign"`
-	UserAction     string `yaml:"user_action" default:"user_action"`
+	UserAction     string `yaml:"user_actions" default:"user_actions"`
 	ContentSent    string `yaml:"content_sent" default:"content_sent"`
 }
 type notifier struct {

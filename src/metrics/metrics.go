@@ -53,7 +53,7 @@ func Init(instancePrefix, name string) {
 	ContentGetSuccess = newGaugeCommon("content_get", "pressed the button 'get content' and successfully processed")
 
 	PageNotFoundError = newGaugeCommon("error404", "404 requests")
-	NoMoreCampaigns = newGaugeCommon("no more campaigns for msisdn - rejected", "no more campaigns")
+	NoMoreCampaigns = newGaugeCommon("truly_rejected", "no more campaigns for msisdn - rejected")
 	CampaignHashWrong = newGaugeCommon("campaign_hash_wrong", "campaign hash wrong")
 	ContentDeliveryErrors = newGaugeCommon("serve_errors", "content delivery errors")
 	ContentdRPCDialError = newGaugeCommon("contentd_rpc_errors", "number of connect errors ")

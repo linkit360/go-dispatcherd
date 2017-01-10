@@ -83,10 +83,8 @@ func HandlePull(c *gin.Context) {
 	var r rec.Record
 	var err error
 	var msg rbmq.AccessCampaignNotify
-
 	action := rbmq.UserActionsNotify{
 		Action: "pull_click",
-		Tid:    r.Tid,
 	}
 	defer func() {
 		if err != nil {
@@ -95,6 +93,7 @@ func HandlePull(c *gin.Context) {
 		}
 		action.Msisdn = msg.Msisdn
 		action.CampaignId = msg.CampaignId
+		action.Tid = msg.Tid
 
 		if err := notifierService.ActionNotify(action); err != nil {
 			log.WithFields(log.Fields{
@@ -105,7 +104,30 @@ func HandlePull(c *gin.Context) {
 		}
 	}()
 
-	msg, err = gatherInfo(c)
+	campaignHash := c.Params.ByName("campaign_hash")
+	if len(campaignHash) != cnf.Service.CampaignHashLength {
+		m.CampaignHashWrong.Inc()
+
+		log.WithFields(log.Fields{
+			"campaignHash": campaignHash,
+			"length":       len(campaignHash),
+		}).Error("Length is too small")
+
+		err := errors.New("Wrong campaign length")
+		c.Error(err)
+		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+		return
+	}
+	campaign, ok := campaignByHash[campaignHash]
+	if !ok {
+		m.CampaignHashWrong.Inc()
+		err = fmt.Errorf("Cann't find campaign: %s", campaignHash)
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Error("cann't process")
+		return
+	}
+	msg, err = gatherInfo(c, campaign)
 	if err != nil {
 		return
 	}
@@ -257,7 +279,7 @@ func ContentGet(c *gin.Context) {
 	}()
 	logCtx.Debug(c.Request.Header)
 
-	campaignHash := getCampaignHash(c)
+	campaignHash := c.Params.ByName("campaign_hash")
 	if len(campaignHash) != cnf.Service.CampaignHashLength {
 		m.CampaignHashWrong.Inc()
 
@@ -271,7 +293,16 @@ func ContentGet(c *gin.Context) {
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
-	msg, err := gatherInfo(c)
+	campaign, ok := campaignByHash[campaignHash]
+	if !ok {
+		m.CampaignHashWrong.Inc()
+		err = fmt.Errorf("Cann't find campaign: %s", campaignHash)
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Error("cann't process")
+		return
+	}
+	msg, err := gatherInfo(c, campaign)
 	if err != nil {
 		msg.Error = err.Error()
 		action.Error = err.Error()
@@ -281,18 +312,6 @@ func ContentGet(c *gin.Context) {
 	msg.CampaignHash = campaignHash
 	action.Msisdn = msg.Msisdn
 	logCtx.WithFields(log.Fields{}).Debug("gathered info, get content id..")
-
-	campaign, ok := campaignByHash[campaignHash]
-	if !ok {
-		m.CampaignHashWrong.Inc()
-
-		action.Error = err.Error()
-		logCtx.WithFields(log.Fields{
-			"error": err.Error(),
-			"hash":  campaignHash,
-		}).Error("cannot get campaign by hash")
-		return
-	}
 
 	contentProperties := &content_service.ContentSentProperties{}
 	contentProperties, err = content.Get(content_service.GetContentParams{
@@ -447,18 +466,6 @@ func UniqueUrlGet(c *gin.Context) {
 	m.Success.Inc()
 }
 
-func getCampaignHash(c *gin.Context) string {
-	campaignHash := c.Params.ByName("campaign_hash")
-	if len(campaignHash) == cnf.Service.CampaignHashLength {
-		return campaignHash
-	}
-
-	if campaignHash == "" {
-		m.CampaignHashWrong.Inc()
-	}
-	return campaignHash
-}
-
 func AddCampaignHandler(r *gin.Engine) {
 	log.WithField("route", "lp").Info("adding lp route")
 	rg := r.Group("/lp/:campaign_link")
@@ -512,7 +519,7 @@ func serveCampaigns(c *gin.Context) {
 			}
 		}()
 
-		msg, err = gatherInfo(c)
+		msg, err = gatherInfo(c, *campaignByLink[campaignLink])
 		if err != nil {
 			return
 		}
@@ -539,13 +546,6 @@ func NotifyAccessCampaignHandler(c *gin.Context) {
 	logCtx := log.WithFields(log.Fields{
 		"tid": tid,
 	})
-	msg, err := gatherInfo(c)
-	if err != nil {
-		logCtx.WithFields(log.Fields{
-			"gatherInfo":     err.Error(),
-			"accessCampaign": msg,
-		}).Debug("gather access campaign")
-	}
 
 	paths := strings.Split(c.Request.URL.Path, "/")
 	campaignLink := paths[len(paths)-1]
@@ -553,19 +553,27 @@ func NotifyAccessCampaignHandler(c *gin.Context) {
 	action := rbmq.UserActionsNotify{
 		Action: "access",
 		Tid:    tid,
-		Msisdn: msg.Msisdn,
 	}
 	if !ok {
 		log.WithFields(log.Fields{
 			"path": campaignLink,
 		}).Error("campaign is unknown")
+		action.Error = fmt.Sprintf("Unknown campaign: %s", campaignLink)
 	} else {
-		msg.CampaignId = campaign.Id
 		action.CampaignId = campaign.Id
-
-		msg.CampaignHash = campaign.Hash
 	}
 
+	msg, err := gatherInfo(c, *campaign)
+	if err != nil {
+		logCtx.WithFields(log.Fields{
+			"gatherInfo": err.Error(),
+		}).Debug("gather access campaign")
+		if ok {
+			action.Error = err.Error()
+		}
+	} else {
+		action.Msisdn = msg.Msisdn
+	}
 	begin := time.Now()
 
 	if err := notifierService.ActionNotify(action); err != nil {
