@@ -90,6 +90,7 @@ func HandlePull(c *gin.Context) {
 			m.Errors.Inc()
 
 			action.Error = err.Error()
+			msg.Error = msg.Error + " " + err.Error()
 
 			log.WithFields(log.Fields{
 				"error": err.Error(),
@@ -113,12 +114,7 @@ func HandlePull(c *gin.Context) {
 	if len(campaignHash) != cnf.Service.CampaignHashLength {
 		m.CampaignHashWrong.Inc()
 
-		log.WithFields(log.Fields{
-			"campaignHash": campaignHash,
-			"length":       len(campaignHash),
-		}).Error("Length is too small")
-
-		err := errors.New("Wrong campaign length")
+		err := fmt.Errorf("Wrong campaign length: len %d, %s", len(campaignHash), campaignHash)
 		c.Error(err)
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
@@ -126,32 +122,15 @@ func HandlePull(c *gin.Context) {
 	campaign, ok := campaignByHash[campaignHash]
 	if !ok {
 		m.CampaignHashWrong.Inc()
-		err = fmt.Errorf("Cann't find campaign: %s", campaignHash)
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Error("cann't process")
+		err = fmt.Errorf("Cann't find campaign by hash: %s", campaignHash)
 		return
 	}
-	msg, err = gatherInfo(c, campaign)
-	if err != nil {
+	msg = gatherInfo(c, campaign)
+	if msg.Error != "" {
 		return
-	}
-	campaignRedirect, err := redirect(action, msg)
-	if err != nil {
-		action.Action = "rejected"
-		msg.Error = "rejected"
-		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
-		return
-	}
-	if campaignRedirect.Id != msg.CampaignId {
-		m.Redirected.Inc()
-		action.Action = "redirect"
-		msg.CampaignId = campaignRedirect.Id
-		msg.ServiceId = campaignRedirect.ServiceId
-		msg.CampaignHash = campaignRedirect.Hash
-		msg.Error = "redirect"
 	}
 	if err = startNewSubscription(c, msg); err != nil {
+		err = fmt.Errorf("startNewSubscription: %s", err.Error())
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
@@ -172,8 +151,6 @@ func startNewSubscription(c *gin.Context, msg rbmq.AccessCampaignNotify) (err er
 
 	service, err := inmem_client.GetServiceById(msg.ServiceId)
 	if err != nil {
-		m.ServiceError.Inc()
-
 		err = fmt.Errorf("inmem_client.GetServiceById: %s", err.Error())
 		logCtx.WithFields(log.Fields{
 			"error":      err.Error(),
@@ -225,7 +202,7 @@ func startNewSubscription(c *gin.Context, msg rbmq.AccessCampaignNotify) (err er
 	if cnf.Service.Rejected.Enabled {
 		if err = inmem_client.SetMsisdnCampaignCache(msg.CampaignId, msg.Msisdn); err != nil {
 			err = fmt.Errorf("inmem_client.SetMsisdnCampaignCache: %s", err.Error())
-			log.Error(err.Error())
+			logCtx.Error(err.Error())
 		}
 	}
 	return
@@ -234,74 +211,68 @@ func startNewSubscription(c *gin.Context, msg rbmq.AccessCampaignNotify) (err er
 // same as handle pull, but do not create subscription
 // and has different metrics in the end
 func ContentGet(c *gin.Context) {
-	m.CampaignAccess.Inc()
+	var err error
 
+	m.CampaignAccess.Inc()
 	sessions.SetSession(c)
 	tid := sessions.GetTid(c)
+
 	logCtx := log.WithFields(log.Fields{
 		"tid": tid,
 	})
 	logCtx.Debug("get content")
-
 	action := rbmq.UserActionsNotify{
 		Action: "content_get",
 		Tid:    tid,
 	}
-	var err error
 	contentProperties := &inmem_service.ContentSentProperties{}
 	defer func() {
 		if err != nil {
 			m.Errors.Inc()
+			c.Error(err)
 			action.Error = err.Error()
+			log.WithFields(log.Fields{
+				"error": err.Error(),
+			}).Error("cann't process")
 		}
+
 		if err := notifierService.ActionNotify(action); err != nil {
 			logCtx.WithField("error", err.Error()).Error("notify user action")
-		} else {
 		}
 		if err = notifierService.ContentSentNotify(*contentProperties); err != nil {
 			logCtx.WithFields(log.Fields{
 				"error": err.Error(),
 			}).Info("notify content sent error")
-		} else {
-			logCtx.Info("notified")
 		}
 		sessions.RemoveTid(c)
+		if err != nil {
+			http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+		}
 	}()
 	logCtx.Debug(c.Request.Header)
 
 	campaignHash := c.Params.ByName("campaign_hash")
 	if len(campaignHash) != cnf.Service.CampaignHashLength {
 		m.CampaignHashWrong.Inc()
-
-		logCtx.WithFields(log.Fields{
-			"campaignHash": campaignHash,
-			"length":       len(campaignHash),
-		}).Error("Length is too small")
-
-		err := errors.New("Wrong campaign length")
-		c.Error(err)
-		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+		err = fmt.Errorf("Wrong campaign length: len %d, %s", len(campaignHash), campaignHash)
 		return
 	}
 	campaign, ok := campaignByHash[campaignHash]
 	if !ok {
 		m.CampaignHashWrong.Inc()
 		err = fmt.Errorf("Cann't find campaign: %s", campaignHash)
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Error("cann't process")
 		return
 	}
 	action.CampaignId = campaign.Id
-	msg, err := gatherInfo(c, campaign)
-	if err != nil {
+	msg := gatherInfo(c, campaign)
+
+	if msg.Error != "" {
 		msg.Error = err.Error()
 		action.Error = err.Error()
-		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
-	msg.CampaignHash = campaignHash
 	action.Msisdn = msg.Msisdn
+
 	logCtx.WithFields(log.Fields{}).Debug("gathered info, get content id..")
 
 	contentProperties, err = content.Get(content_service.GetContentParams{
@@ -310,26 +281,20 @@ func ContentGet(c *gin.Context) {
 		CampaignId: campaign.Id,
 		ServiceId:  campaign.ServiceId,
 	})
-	contentProperties.CampaignId = campaign.Id
 	if err != nil {
 		m.ContentdRPCDialError.Inc()
 		m.ContentDeliveryErrors.Inc()
 
 		err = fmt.Errorf("content.Get: %s", err.Error())
-		logCtx.WithField("error", err.Error()).Error("contentClient.Get")
-		c.Error(err)
-		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		logCtx.Fatal("contentd fatal: trying to free all resources")
 		return
 	}
+	contentProperties.CampaignId = campaign.Id
 	if contentProperties.Error != "" {
 		m.ContentDeliveryErrors.Inc()
 
 		err = fmt.Errorf("contentClient.Get: %s", contentProperties.Error)
 		logCtx.WithField("error", contentProperties.Error).Error("contentClient.Get")
-		err = errors.New(contentProperties.Error)
-		c.Error(err)
-		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
 	logCtx.WithFields(log.Fields{
@@ -346,11 +311,7 @@ func ContentGet(c *gin.Context) {
 	)
 	if err != nil {
 		m.ContentDeliveryErrors.Inc()
-		err := fmt.Errorf("serveContentFile: %s", err.Error())
-		logCtx.WithField("error", err.Error()).Error("serveContentFile")
-		c.Error(err)
-		action.Error = err.Error()
-		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+		err = fmt.Errorf("serveContentFile: %s", err.Error())
 		return
 	}
 	logCtx.WithFields(log.Fields{}).Debug("served file ok")
@@ -472,10 +433,11 @@ func serveCampaigns(c *gin.Context) {
 		action.Tid = msg.Tid
 		if err != nil {
 			action.Error = err.Error()
-			msg.Error = err.Error()
+			msg.Error = msg.Error + " " + err.Error()
+
 			logCtx.WithFields(log.Fields{
 				"error": err.Error(),
-			}).Error("access")
+			}).Error("serve campaign")
 		}
 		if errAction := notifierService.ActionNotify(action); errAction != nil {
 			logCtx.WithFields(log.Fields{
@@ -490,8 +452,6 @@ func serveCampaigns(c *gin.Context) {
 		}
 		if errAccessCampaign := notifierService.AccessCampaignNotify(msg); errAccessCampaign != nil {
 			logCtx.WithField("error", errAccessCampaign.Error()).Error("notify access campaign")
-		} else {
-			logCtx.WithFields(log.Fields{}).Info("notify access campaign")
 		}
 		if err != nil {
 			http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
@@ -514,32 +474,37 @@ func serveCampaigns(c *gin.Context) {
 		return
 	}
 	campaign, _ := campaignByLink[campaignLink]
-	msg, err = gatherInfo(c, *campaign)
-	if err != nil {
+	msg = gatherInfo(c, *campaign)
+	if msg.Error != "" {
 		return
 	}
-	campaignRedirect, err := redirect(action, msg)
-	if err != nil {
-		return
-	}
-	if campaignRedirect.Id == 0 {
-		action.Action = "rejected"
-		msg.Error = "rejected"
-		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
-		return
-	}
-	if campaignRedirect.Id != msg.CampaignId && campaignRedirect.Link != "" {
-		m.Redirected.Inc()
 
-		action.Action = "redirect"
-		msg.Error = "redirect"
-		url := cnf.Server.Url + "/lp/" + campaignRedirect.Link + "?msisdn=" + msg.Msisdn + "&r=1"
-		log.WithFields(log.Fields{
-			"tid":  msg.Tid,
-			"link": url,
-		}).Info("redirect")
-		http.Redirect(c.Writer, c.Request, url, 303)
-		return
+	if cnf.Service.Rejected.Enabled {
+		campaignRedirect, err := redirect(action, msg)
+		if err != nil {
+			return
+		}
+		if campaignRedirect.Id == 0 {
+			action.Action = "rejected"
+			msg.Error = "rejected"
+			http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+			return
+		}
+		if campaignRedirect.Id != msg.CampaignId && campaignRedirect.Link != "" {
+			m.Redirected.Inc()
+
+			action.Action = "redirect"
+			msg.Error = "redirect"
+			url := cnf.Server.Url + "/lp/" + campaignRedirect.Link + "?msisdn=" + msg.Msisdn + "&r=1"
+			log.WithFields(log.Fields{
+				"tid":  msg.Tid,
+				"link": url,
+			}).Info("redirect")
+			http.Redirect(c.Writer, c.Request, url, 303)
+			return
+		} else {
+			campaignByLink[campaignLink].Serve(c)
+		}
 	} else {
 		campaignByLink[campaignLink].Serve(c)
 	}

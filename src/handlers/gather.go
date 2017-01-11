@@ -3,7 +3,6 @@ package handlers
 // gather information from headers, etc
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -20,7 +19,7 @@ import (
 	inmem_service "github.com/vostrok/inmem/service"
 )
 
-func gatherInfo(c *gin.Context, campaign inmem_service.Campaign) (msg rbmq.AccessCampaignNotify, err error) {
+func gatherInfo(c *gin.Context, campaign inmem_service.Campaign) (msg rbmq.AccessCampaignNotify) {
 	sessions.SetSession(c)
 	tid := sessions.GetTid(c)
 	logCtx := log.WithFields(log.Fields{
@@ -42,6 +41,7 @@ func gatherInfo(c *gin.Context, campaign inmem_service.Campaign) (msg rbmq.Acces
 	}
 	msg.CampaignId = campaign.Id
 	msg.ServiceId = campaign.ServiceId
+	msg.CampaignHash = campaign.Hash
 
 	//for _, e := range os.Environ() {
 	//	log.WithFields(log.Fields{
@@ -59,11 +59,13 @@ func gatherInfo(c *gin.Context, campaign inmem_service.Campaign) (msg rbmq.Acces
 		if err != nil {
 			m.IPNotFoundError.Inc()
 			logCtx.Debug("cannot get ip infos")
+			err = nil
 		}
 		if len(infos) > 0 {
 			info := inmem_service.GetSupportedIPInfo(infos)
 			if info.Supported == false {
 				m.IPNotFoundError.Inc()
+
 				logCtx.Debug("cannot determine IP address")
 			} else {
 				log.WithFields(log.Fields{
@@ -87,18 +89,15 @@ func gatherInfo(c *gin.Context, campaign inmem_service.Campaign) (msg rbmq.Acces
 						log.WithFields(log.Fields{
 							"msisdn": msg.Msisdn,
 						}).Debug("found in header")
-						return msg, nil
+						return msg
 					}
 					msg.Msisdn = os.Getenv(header)
 					if len(msg.Msisdn) > 0 {
 						log.WithFields(log.Fields{
 							"msisdn": msg.Msisdn,
 						}).Debug("found in environment")
-						return msg, nil
+						return msg
 					}
-					log.WithFields(log.Fields{
-						"header": header,
-					}).Debug("msisdn not found")
 				}
 			}
 		}
@@ -114,7 +113,6 @@ func gatherInfo(c *gin.Context, campaign inmem_service.Campaign) (msg rbmq.Acces
 		logCtx.WithFields(log.Fields{
 			"msisdn": msg.Msisdn,
 		}).Debug("took from get params")
-
 	} else {
 		msg.Msisdn = sessions.GetFromSession("msisdn", c)
 		if len(msg.Msisdn) >= 5 {
@@ -127,26 +125,27 @@ func gatherInfo(c *gin.Context, campaign inmem_service.Campaign) (msg rbmq.Acces
 	// we worked hard and haven't found msisdn
 	if len(msg.Msisdn) <= 5 {
 		m.MsisdnNotFoundError.Inc()
-		err = errors.New("Msisdn not found")
-		msg.Error = err.Error()
+
 		logCtx.WithFields(log.Fields{
 			"Header": r.Header,
 		}).Debug("msisdn is empty")
-		return msg, errors.New("Msisdn not found")
+		msg.Error = "Msisdn not found"
+		return msg
 	}
 
 	if flagFoundIpInfo {
-		return msg, nil
+		return msg
 	}
 
 	info, err := inmem_client.GetIPInfoByMsisdn(msg.Msisdn)
 	if err != nil {
-		m.GetInfoByMsisdnError.Inc()
-
 		err = fmt.Errorf("operator.GetInfoByMsisdn: %s", err.Error())
+
 		msg.Error = err.Error()
-		logCtx.WithFields(log.Fields{}).Debug("cannot find info by msisdn")
-		return msg, err
+		logCtx.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Debug("cannot find info by msisdn")
+		return msg
 	}
 	msg.IP = info.IP
 	msg.OperatorCode = info.OperatorCode
@@ -155,10 +154,12 @@ func gatherInfo(c *gin.Context, campaign inmem_service.Campaign) (msg rbmq.Acces
 
 	if !info.Supported {
 		m.NotSupported.Inc()
-		err = errors.New("Not supported")
-		msg.Error = err.Error()
-		logCtx.WithFields(log.Fields{"info": info}).Error("operator is not supported")
-		return msg, err
+
+		msg.Error = "Not supported"
+		logCtx.WithFields(log.Fields{
+			"info": info,
+		}).Debug("operator is not supported")
+		return msg
 	}
 	logCtx.WithFields(log.Fields{
 		"msisdn": msg.Msisdn,
