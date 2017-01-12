@@ -249,7 +249,6 @@ func ContentGet(c *gin.Context) {
 			http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		}
 	}()
-	logCtx.Debug(c.Request.Header)
 
 	campaignHash := c.Params.ByName("campaign_hash")
 	if len(campaignHash) != cnf.Service.CampaignHashLength {
@@ -356,7 +355,6 @@ func UniqueUrlGet(c *gin.Context) {
 		}
 		sessions.RemoveTid(c)
 	}()
-	logCtx.Debug(c.Request.Header)
 
 	contentProperties, err = content.GetByUniqueUrl(uniqueUrl)
 	if err != nil {
@@ -415,7 +413,6 @@ func AddCampaignHandler(r *gin.Engine) {
 }
 
 func serveCampaigns(c *gin.Context) {
-	begin := time.Now()
 	sessions.SetSession(c)
 	tid := sessions.GetTid(c)
 	logCtx := log.WithFields(log.Fields{
@@ -442,16 +439,14 @@ func serveCampaigns(c *gin.Context) {
 		if errAction := notifierService.ActionNotify(action); errAction != nil {
 			logCtx.WithFields(log.Fields{
 				"error":  errAction.Error(),
-				"action": action,
+				"action": fmt.Sprintf("%#v", action),
 			}).Error("notify user action")
-		} else {
-			logCtx.WithFields(log.Fields{
-				"action": action,
-				"took":   time.Since(begin),
-			}).Info("notify user action")
 		}
 		if errAccessCampaign := notifierService.AccessCampaignNotify(msg); errAccessCampaign != nil {
-			logCtx.WithField("error", errAccessCampaign.Error()).Error("notify access campaign")
+			logCtx.WithFields(log.Fields{
+				"error": errAccessCampaign.Error(),
+				"msg":   fmt.Sprintf("%#v", msg),
+			}).Error("notify access campaign")
 		}
 		if err != nil {
 			http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
@@ -463,19 +458,22 @@ func serveCampaigns(c *gin.Context) {
 
 	// important, do not use campaign from this operation
 	// bcz we need to inc counter to process ratio
-	if _, ok := campaignByLink[campaignLink]; !ok {
+	campaign, ok := campaignByLink[campaignLink]
+	if !ok {
 		m.PageNotFoundError.Inc()
+		err = fmt.Errorf("page not found: %s", campaignLink)
 
 		log.WithFields(log.Fields{
-			"campaignLink": campaignLink,
-			"error":        "not found",
+			"error": err.Error(),
 		}).Error("cannot get campaign by link")
-		err = fmt.Errorf("page not found: %s", campaignLink)
 		return
 	}
-	campaign, _ := campaignByLink[campaignLink]
+
 	msg = gatherInfo(c, *campaign)
 	if msg.Error != "" {
+		log.WithFields(log.Fields{
+			"err": msg.Error,
+		}).Debug("gather info failed")
 		return
 	}
 
@@ -487,6 +485,9 @@ func serveCampaigns(c *gin.Context) {
 		if campaignRedirect.Id == 0 {
 			action.Action = "rejected"
 			msg.Error = "rejected"
+			log.WithFields(log.Fields{
+				"url": cnf.Service.ErrorRedirectUrl,
+			}).Debug("rejected")
 			http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 			return
 		}
@@ -574,8 +575,7 @@ func redirect(action rbmq.UserActionsNotify, msg rbmq.AccessCampaignNotify) (cam
 
 	if campaign.Id == msg.CampaignId {
 		log.WithFields(log.Fields{
-			"tid":    msg.Tid,
-			"msisdn": msg.Msisdn,
+			"tid": msg.Tid,
 		}).Debug("no redirect: ok")
 		return
 	}

@@ -107,9 +107,9 @@ func gatherInfo(c *gin.Context, campaign inmem_service.Campaign) (msg rbmq.Acces
 	// but for now we use get parameter to pass msisdn
 	// and there not always could be the correct IP adress
 	// so, if operator code or country code not found
-	// we can dset them via msisdn
+	// we can set them via msisdn
 	var ok bool
-	if msg.Msisdn, ok = c.GetQuery("msisdn"); ok {
+	if msg.Msisdn, ok = c.GetQuery("msisdn"); ok && len(msg.Msisdn) >= 5 {
 		logCtx.WithFields(log.Fields{
 			"msisdn": msg.Msisdn,
 		}).Debug("took from get params")
@@ -127,8 +127,9 @@ func gatherInfo(c *gin.Context, campaign inmem_service.Campaign) (msg rbmq.Acces
 		m.MsisdnNotFoundError.Inc()
 
 		logCtx.WithFields(log.Fields{
-			"Header": r.Header,
+			"msisdn": msg.Msisdn,
 		}).Debug("msisdn is empty")
+
 		msg.Error = "Msisdn not found"
 		return msg
 	}
