@@ -133,6 +133,7 @@ func (service notifier) ActionNotify(msg UserActionsNotify) error {
 
 func (service notifier) ContentSentNotify(msg inmem_service.ContentSentProperties) error {
 	msg.SentAt = time.Now().UTC()
+
 	event := EventNotify{
 		EventName: "content_sent",
 		EventData: msg,

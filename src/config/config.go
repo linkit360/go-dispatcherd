@@ -29,17 +29,17 @@ type AppConfig struct {
 type ServerConfig struct {
 	Port     string                  `default:"50300"`
 	Path     string                  `default:"/var/www/xmp.linkit360.ru/web/" yaml:"path"`
-	Url      string                  `default:"http://dev.pk.linkit360.ru/" yaml:"url"`
+	Url      string                  `default:"http://platform.pk.linkit360.ru" yaml:"url"`
 	Sessions sessions.SessionsConfig `yaml:"sessions"`
 }
 type ServiceConfig struct {
 	ErrorRedirectUrl   string         `default:"http://id.slypee.com" yaml:"error_redirect_url"`
 	CampaignHashLength int            `default:"32" yaml:"campaign_hash_length"`
-	Rejected           RejectedConfig `yaml:"rejected"`
+	Rejected           RejectedConfig `yaml:"rejected" default:"false"`
 }
 
 type RejectedConfig struct {
-	Enabled bool `default:"true" yaml:"enabled"`
+	Enabled bool `default:"false" yaml:"enabled"`
 }
 
 func LoadConfig() AppConfig {
