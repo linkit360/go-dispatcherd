@@ -17,13 +17,12 @@ import (
 )
 
 type AppConfig struct {
-	MetricInstancePrefix string                  `yaml:"metric_instance_prefix"`
-	AppName              string                  `yaml:"app_name"`
-	Server               ServerConfig            `yaml:"server"`
-	Service              ServiceConfig           `yaml:"service"`
-	ContentClient        content.RPCClientConfig `yaml:"content_client"`
-	InMemConfig          inmem.RPCClientConfig   `yaml:"inmem_client"`
-	Notifier             rbmq.NotifierConfig     `yaml:"notifier"`
+	AppName       string                  `yaml:"app_name"`
+	Server        ServerConfig            `yaml:"server"`
+	Service       ServiceConfig           `yaml:"service"`
+	ContentClient content.RPCClientConfig `yaml:"content_client"`
+	InMemConfig   inmem.RPCClientConfig   `yaml:"inmem_client"`
+	Notifier      rbmq.NotifierConfig     `yaml:"notifier"`
 }
 
 type ServerConfig struct {
@@ -35,7 +34,7 @@ type ServerConfig struct {
 type ServiceConfig struct {
 	ErrorRedirectUrl   string         `default:"http://id.slypee.com" yaml:"error_redirect_url"`
 	CampaignHashLength int            `default:"32" yaml:"campaign_hash_length"`
-	Rejected           RejectedConfig `yaml:"rejected" default:"false"`
+	Rejected           RejectedConfig `yaml:"rejected"`
 }
 
 type RejectedConfig struct {
@@ -59,13 +58,6 @@ func LoadConfig() AppConfig {
 	}
 	if strings.Contains(appConfig.AppName, "-") {
 		log.Fatal("app name must be without '-' : it's not a valid metric name")
-	}
-
-	if appConfig.MetricInstancePrefix == "" {
-		log.Fatal("metric_instance_prefix be defiled as <host>_<name>")
-	}
-	if strings.Contains(appConfig.MetricInstancePrefix, "-") {
-		log.Fatal("metric_instance_prefix be without '-' : it's not a valid metric name")
 	}
 
 	appConfig.Server.Port = envString("PORT", appConfig.Server.Port)

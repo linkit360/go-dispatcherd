@@ -20,7 +20,7 @@ var conf config.AppConfig
 
 func RunServer() {
 	conf = config.LoadConfig()
-	m.Init(conf.MetricInstancePrefix, conf.AppName)
+	m.Init(conf.AppName)
 
 	handlers.Init(conf)
 

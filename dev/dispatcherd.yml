@@ -1,4 +1,3 @@
-metric_instance_prefix: pk_mobilink1
 app_name: dispatcherd
 
 server:
@@ -18,7 +17,7 @@ service:
   error_redirect_url: http://id.slypee.com
   campaign_hash_length: 32
   rejected:
-    enabled: true
+    enabled: false
 
 content_client:
   dsn: localhost:50301

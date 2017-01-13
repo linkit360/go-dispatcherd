@@ -37,8 +37,7 @@ func newGaugeGatherErrors(name, help string) m.Gauge {
 
 var appName string
 
-func Init(instancePrefix, name string) {
-	m.Init(instancePrefix)
+func Init(name string) {
 	appName = name
 
 	Success = m.NewGauge("", "", "success", "success overall")
