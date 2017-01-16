@@ -12,7 +12,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
 
-	m "github.com/vostrok/dispatcherd/src/metrics"
 	"github.com/vostrok/dispatcherd/src/rbmq"
 	"github.com/vostrok/dispatcherd/src/sessions"
 	inmem_client "github.com/vostrok/inmem/rpcclient"
@@ -57,14 +56,12 @@ func gatherInfo(c *gin.Context, campaign inmem_service.Campaign) (msg rbmq.Acces
 	if len(IPs) != 0 {
 		infos, err := inmem_client.GetIPInfoByIps(IPs)
 		if err != nil {
-			m.IPNotFoundError.Inc()
 			logCtx.Debug("cannot get ip infos")
 			err = nil
 		}
 		if len(infos) > 0 {
 			info := inmem_service.GetSupportedIPInfo(infos)
 			if info.Supported == false {
-				m.IPNotFoundError.Inc()
 
 				logCtx.Debug("cannot determine IP address")
 			} else {
@@ -124,8 +121,6 @@ func gatherInfo(c *gin.Context, campaign inmem_service.Campaign) (msg rbmq.Acces
 
 	// we worked hard and haven't found msisdn
 	if len(msg.Msisdn) <= 5 {
-		m.MsisdnNotFoundError.Inc()
-
 		logCtx.WithFields(log.Fields{
 			"msisdn": msg.Msisdn,
 		}).Debug("msisdn is empty")
@@ -154,8 +149,6 @@ func gatherInfo(c *gin.Context, campaign inmem_service.Campaign) (msg rbmq.Acces
 	msg.Supported = info.Supported
 
 	if !info.Supported {
-		m.NotSupported.Inc()
-
 		msg.Error = "Not supported"
 		logCtx.WithFields(log.Fields{
 			"info": info,

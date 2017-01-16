@@ -511,7 +511,17 @@ func serveCampaigns(c *gin.Context) {
 	}
 
 	msg = gatherInfo(c, *campaign)
+	if msg.IP == "" {
+		m.IPNotFoundError.Inc()
+	}
+	if msg.Error == "Msisdn not found" {
+		m.MsisdnNotFoundError.Inc()
+	}
+	if !msg.Supported {
+		m.NotSupported.Inc()
+	}
 	if msg.Error != "" {
+
 		log.WithFields(log.Fields{
 			"err": msg.Error,
 		}).Debug("gather info failed")
