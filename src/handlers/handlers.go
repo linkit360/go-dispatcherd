@@ -299,11 +299,16 @@ func ContentGet(c *gin.Context) {
 		ServiceId:  campaign.ServiceId,
 	})
 	if err != nil {
-		m.ContentdRPCDialError.Inc()
 		m.ContentDeliveryErrors.Inc()
 
 		err = fmt.Errorf("content.Get: %s", err.Error())
 		logCtx.Fatal("contentd fatal: trying to free all resources")
+		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+		return
+	}
+
+	if contentProperties.ContentId == 0 {
+		err = fmt.Errorf("content.Get: %s", "No content id")
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
@@ -344,6 +349,7 @@ func UniqueUrlGet(c *gin.Context) {
 
 	sessions.SetSession(c)
 	tid := sessions.GetTid(c)
+	msisdn := sessions.GetFromSession("msisdn", c)
 	uniqueUrl := c.Params.ByName("uniqueurl")
 
 	logCtx := log.WithFields(log.Fields{
@@ -354,7 +360,7 @@ func UniqueUrlGet(c *gin.Context) {
 
 	contentProperties := &inmem_service.ContentSentProperties{}
 	action := rbmq.UserActionsNotify{
-		Action: "unique_url_open",
+		Action: "content_get",
 		Tid:    tid,
 	}
 
@@ -377,9 +383,18 @@ func UniqueUrlGet(c *gin.Context) {
 		sessions.RemoveTid(c)
 	}()
 
-	contentProperties, err = content.GetByUniqueUrl(uniqueUrl)
+	if uniqueUrl == "get" {
+		contentProperties, err = content.GetUniqueUrl(content_service.GetContentParams{
+			Msisdn:     msisdn,
+			Tid:        tid,
+			ServiceId:  777,
+			CampaignId: 290,
+		})
+	} else {
+		contentProperties, err = content.GetByUniqueUrl(uniqueUrl)
+	}
+	contentProperties.Msisdn = msisdn
 	if err != nil {
-		m.ContentdRPCDialError.Inc()
 		m.ContentDeliveryErrors.Inc()
 
 		err = fmt.Errorf("content.GetByUniqueUrl: %s", err.Error())
@@ -389,13 +404,15 @@ func UniqueUrlGet(c *gin.Context) {
 		logCtx.Fatal("contentd fatal: trying to free all resources")
 		return
 	}
-	if contentProperties.Error != "" {
+	if contentProperties.Error != "" || contentProperties.ContentId == 0 {
 		m.ContentDeliveryErrors.Inc()
 
+		if contentProperties.ContentId == 0 {
+			contentProperties.Error = contentProperties.Error + " no uniq url found"
+		}
 		err = fmt.Errorf("content.GetByUniqueUrl: %s", contentProperties.Error)
 		logCtx.WithField("error", contentProperties.Error).Error("error while attemplting to get content")
 		err = errors.New(contentProperties.Error)
-		c.Error(err)
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
@@ -405,6 +422,9 @@ func UniqueUrlGet(c *gin.Context) {
 	}).Debug("contentd response")
 
 	action.CampaignId = contentProperties.CampaignId
+	action.Msisdn = contentProperties.Msisdn
+	action.Tid = contentProperties.Tid
+	action.Error = contentProperties.Error
 
 	err = utils.ServeAttachment(
 		cnf.Server.Path+"uploaded_content/"+contentProperties.ContentPath,
