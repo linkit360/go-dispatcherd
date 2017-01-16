@@ -370,7 +370,9 @@ func UniqueUrlGet(c *gin.Context) {
 			m.Errors.Inc()
 			action.Error = err.Error()
 		}
-		action.Tid = contentProperties.Tid
+		contentProperties.Tid = tid
+		action.Tid = tid
+		action.CampaignId = contentProperties.CampaignId
 
 		if err := notifierService.ActionNotify(action); err != nil {
 			logCtx.WithField("error", err.Error()).Error("notify user action")
@@ -384,7 +386,7 @@ func UniqueUrlGet(c *gin.Context) {
 	}()
 
 	if uniqueUrl == "get" {
-		contentProperties, err = content.GetUniqueUrl(content_service.GetContentParams{
+		contentProperties, err = content.Get(content_service.GetContentParams{
 			Msisdn:     msisdn,
 			Tid:        tid,
 			ServiceId:  777,
