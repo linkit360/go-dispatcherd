@@ -345,7 +345,6 @@ func ContentGet(c *gin.Context) {
 }
 
 func UniqueUrlGet(c *gin.Context) {
-	m.CampaignAccess.Inc()
 
 	sessions.SetSession(c)
 	tid := sessions.GetTid(c)
@@ -386,6 +385,7 @@ func UniqueUrlGet(c *gin.Context) {
 	}()
 
 	if uniqueUrl == "get" {
+		m.RandomContentGet.Inc()
 		contentProperties, err = content.Get(content_service.GetContentParams{
 			Msisdn:     msisdn,
 			Tid:        tid,
@@ -393,6 +393,7 @@ func UniqueUrlGet(c *gin.Context) {
 			CampaignId: 290,
 		})
 	} else {
+		m.UniqueUrlGet.Inc()
 		contentProperties, err = content.GetByUniqueUrl(uniqueUrl)
 	}
 	contentProperties.Msisdn = msisdn

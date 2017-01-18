@@ -15,6 +15,8 @@ var (
 	Redirected        m.Gauge
 	Rejected          m.Gauge
 	CampaignAccess    m.Gauge
+	RandomContentGet  m.Gauge
+	UniqueUrlGet      m.Gauge
 	ContentGetSuccess m.Gauge
 
 	PageNotFoundError          m.Gauge
@@ -47,6 +49,8 @@ func Init(name string) {
 	AgreeSuccess = newGaugeCommon("agree_success", "pressed the button 'agree' and successfully processed")
 	CampaignAccess = newGaugeCommon("campaign_access", "campaign access success")
 	ContentGetSuccess = newGaugeCommon("content_get", "pressed the button 'get content' and successfully processed")
+	RandomContentGet = newGaugeCommon("random_content_get", "get random content from the url /u/get")
+	UniqueUrlGet = newGaugeCommon("unique_url_get", "get the uniq url from the sms")
 
 	PageNotFoundError = newGaugeCommon("error404", "404 requests")
 	Rejected = newGaugeCommon("truly_rejected", "no more campaigns for msisdn - rejected")
@@ -69,6 +73,9 @@ func Init(name string) {
 			AgreeSuccess.Update()
 			CampaignAccess.Update()
 			ContentGetSuccess.Update()
+			RandomContentGet.Update()
+			UniqueUrlGet.Update()
+
 			PageNotFoundError.Update()
 			Rejected.Update()
 			CampaignHashWrong.Update()
