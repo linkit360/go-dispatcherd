@@ -170,8 +170,7 @@ func getIPAdress(r *http.Request) []net.IP {
 		for i := len(addresses) - 1; i >= 0; i-- {
 			ip := strings.TrimSpace(addresses[i])
 			realIP := net.ParseIP(ip)
-			if !realIP.IsGlobalUnicast() { //|| IsPrivateSubnet(realIP)
-				// bad address, go to next
+			if !realIP.IsGlobalUnicast() {
 				continue
 			}
 			result = append(result, realIP)

@@ -9,12 +9,13 @@ server:
     secret: rCs7h2h_NqB5Kx-
     path: /
     domain: dev.pk.linkit360.ru
-    cookie_ttl: 3600
+    cookie_ttl: 300
     secure: false
     http_only: false
 
 service:
   error_redirect_url: http://id.slypee.com
+  not_found_redirect_url: http://dev.pk.linkit360.ru/lp/cpa.k.ak100
   campaign_hash_length: 32
   rejected:
     enabled: false

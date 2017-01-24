@@ -32,9 +32,10 @@ type ServerConfig struct {
 	Sessions sessions.SessionsConfig `yaml:"sessions"`
 }
 type ServiceConfig struct {
-	ErrorRedirectUrl   string         `default:"http://id.slypee.com" yaml:"error_redirect_url"`
-	CampaignHashLength int            `default:"32" yaml:"campaign_hash_length"`
-	Rejected           RejectedConfig `yaml:"rejected"`
+	ErrorRedirectUrl    string         `default:"http://id.slypee.com" yaml:"error_redirect_url"`
+	NotFoundRedirectUrl string         `default:"http://id.slypee.com" yaml:"not_found_redirect_url"`
+	CampaignHashLength  int            `default:"32" yaml:"campaign_hash_length"`
+	Rejected            RejectedConfig `yaml:"rejected"`
 }
 
 type RejectedConfig struct {

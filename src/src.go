@@ -2,6 +2,7 @@ package src
 
 import (
 	"errors"
+	"net/http"
 	"runtime"
 
 	log "github.com/Sirupsen/logrus"
@@ -57,6 +58,7 @@ func RunServer() {
 func notFound(c *gin.Context) {
 	c.Error(errors.New("Not found"))
 	m.PageNotFoundError.Inc()
+	http.Redirect(c.Writer, c.Request, conf.Service.NotFoundRedirectUrl, 303)
 }
 
 func updateTemplates(c *gin.Context) {

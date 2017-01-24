@@ -16,9 +16,10 @@ type SessionsConfig struct {
 	Secret   string `default:"rCs7h2h_NqB5Kx-" yaml:"secret"`
 	Path     string `default:"/" yaml:"path"`
 	Domain   string `default:"pk.linkit360.ru" yaml:"domain"`
-	MaxAge   int    `default:"87400" yaml:"cookie_ttl"` // MaxAge>0 means Max-Age attribute present and given in seconds.
+	MaxAge   int    `default:"300" yaml:"cookie_ttl"` // MaxAge>0 means Max-Age attribute present and given in seconds.
 	Secure   bool   `default:"false" yaml:"secure"`
 	HttpOnly bool   `default:"false" yaml:"http_only"`
+	Key      string `default:"sehB33772" yaml:"key"`
 }
 
 func Init(conf SessionsConfig, r *gin.Engine) {
@@ -34,7 +35,7 @@ func Init(conf SessionsConfig, r *gin.Engine) {
 	}
 	store.Options(options)
 
-	r.Use(sessions.Sessions("sess", store))
+	r.Use(sessions.Sessions(conf.Key, store))
 }
 
 // tid example 1477597462-3f66f7ea-afef-42a2-69ad-549a6a38b5ff
