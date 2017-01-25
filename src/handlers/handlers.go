@@ -348,7 +348,6 @@ func UniqueUrlGet(c *gin.Context) {
 
 	sessions.SetSession(c)
 	tid := sessions.GetTid(c)
-	msisdn := sessions.GetFromSession("msisdn", c)
 	uniqueUrl := c.Params.ByName("uniqueurl")
 
 	logCtx := log.WithFields(log.Fields{
@@ -387,7 +386,7 @@ func UniqueUrlGet(c *gin.Context) {
 	if uniqueUrl == "get" {
 		m.RandomContentGet.Inc()
 		contentProperties, err = content.Get(content_service.GetContentParams{
-			Msisdn:     msisdn,
+			Msisdn:     sessions.GetFromSession("msisdn", c),
 			Tid:        tid,
 			ServiceId:  777,
 			CampaignId: 290,
@@ -396,7 +395,6 @@ func UniqueUrlGet(c *gin.Context) {
 		m.UniqueUrlGet.Inc()
 		contentProperties, err = content.GetByUniqueUrl(uniqueUrl)
 	}
-	contentProperties.Msisdn = msisdn
 	if err != nil {
 		m.ContentDeliveryErrors.Inc()
 
@@ -440,7 +438,6 @@ func UniqueUrlGet(c *gin.Context) {
 		err := fmt.Errorf("serveContentFile: %s", err.Error())
 		logCtx.WithField("error", err.Error()).Error("serveContentFile")
 		c.Error(err)
-		action.Error = err.Error()
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
