@@ -34,7 +34,7 @@ type ServerConfig struct {
 type ServiceConfig struct {
 	ErrorRedirectUrl      string         `default:"http://id.slypee.com" yaml:"error_redirect_url"`
 	NotFoundRedirectUrl   string         `default:"http://id.slypee.com" yaml:"not_found_redirect_url"`
-	RedirectOnGatherError bool           `default:"true" yaml:"redirect_on_gather_error"`
+	RedirectOnGatherError bool           `yaml:"redirect_on_gather_error"`
 	CampaignHashLength    int            `default:"32" yaml:"campaign_hash_length"`
 	Rejected              RejectedConfig `yaml:"rejected"`
 }

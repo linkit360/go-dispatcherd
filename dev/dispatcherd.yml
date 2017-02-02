@@ -4,7 +4,6 @@ server:
   port: 50300
   path: /var/www/xmp.linkit360.ru/web/
   url: http://dev.pk.linkit360.ru
-  redirect_on_gather_error: false
 
   sessions:
     secret: rCs7h2h_NqB5Kx-
@@ -18,6 +17,7 @@ service:
   error_redirect_url: http://id.slypee.com
   not_found_redirect_url: http://dev.pk.linkit360.ru/lp/cpa.k.ak100
   campaign_hash_length: 32
+  redirect_on_gather_error: true
   rejected:
     enabled: false
 
