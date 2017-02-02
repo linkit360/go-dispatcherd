@@ -4,6 +4,7 @@ server:
   port: 50300
   path: /var/www/xmp.linkit360.ru/web/
   url: http://dev.pk.linkit360.ru
+  redirect_on_gather_error: false
 
   sessions:
     secret: rCs7h2h_NqB5Kx-

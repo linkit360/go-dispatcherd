@@ -520,8 +520,7 @@ func serveCampaigns(c *gin.Context) {
 	if !msg.Supported {
 		m.NotSupported.Inc()
 	}
-	if msg.Error != "" {
-
+	if cnf.Service.RedirectOnGatherError && msg.Error != "" {
 		log.WithFields(log.Fields{
 			"err": msg.Error,
 		}).Debug("gather info failed")
