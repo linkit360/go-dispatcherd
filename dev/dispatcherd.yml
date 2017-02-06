@@ -20,6 +20,12 @@ service:
   redirect_on_gather_error: true
   rejected:
     enabled: false
+  landings:
+    beeline:
+      url: http://217.118.84.12:8888/CDP_WapTester/emulator
+      timeout: 30
+      user: 1637572
+      pass: KhZbQo1n
 
 content_client:
   dsn: localhost:50301

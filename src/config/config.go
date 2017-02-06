@@ -37,10 +37,24 @@ type ServiceConfig struct {
 	RedirectOnGatherError bool           `yaml:"redirect_on_gather_error"`
 	CampaignHashLength    int            `default:"32" yaml:"campaign_hash_length"`
 	Rejected              RejectedConfig `yaml:"rejected"`
+	LandingPages          LPConfig       `yaml:"landings"`
 }
 
 type RejectedConfig struct {
 	Enabled bool `default:"false" yaml:"enabled"`
+}
+
+type LPConfig struct {
+	Beeline BeelineLandingConf `yaml:"beeline"`
+}
+
+type BeelineLandingConf struct {
+	Url     string `yaml:"url"`
+	Timeout int    `yaml:"timeout"`
+	Auth    struct {
+		User string `yaml:"user"`
+		Pass string `yaml:"pass"`
+	} `yaml:"auth"`
 }
 
 func LoadConfig() AppConfig {

@@ -528,7 +528,7 @@ func serveCampaigns(c *gin.Context) {
 		return
 	}
 
-	campaignByLink[campaignLink].Serve(c)
+	campaignByLink[campaignLink].SimpleServe(c)
 
 	m.CampaignAccess.Inc()
 	m.Success.Inc()
@@ -571,6 +571,8 @@ func serveCampaigns(c *gin.Context) {
 			}).Info("added new subscritpion due to ratio")
 		}
 	}
+	return
+
 }
 
 func redirect(msg rbmq.AccessCampaignNotify) (campaign inmem_service.Campaign, err error) {
