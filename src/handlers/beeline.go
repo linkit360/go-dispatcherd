@@ -13,6 +13,7 @@ import (
 	rec "github.com/vostrok/utils/rec"
 	"io/ioutil"
 	"strings"
+	"time"
 )
 
 func redirectUserBeeline(c *gin.Context) {
@@ -88,7 +89,7 @@ func redirectUserBeeline(c *gin.Context) {
 	req.Close = false
 	req.SetBasicAuth(cnf.Service.LandingPages.Beeline.Auth.User, cnf.Service.LandingPages.Beeline.Auth.Pass)
 	httpClient := http.Client{
-		Timeout: cnf.Service.LandingPages.Beeline.Timeout,
+		Timeout: time.Duration(cnf.Service.LandingPages.Beeline.Timeout) * time.Second,
 	}
 	resp, err := httpClient.Do(req)
 	if err != nil {
@@ -108,7 +109,7 @@ func redirectUserBeeline(c *gin.Context) {
 		"body": string(beelineResponse),
 	}).Debug("got resp")
 
-	sArray := strings.SplitN(beelineResponse, "serviceId=", 2)
+	sArray := strings.SplitN(string(beelineResponse), "serviceId=", 2)
 	if len(sArray) < 2 {
 		err = fmt.Errorf("strings.SplitN: %s", "cannot determine service id")
 		log.WithFields(log.Fields{
@@ -121,10 +122,10 @@ func redirectUserBeeline(c *gin.Context) {
 	}
 	r.OperatorToken = sArray[1]
 
-	http.Redirect(c.Writer, c.Request, strings.SplitN(beelineResponse, "Location: ", 2)[1], 303)
+	http.Redirect(c.Writer, c.Request, strings.SplitN(string(beelineResponse), "Location: ", 2)[1], 303)
 }
 
-//	rg := e.Group("/campaign/:campaign_hash")
+// rg := e.Group("/campaign/:campaign_hash")
 // rg.GET("/:campaign_page", handlers.AccessHandler, handlers.CampaignPage)
 func CampaignPage(c *gin.Context) {
 	var err error

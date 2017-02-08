@@ -24,8 +24,10 @@ import (
 	"github.com/vostrok/dispatcherd/src/utils"
 	inmem_client "github.com/vostrok/inmem/rpcclient"
 	inmem_service "github.com/vostrok/inmem/service"
+	redirect_client "github.com/vostrok/partners/rpcclient"
+	redirect_service "github.com/vostrok/partners/service"
 	queue_config "github.com/vostrok/utils/config"
-	"github.com/vostrok/utils/rec"
+	rec "github.com/vostrok/utils/rec"
 )
 
 var cnf config.AppConfig
@@ -43,6 +45,9 @@ func Init(conf config.AppConfig) {
 	content.Init(conf.ContentClient)
 	if err := inmem_client.Init(conf.InMemConfig); err != nil {
 		log.Fatal("cannot init inmem client")
+	}
+	if err := redirect_client.Init(conf.RedirectConfig); err != nil {
+		log.Fatal("cannot redirect client")
 	}
 	UpdateCampaigns()
 	notifierService = rbmq.NewNotifierService(conf.Notifier)
@@ -138,7 +143,7 @@ func HandlePull(c *gin.Context) {
 }
 
 func startNewSubscription(c *gin.Context, msg rbmq.AccessCampaignNotify) error {
-	if cnf.Service.Rejected.Enabled {
+	if cnf.Service.Rejected.InternalCampaignEnabled {
 		campaignRedirect, err := redirect(msg)
 		if err != nil {
 			return err
@@ -222,7 +227,7 @@ func startNewSubscription(c *gin.Context, msg rbmq.AccessCampaignNotify) error {
 		return err
 	}
 	m.AgreeSuccess.Inc()
-	if cnf.Service.Rejected.Enabled {
+	if cnf.Service.Rejected.InternalCampaignEnabled {
 		if err = inmem_client.SetMsisdnCampaignCache(msg.CampaignId, msg.Msisdn); err != nil {
 			err = fmt.Errorf("inmem_client.SetMsisdnCampaignCache: %s", err.Error())
 			logCtx.Error(err.Error())
@@ -520,6 +525,33 @@ func serveCampaigns(c *gin.Context) {
 	if !msg.Supported {
 		m.NotSupported.Inc()
 	}
+
+	if cnf.Service.Rejected.TrafficRedirectEnabled {
+		// check if rejected: if rejected, then campaignId differs from campaign.id
+		isRejected, err := inmem_client.IsMsisdnRejectedByService(msg.ServiceId, msg.Msisdn)
+		if err != nil {
+			err = fmt.Errorf("inmem_client.IsMsisdnRejectedByService: %s", err.Error())
+			log.WithFields(log.Fields{
+				"tid":   msg.Tid,
+				"error": err.Error(),
+			}).Error("rejected check failed")
+		} else {
+			if isRejected {
+				trafficRedirect(msg, c)
+				return
+			} else {
+				err := inmem_client.SetMsisdnServiceCache(msg.ServiceId, msg.Msisdn)
+				if err != nil {
+					err = fmt.Errorf("inmem_client.SetMsisdnServiceCache: %s", err.Error())
+					log.WithFields(log.Fields{
+						"tid":   msg.Tid,
+						"error": err.Error(),
+					}).Error("set msisdn service")
+				}
+			}
+		}
+	}
+
 	if cnf.Service.RedirectOnGatherError && msg.Error != "" {
 		log.WithFields(log.Fields{
 			"err": msg.Error,
@@ -572,11 +604,51 @@ func serveCampaigns(c *gin.Context) {
 		}
 	}
 	return
+}
 
+type EventNotify struct {
+	EventName string                          `json:"event_name,omitempty"`
+	EventData redirect_service.DestinationHit `json:"event_data,omitempty"`
+}
+
+func trafficRedirect(r rbmq.AccessCampaignNotify, c *gin.Context) {
+	if r.CountryCode == 0 {
+		r.CountryCode = cnf.Service.CountryCode
+	}
+	if r.OperatorCode == 0 {
+		r.OperatorCode = cnf.Service.OperatorCode
+	}
+	hit := redirect_service.DestinationHit{
+		SentAt: time.Now().UTC(),
+		Tid:    r.Tid,
+		Msisdn: r.Msisdn,
+	}
+	defer func() {
+		notifierService.RedirectNotify(hit)
+	}()
+
+	dst, err := redirect_client.GetDestination(redirect_service.GetDestinationParams{
+		CountryCode:  r.CountryCode,
+		OperatorCode: r.OperatorCode,
+	})
+	if err != nil {
+		log.WithFields(log.Fields{
+			"tid":   r.Tid,
+			"error": err.Error(),
+		}).Error("cann't get redirect url from tr")
+		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 302)
+	}
+	hit.DestinationId = dst.DestinationId
+	hit.PartnerId = dst.PartnerId
+	hit.Destination = dst.Destination
+	hit.PricePerHit = dst.PricePerHit
+	hit.CountryCode = dst.CountryCode
+	hit.OperatorCode = dst.OperatorCode
+	http.Redirect(c.Writer, c.Request, dst.Destination, 302)
 }
 
 func redirect(msg rbmq.AccessCampaignNotify) (campaign inmem_service.Campaign, err error) {
-	if !cnf.Service.Rejected.Enabled {
+	if !cnf.Service.Rejected.InternalCampaignEnabled {
 		log.WithFields(log.Fields{
 			"tid": msg.Tid,
 		}).Debug("redirect off")

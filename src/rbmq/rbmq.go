@@ -7,11 +7,14 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	inmem_service "github.com/vostrok/inmem/service"
+	redirect_service "github.com/vostrok/partners/service"
 	"github.com/vostrok/utils/amqp"
 	"github.com/vostrok/utils/rec"
 )
 
 type Notifier interface {
+	RedirectNotify(msg redirect_service.DestinationHit) error
+
 	NewSubscriptionNotify(string, rec.Record) error
 
 	AccessCampaignNotify(msg AccessCampaignNotify) error
@@ -29,6 +32,7 @@ type Queues struct {
 	AccessCampaign string `yaml:"access_campaign" default:"access_campaign"`
 	UserAction     string `yaml:"user_actions" default:"user_actions"`
 	ContentSent    string `yaml:"content_sent" default:"content_sent"`
+	RedirectNotify string `yaml:"redirect_notify" default:"redirect_notify"`
 }
 type notifier struct {
 	q  Queues
@@ -57,6 +61,19 @@ func NewNotifierService(conf NotifierConfig) Notifier {
 	return n
 }
 
+func (service notifier) RedirectNotify(msg redirect_service.DestinationHit) error {
+	event := EventNotify{
+		EventName: service.q.RedirectNotify,
+		EventData: msg,
+	}
+
+	body, err := json.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("json.Marshal: %s", err.Error())
+	}
+	service.mq.Publish(amqp.AMQPMessage{service.q.RedirectNotify, uint8(1), body})
+	return nil
+}
 func (service notifier) NewSubscriptionNotify(queue string, msg rec.Record) error {
 	msg.SentAt = time.Now().UTC()
 	event := EventNotify{

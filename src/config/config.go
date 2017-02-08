@@ -13,16 +13,18 @@ import (
 	content "github.com/vostrok/contentd/rpcclient"
 	"github.com/vostrok/dispatcherd/src/rbmq"
 	"github.com/vostrok/dispatcherd/src/sessions"
-	inmem "github.com/vostrok/inmem/rpcclient"
+	inmem_client "github.com/vostrok/inmem/rpcclient"
+	redirect_client "github.com/vostrok/partners/rpcclient"
 )
 
 type AppConfig struct {
-	AppName       string                  `yaml:"app_name"`
-	Server        ServerConfig            `yaml:"server"`
-	Service       ServiceConfig           `yaml:"service"`
-	ContentClient content.RPCClientConfig `yaml:"content_client"`
-	InMemConfig   inmem.RPCClientConfig   `yaml:"inmem_client"`
-	Notifier      rbmq.NotifierConfig     `yaml:"notifier"`
+	AppName        string                          `yaml:"app_name"`
+	Server         ServerConfig                    `yaml:"server"`
+	Service        ServiceConfig                   `yaml:"service"`
+	ContentClient  content.RPCClientConfig         `yaml:"content_client"`
+	InMemConfig    inmem_client.RPCClientConfig    `yaml:"inmem_client"`
+	RedirectConfig redirect_client.RPCClientConfig `yaml:"redirect_client"`
+	Notifier       rbmq.NotifierConfig             `yaml:"notifier"`
 }
 
 type ServerConfig struct {
@@ -37,11 +39,14 @@ type ServiceConfig struct {
 	RedirectOnGatherError bool           `yaml:"redirect_on_gather_error"`
 	CampaignHashLength    int            `default:"32" yaml:"campaign_hash_length"`
 	Rejected              RejectedConfig `yaml:"rejected"`
+	CountryCode           int64          `yaml:"country_code"`
+	OperatorCode          int64          `yaml:"operator_code"`
 	LandingPages          LPConfig       `yaml:"landings"`
 }
 
 type RejectedConfig struct {
-	Enabled bool `default:"false" yaml:"enabled"`
+	InternalCampaignEnabled bool `default:"false" yaml:"internal_campaign_enabled"`
+	TrafficRedirectEnabled  bool `default:"false" yaml:"traffic_redirect_enabled"`
 }
 
 type LPConfig struct {
