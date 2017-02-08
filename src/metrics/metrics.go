@@ -6,18 +6,19 @@ import (
 )
 
 var (
-	Incoming          m.Gauge
-	Errors            m.Gauge
-	Success           m.Gauge
-	Access            m.Gauge
-	Agree             m.Gauge
-	AgreeSuccess      m.Gauge
-	Redirected        m.Gauge
-	Rejected          m.Gauge
-	CampaignAccess    m.Gauge
-	RandomContentGet  m.Gauge
-	UniqueUrlGet      m.Gauge
-	ContentGetSuccess m.Gauge
+	Incoming               m.Gauge
+	Errors                 m.Gauge
+	Success                m.Gauge
+	Access                 m.Gauge
+	Agree                  m.Gauge
+	AgreeSuccess           m.Gauge
+	Redirected             m.Gauge
+	Rejected               m.Gauge
+	CampaignAccess         m.Gauge
+	RandomContentGet       m.Gauge
+	UniqueUrlGet           m.Gauge
+	ContentGetSuccess      m.Gauge
+	TrafficRedirectSuccess m.Gauge
 
 	PageNotFoundError          m.Gauge
 	CampaignHashWrong          m.Gauge
@@ -51,6 +52,7 @@ func Init(name string) {
 	ContentGetSuccess = newGaugeCommon("content_get", "pressed the button 'get content' and successfully processed")
 	RandomContentGet = newGaugeCommon("random_content_get", "get random content from the url /u/get")
 	UniqueUrlGet = newGaugeCommon("unique_url_get", "get the uniq url from the sms")
+	TrafficRedirectSuccess = newGaugeCommon("traffice_redirect_success", "traffic redirect success")
 
 	PageNotFoundError = newGaugeCommon("error404", "404 requests")
 	Rejected = newGaugeCommon("truly_rejected", "no more campaigns for msisdn - rejected")
@@ -75,6 +77,7 @@ func Init(name string) {
 			ContentGetSuccess.Update()
 			RandomContentGet.Update()
 			UniqueUrlGet.Update()
+			TrafficRedirectSuccess.Update()
 
 			PageNotFoundError.Update()
 			Rejected.Update()

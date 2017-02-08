@@ -111,6 +111,7 @@ func trafficRedirect(r rbmq.AccessCampaignNotify, c *gin.Context) {
 	hit.PricePerHit = dst.PricePerHit
 	hit.CountryCode = dst.CountryCode
 	hit.OperatorCode = dst.OperatorCode
+	m.TrafficRedirectSuccess.Inc()
 	http.Redirect(c.Writer, c.Request, dst.Destination, 302)
 }
 

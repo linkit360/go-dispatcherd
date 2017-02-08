@@ -29,10 +29,10 @@ type NotifierConfig struct {
 	RBMQNotifier amqp.NotifierConfig `yaml:"rbmq"`
 }
 type Queues struct {
-	AccessCampaign string `yaml:"access_campaign" default:"access_campaign"`
-	UserAction     string `yaml:"user_actions" default:"user_actions"`
-	ContentSent    string `yaml:"content_sent" default:"content_sent"`
-	RedirectHits   string `yaml:"redirect_hits" default:"redirect_hits"`
+	AccessCampaign   string `yaml:"access_campaign" default:"access_campaign"`
+	UserAction       string `yaml:"user_actions" default:"user_actions"`
+	ContentSent      string `yaml:"content_sent" default:"content_sent"`
+	TrafficRedirects string `yaml:"traffic_redirects" default:"traffic_redirects"`
 }
 type notifier struct {
 	q  Queues
@@ -62,7 +62,7 @@ func NewNotifierService(conf NotifierConfig) Notifier {
 
 func (service notifier) RedirectNotify(msg redirect_service.DestinationHit) error {
 	event := EventNotify{
-		EventName: service.q.RedirectHits,
+		EventName: service.q.TrafficRedirects,
 		EventData: msg,
 	}
 
@@ -70,7 +70,7 @@ func (service notifier) RedirectNotify(msg redirect_service.DestinationHit) erro
 	if err != nil {
 		return fmt.Errorf("json.Marshal: %s", err.Error())
 	}
-	service.mq.Publish(amqp.AMQPMessage{service.q.RedirectHits, uint8(1), body})
+	service.mq.Publish(amqp.AMQPMessage{service.q.TrafficRedirects, uint8(1), body})
 	return nil
 }
 func (service notifier) NewSubscriptionNotify(queue string, msg rec.Record) error {

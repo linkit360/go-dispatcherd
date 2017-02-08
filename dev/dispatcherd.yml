@@ -35,7 +35,7 @@ notifier:
     access_campaign: access_campaign
     user_actions: user_actions
     content_sent: content_sent
-    redirect_hits: redirect_hits
+    traffic_redirects: traffic_redirects
 
   rbmq:
     conn:
