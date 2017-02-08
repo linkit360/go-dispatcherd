@@ -2,26 +2,40 @@ package handlers
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
 
 	m "github.com/vostrok/dispatcherd/src/metrics"
 	"github.com/vostrok/dispatcherd/src/rbmq"
+	"github.com/vostrok/dispatcherd/src/sessions"
+	inmem_client "github.com/vostrok/inmem/rpcclient"
 	rec "github.com/vostrok/utils/rec"
-	"io/ioutil"
-	"strings"
-	"time"
 )
 
+func AddBeelineHandlers(rg *gin.RouterGroup) {
+	if cnf.Service.LandingPages.Beeline.Enabled {
+		rg.GET("/:campaign_page", AccessHandler, returnBackCampaignPage)
+		rg.GET("/tolp", AccessHandler, redirectUserBeeline)
+	}
+}
 func redirectUserBeeline(c *gin.Context) {
 	var r rec.Record
 	var err error
-	var msg rbmq.AccessCampaignNotify
+	tid := sessions.GetTid(c)
+	msg := rbmq.AccessCampaignNotify{
+		CountryCode:  cnf.Service.CountryCode,
+		OperatorCode: cnf.Service.OperatorCode,
+		Tid:          tid,
+	}
 	action := rbmq.UserActionsNotify{
 		Action: "pull_click",
+		Tid:    tid,
 	}
 	defer func() {
 		if err != nil {
@@ -64,6 +78,8 @@ func redirectUserBeeline(c *gin.Context) {
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
+	msg.CampaignId = campaign.Id
+	msg.ServiceId = campaign.ServiceId
 
 	v := url.Values{}
 	v.Add("tid", r.Tid)
@@ -103,6 +119,25 @@ func redirectUserBeeline(c *gin.Context) {
 		return
 	}
 	defer resp.Body.Close()
+
+	operator, err := inmem_client.GetOperatorByCode(msg.OperatorCode)
+	if err != nil {
+		err = fmt.Errorf("inmem_client.GetOperatorByCode: %s", err.Error())
+		log.WithFields(log.Fields{
+			"tid":   msg.Tid,
+			"error": err.Error(),
+		}).Error("cannot get operator by code")
+	} else {
+		for _, header := range operator.MsisdnHeaders {
+			msg.Msisdn = c.Request.Header.Get(header)
+			if len(msg.Msisdn) > 7 {
+				log.WithFields(log.Fields{
+					"msisdn": msg.Msisdn,
+				}).Debug("found in header")
+				break
+			}
+		}
+	}
 	log.WithFields(log.Fields{
 		"tid":  r.Tid,
 		"url":  reqUrl,
@@ -127,14 +162,13 @@ func redirectUserBeeline(c *gin.Context) {
 
 // rg := e.Group("/campaign/:campaign_hash")
 // rg.GET("/:campaign_page", handlers.AccessHandler, handlers.CampaignPage)
-func CampaignPage(c *gin.Context) {
+func returnBackCampaignPage(c *gin.Context) {
 	var err error
 	tid, ok := c.GetQuery("tid")
 	if ok && len(tid) >= 10 {
 		log.WithFields(log.Fields{
 			"tid": tid,
 		}).Debug("found tid in get params")
-
 	}
 	defer func() {
 		if err != nil {
@@ -178,7 +212,6 @@ func CampaignPage(c *gin.Context) {
 			break
 		}
 	}
-
 	if err = notifierService.ActionNotify(action); err != nil {
 		return
 	}

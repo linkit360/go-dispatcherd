@@ -18,28 +18,24 @@ service:
   not_found_redirect_url: http://dev.pk.linkit360.ru/lp/cpa.k.ak100
   campaign_hash_length: 32
   redirect_on_gather_error: true
+  start_new_subscription_on_click: false
   rejected:
-    enabled: false
+    campaign_redirect_enabled: false
+    traffic_redirect_enabled: false
   landings:
     beeline:
+      enabled: true
       url: http://217.118.84.12:8888/CDP_WapTester/emulator
       timeout: 30
       user: 1637572
       pass: KhZbQo1n
-
-content_client:
-  dsn: localhost:50301
-  timeout: 10
-
-inmem_client:
-  port: 50307
-  timeout: 10
 
 notifier:
   queues:
     access_campaign: access_campaign
     user_actions: user_actions
     content_sent: content_sent
+    redirect_hits: redirect_hits
 
   rbmq:
     conn:

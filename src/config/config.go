@@ -34,18 +34,19 @@ type ServerConfig struct {
 	Sessions sessions.SessionsConfig `yaml:"sessions"`
 }
 type ServiceConfig struct {
-	ErrorRedirectUrl      string         `default:"http://id.slypee.com" yaml:"error_redirect_url"`
-	NotFoundRedirectUrl   string         `default:"http://id.slypee.com" yaml:"not_found_redirect_url"`
-	RedirectOnGatherError bool           `yaml:"redirect_on_gather_error"`
-	CampaignHashLength    int            `default:"32" yaml:"campaign_hash_length"`
-	Rejected              RejectedConfig `yaml:"rejected"`
-	CountryCode           int64          `yaml:"country_code"`
-	OperatorCode          int64          `yaml:"operator_code"`
-	LandingPages          LPConfig       `yaml:"landings"`
+	ErrorRedirectUrl       string         `default:"http://id.slypee.com" yaml:"error_redirect_url"`
+	NotFoundRedirectUrl    string         `default:"http://id.slypee.com" yaml:"not_found_redirect_url"`
+	RedirectOnGatherError  bool           `yaml:"redirect_on_gather_error"`
+	OnCliekNewSubscription bool           `yaml:"start_new_subscription_on_click"`
+	CampaignHashLength     int            `yaml:"campaign_hash_length" default:"32"`
+	Rejected               RejectedConfig `yaml:"rejected"`
+	CountryCode            int64          `yaml:"country_code"`
+	OperatorCode           int64          `yaml:"operator_code"`
+	LandingPages           LPConfig       `yaml:"landings"`
 }
 
 type RejectedConfig struct {
-	InternalCampaignEnabled bool `default:"false" yaml:"internal_campaign_enabled"`
+	CampaignRedirectEnabled bool `default:"false" yaml:"campaign_redirect_enabled"`
 	TrafficRedirectEnabled  bool `default:"false" yaml:"traffic_redirect_enabled"`
 }
 
@@ -54,6 +55,7 @@ type LPConfig struct {
 }
 
 type BeelineLandingConf struct {
+	Enabled bool   `yaml:"enabled"`
 	Url     string `yaml:"url"`
 	Timeout int    `yaml:"timeout"`
 	Auth    struct {
