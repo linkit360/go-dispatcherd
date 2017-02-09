@@ -99,6 +99,16 @@ func startNewSubscription(c *gin.Context, msg rbmq.AccessCampaignNotify) error {
 			msg.ServiceId = campaignRedirect.ServiceId
 		}
 	}
+	if cnf.Service.Rejected.TrafficRedirectEnabled {
+		err := inmem_client.SetMsisdnServiceCache(msg.ServiceId, msg.Msisdn)
+		if err != nil {
+			err = fmt.Errorf("inmem_client.SetMsisdnServiceCache: %s", err.Error())
+			log.WithFields(log.Fields{
+				"tid":   msg.Tid,
+				"error": err.Error(),
+			}).Error("set msisdn service")
+		}
+	}
 
 	m.Agree.Inc()
 	logCtx := log.WithFields(log.Fields{

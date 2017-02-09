@@ -37,7 +37,7 @@ type ServiceConfig struct {
 	ErrorRedirectUrl       string         `default:"http://id.slypee.com" yaml:"error_redirect_url"`
 	NotFoundRedirectUrl    string         `default:"http://id.slypee.com" yaml:"not_found_redirect_url"`
 	RedirectOnGatherError  bool           `yaml:"redirect_on_gather_error"`
-	OnCliekNewSubscription bool           `yaml:"start_new_subscription_on_click"`
+	OnClickNewSubscription bool           `yaml:"start_new_subscription_on_click"`
 	CampaignHashLength     int            `yaml:"campaign_hash_length" default:"32"`
 	Rejected               RejectedConfig `yaml:"rejected"`
 	CountryCode            int64          `yaml:"country_code"`
@@ -81,6 +81,12 @@ func LoadConfig() AppConfig {
 	}
 	if strings.Contains(appConfig.AppName, "-") {
 		log.Fatal("app name must be without '-' : it's not a valid metric name")
+	}
+
+	if appConfig.Service.Rejected.TrafficRedirectEnabled &&
+		!appConfig.RedirectConfig.Enabled {
+		log.Infof("implicitly enabled redirect service")
+		appConfig.RedirectConfig.Enabled = true
 	}
 
 	appConfig.Server.Port = envString("PORT", appConfig.Server.Port)

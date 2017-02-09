@@ -21,9 +21,10 @@ import (
 func AddBeelineHandlers(rg *gin.RouterGroup) {
 	if cnf.Service.LandingPages.Beeline.Enabled {
 		rg.GET("/:campaign_page", AccessHandler, returnBackCampaignPage)
-		rg.GET("/tolp", AccessHandler, redirectUserBeeline)
+		rg.GET("", AccessHandler, redirectUserBeeline)
 	}
 }
+
 func redirectUserBeeline(c *gin.Context) {
 	var r rec.Record
 	var err error
@@ -47,7 +48,7 @@ func redirectUserBeeline(c *gin.Context) {
 			log.WithFields(log.Fields{
 				"error": err.Error(),
 				"tid":   r.Tid,
-			}).Error("handle pull")
+			}).Error("beeline redirect to lp")
 		}
 		action.Msisdn = msg.Msisdn
 		action.CampaignId = msg.CampaignId

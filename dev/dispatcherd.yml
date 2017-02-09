@@ -14,17 +14,17 @@ server:
     http_only: false
 
 service:
+  campaign_hash_length: 32
   error_redirect_url: http://id.slypee.com
   not_found_redirect_url: http://dev.pk.linkit360.ru/lp/cpa.k.ak100
-  campaign_hash_length: 32
   redirect_on_gather_error: true
-  start_new_subscription_on_click: false
+  start_new_subscription_on_click: true
   rejected:
     campaign_redirect_enabled: false
-    traffic_redirect_enabled: false
+    traffic_redirect_enabled: true
   landings:
     beeline:
-      enabled: true
+      enabled: false
       url: http://217.118.84.12:8888/CDP_WapTester/emulator
       timeout: 30
       user: 1637572

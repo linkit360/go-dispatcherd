@@ -17,9 +17,9 @@ import (
 	inmem_service "github.com/vostrok/inmem/service"
 )
 
-func AddContentHandlers(e *gin.Engine, rg *gin.RouterGroup) {
+func AddContentHandlers(e *gin.Engine) {
 	e.GET("/u/:uniqueurl", AccessHandler, UniqueUrlGet)
-	rg.GET("/contentget", AccessHandler, ContentGet)
+	e.Group("/content/:campaign_hash").GET("", AccessHandler, ContentGet)
 }
 
 // same as handle pull, but do not create subscription
@@ -79,6 +79,17 @@ func ContentGet(c *gin.Context) {
 	action.CampaignId = campaign.Id
 	msg := gatherInfo(c, campaign)
 
+	wasAutoClick, _ := c.GetQuery("s")
+	if len(wasAutoClick) > 0 && msg.Msisdn != "" {
+		if err = startNewSubscription(c, msg); err == nil {
+			log.WithFields(log.Fields{
+				"tid":        msg.Tid,
+				"msisdn":     msg.Msisdn,
+				"campaignid": campaign.Id,
+			}).Info("added new subscritpion by click on get content")
+		}
+	}
+
 	action.Msisdn = msg.Msisdn
 
 	logCtx.WithFields(log.Fields{}).Debug("gathered info, get content id..")
@@ -117,7 +128,6 @@ func ContentGet(c *gin.Context) {
 		"path":      contentProperties.ContentPath,
 	}).Debug("contentd response")
 
-	// todo one time url-s
 	err = utils.ServeAttachment(
 		cnf.Server.Path+"uploaded_content/"+contentProperties.ContentPath,
 		contentProperties.ContentName,

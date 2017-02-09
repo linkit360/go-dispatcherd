@@ -32,10 +32,10 @@ func RunServer() {
 
 	sessions.Init(conf.Server.Sessions, e)
 	metrics.AddHandler(e)
+	handlers.AddContentHandlers(e)
 
 	rg := e.Group("/campaign/:campaign_hash")
 	handlers.AddCampaignHandler(e, rg)
-	handlers.AddContentHandlers(e, rg)
 	handlers.AddBeelineHandlers(rg)
 
 	e.Static("/static/", conf.Server.Path+"/static/")

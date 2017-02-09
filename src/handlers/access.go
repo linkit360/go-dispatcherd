@@ -23,7 +23,8 @@ func AddCampaignHandler(e *gin.Engine, rg *gin.RouterGroup) {
 	e.LoadHTMLGlob(cnf.Server.Path + "campaign/**/*")
 	e.GET("/updateTemplates", updateTemplates)
 
-	if cnf.Service.OnCliekNewSubscription {
+	// if operator used LP, then lp hits on this location instead of handle pull handler
+	if cnf.Service.OnClickNewSubscription {
 		rg.GET("", AccessHandler, HandlePull)
 	}
 }
@@ -147,15 +148,6 @@ func serveCampaigns(c *gin.Context) {
 			if isRejected {
 				trafficRedirect(msg, c)
 				return
-			} else {
-				err := inmem_client.SetMsisdnServiceCache(msg.ServiceId, msg.Msisdn)
-				if err != nil {
-					err = fmt.Errorf("inmem_client.SetMsisdnServiceCache: %s", err.Error())
-					log.WithFields(log.Fields{
-						"tid":   msg.Tid,
-						"error": err.Error(),
-					}).Error("set msisdn service")
-				}
 			}
 		}
 	}

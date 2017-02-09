@@ -104,7 +104,11 @@ func trafficRedirect(r rbmq.AccessCampaignNotify, c *gin.Context) {
 			"error": err.Error(),
 		}).Error("cann't get redirect url from tr")
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 302)
+		return
 	}
+
+	inmem_client.IncRedirectStatCount(dst.DestinationId)
+
 	hit.DestinationId = dst.DestinationId
 	hit.PartnerId = dst.PartnerId
 	hit.Destination = dst.Destination
@@ -112,6 +116,10 @@ func trafficRedirect(r rbmq.AccessCampaignNotify, c *gin.Context) {
 	hit.CountryCode = dst.CountryCode
 	hit.OperatorCode = dst.OperatorCode
 	m.TrafficRedirectSuccess.Inc()
+	log.WithFields(log.Fields{
+		"tid": r.Tid,
+		"url": dst.Destination,
+	}).Info("traffic redirect")
 	http.Redirect(c.Writer, c.Request, dst.Destination, 302)
 }
 
