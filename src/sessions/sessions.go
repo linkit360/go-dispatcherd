@@ -68,6 +68,11 @@ func SetSession(c *gin.Context) {
 	log.WithFields(log.Fields{"tid": tid, "path": c.Request.URL.Path}).Info("session saved")
 }
 
+func Set(name string, val interface{}, c *gin.Context) {
+	session := sessions.Default(c)
+	session.Set(name, val)
+}
+
 func getFromParamsOrSession(
 	tid string,
 	c *gin.Context,

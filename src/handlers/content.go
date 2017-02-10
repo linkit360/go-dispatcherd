@@ -14,6 +14,7 @@ import (
 	"github.com/vostrok/dispatcherd/src/rbmq"
 	"github.com/vostrok/dispatcherd/src/sessions"
 	"github.com/vostrok/dispatcherd/src/utils"
+	inmem_client "github.com/vostrok/inmem/rpcclient"
 	inmem_service "github.com/vostrok/inmem/service"
 )
 
@@ -81,12 +82,22 @@ func ContentGet(c *gin.Context) {
 
 	wasAutoClick, _ := c.GetQuery("s")
 	if len(wasAutoClick) > 0 && msg.Msisdn != "" {
-		if err = startNewSubscription(c, msg); err == nil {
+		isRejected, err := inmem_client.IsMsisdnRejectedByService(campaign.ServiceId, msg.Msisdn)
+		if err != nil {
+			err = fmt.Errorf("inmem_client.IsMsisdnRejectedByService: %s", err.Error())
 			log.WithFields(log.Fields{
-				"tid":        msg.Tid,
-				"msisdn":     msg.Msisdn,
-				"campaignid": campaign.Id,
-			}).Info("added new subscritpion by click on get content")
+				"tid":   msg.Tid,
+				"error": err.Error(),
+			}).Error("rejected check failed")
+		}
+		if !isRejected {
+			if err = startNewSubscription(c, msg); err == nil {
+				log.WithFields(log.Fields{
+					"tid":        msg.Tid,
+					"msisdn":     msg.Msisdn,
+					"campaignid": campaign.Id,
+				}).Info("added new subscritpion by click on get content")
+			}
 		}
 	}
 

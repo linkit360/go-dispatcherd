@@ -97,6 +97,7 @@ func redirectUserBeeline(c *gin.Context) {
 		"tid": r.Tid,
 		"url": reqUrl,
 	}).Debug("call api")
+
 	req, err := http.NewRequest("GET", reqUrl, nil)
 	if err != nil {
 		err = fmt.Errorf("Cann't create request: %s", err.Error())
@@ -135,6 +136,8 @@ func redirectUserBeeline(c *gin.Context) {
 				log.WithFields(log.Fields{
 					"msisdn": msg.Msisdn,
 				}).Debug("found in header")
+				sessions.Set("msisdn", msg.Msisdn, c)
+				sessions.Set("tid", msg.Tid, c)
 				break
 			}
 		}
@@ -170,6 +173,11 @@ func returnBackCampaignPage(c *gin.Context) {
 		log.WithFields(log.Fields{
 			"tid": tid,
 		}).Debug("found tid in get params")
+	} else {
+		tid = sessions.GetFromSession("tid", c)
+		log.WithFields(log.Fields{
+			"tid": tid,
+		}).Debug("found tid in session")
 	}
 	defer func() {
 		if err != nil {
@@ -201,6 +209,7 @@ func returnBackCampaignPage(c *gin.Context) {
 		Action:     "return_back",
 		Tid:        tid,
 		CampaignId: campaign.Id,
+		Msisdn:     sessions.GetFromSession("msisdn", c),
 	}
 	campaignPage := c.Params.ByName("campaign_page")
 	for _, v := range campaignByHash {
