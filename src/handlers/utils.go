@@ -36,7 +36,9 @@ func Init(conf config.AppConfig) {
 
 	cnf = conf
 
-	content_client.Init(conf.ContentClient)
+	if err := content_client.Init(conf.ContentClient); err != nil {
+		log.Fatal("cannot init contentd client")
+	}
 	if err := inmem_client.Init(conf.InMemConfig); err != nil {
 		log.Fatal("cannot init inmem client")
 	}

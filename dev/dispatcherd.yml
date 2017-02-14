@@ -21,7 +21,7 @@ service:
   start_new_subscription_on_click: false
   rejected:
     campaign_redirect_enabled: false
-    traffic_redirect_enabled: true
+    traffic_redirect_enabled: false
   landings:
     custom: true
     beeline:

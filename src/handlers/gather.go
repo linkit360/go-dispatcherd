@@ -40,8 +40,9 @@ func gatherInfo(c *gin.Context, campaign inmem_service.Campaign) (msg rbmq.Acces
 		CampaignId:   campaign.Id,
 		ServiceId:    campaign.ServiceId,
 		CampaignHash: campaign.Hash,
+		CountryCode:  cnf.Service.CountryCode,
+		OperatorCode: cnf.Service.OperatorCode,
 	}
-
 	//for _, e := range os.Environ() {
 	//	log.WithFields(log.Fields{
 	//		"tid": tid,

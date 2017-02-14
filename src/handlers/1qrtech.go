@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -28,11 +27,7 @@ func qrTechHandler(c *gin.Context) {
 	tid := sessions.GetTid(c)
 	m.Incoming.Inc()
 
-	msg := rbmq.AccessCampaignNotify{
-		CountryCode:  cnf.Service.CountryCode,
-		OperatorCode: cnf.Service.OperatorCode,
-		Tid:          tid,
-	}
+	var msg = rbmq.AccessCampaignNotify{}
 	action := rbmq.UserActionsNotify{
 		Action: "access",
 		Tid:    tid,
@@ -90,23 +85,24 @@ func qrTechHandler(c *gin.Context) {
 	if !msg.Supported {
 		m.NotSupported.Inc()
 	}
+
 	msg.CampaignId = campaign.Id
 	msg.ServiceId = campaign.ServiceId
 
 	contentUrl, err := generateUniqueUrl(msg)
 	if err != nil {
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+		return
 	}
 
-	v := url.Values{}
-	v.Add("sp_content", contentUrl)
-	v.Add("serviceid", strconv.FormatInt(campaign.ServiceId, 10))
-	reqUrl := cnf.Service.LandingPages.QRTech.Url + v.Encode()
+	params := "serviceid=" + strconv.FormatInt(campaign.ServiceId, 10) + "&sp_content=" + contentUrl
+	reqUrl := cnf.Service.LandingPages.QRTech.Url
 	logCtx.WithFields(log.Fields{
-		"url": reqUrl,
-	}).Debug("call ")
+		"url":    reqUrl,
+		"params": params,
+	}).Debug("call")
 
-	req, err := http.NewRequest("POST", reqUrl, nil)
+	req, err := http.NewRequest("POST", reqUrl, strings.NewReader(params))
 	if err != nil {
 		err = fmt.Errorf("Cann't create request: %s", err.Error())
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
@@ -121,6 +117,11 @@ func qrTechHandler(c *gin.Context) {
 		err = fmt.Errorf("Cann't make request: %s", err.Error())
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 	}
+	if resp.StatusCode > 220 {
+		err = fmt.Errorf("qrTech resp status: %s", resp.Status)
+		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+		return
+	}
 	qrTechResponse, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		err = fmt.Errorf("ioutil.ReadAll: %s", err.Error())
@@ -130,8 +131,15 @@ func qrTechHandler(c *gin.Context) {
 	defer resp.Body.Close()
 
 	logCtx.WithFields(log.Fields{
-		"url": string(qrTechResponse),
+		"response": string(qrTechResponse),
 	}).Debug("got response")
+
+	bodyArr := strings.SplitN(string(qrTechResponse), "Location: ", 2)
+	if len(bodyArr) < 2 {
+		err = fmt.Errorf("cannot get redirect url from response %s", qrTechResponse)
+		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+		return
+	}
 	frameUrl := strings.SplitN(string(qrTechResponse), "Location: ", 2)[1]
 
 	qrTechInfo := struct {
