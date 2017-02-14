@@ -18,17 +18,22 @@ service:
   error_redirect_url: http://id.slypee.com
   not_found_redirect_url: http://dev.pk.linkit360.ru/lp/cpa.k.ak100
   redirect_on_gather_error: true
-  start_new_subscription_on_click: true
+  start_new_subscription_on_click: false
   rejected:
     campaign_redirect_enabled: false
     traffic_redirect_enabled: true
   landings:
+    custom: true
     beeline:
       enabled: false
       url: http://217.118.84.12:8888/CDP_WapTester/emulator
       timeout: 30
       user: 1637572
       pass: KhZbQo1n
+    qrtech:
+      enabled: true
+      url: http://wap.funspaz.com/wap/partner/linkit360/ais_wap.php
+
 
 notifier:
   queues:

@@ -22,6 +22,7 @@ var (
 
 	PageNotFoundError          m.Gauge
 	CampaignHashWrong          m.Gauge
+	UnknownService             m.Gauge
 	ContentDeliveryErrors      m.Gauge
 	IPNotFoundError            m.Gauge
 	MsisdnNotFoundError        m.Gauge
@@ -57,6 +58,7 @@ func Init(name string) {
 	PageNotFoundError = newGaugeCommon("error404", "404 requests")
 	Rejected = newGaugeCommon("truly_rejected", "no more campaigns for msisdn - rejected")
 	CampaignHashWrong = newGaugeCommon("campaign_hash_wrong", "campaign hash wrong")
+	UnknownService = newGaugeCommon("unknown_service", "unknown service")
 	ContentDeliveryErrors = newGaugeCommon("serve_errors", "content delivery errors")
 
 	IPNotFoundError = newGaugeGatherErrors("ip_not_found", "ip not found")
@@ -82,6 +84,7 @@ func Init(name string) {
 			PageNotFoundError.Update()
 			Rejected.Update()
 			CampaignHashWrong.Update()
+			UnknownService.Update()
 			ContentDeliveryErrors.Update()
 			IPNotFoundError.Update()
 			MsisdnNotFoundError.Update()

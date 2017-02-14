@@ -37,6 +37,7 @@ func RunServer() {
 	rg := e.Group("/campaign/:campaign_hash")
 	handlers.AddCampaignHandler(e, rg)
 	handlers.AddBeelineHandlers(rg)
+	handlers.AddQRTechHandlers(e)
 
 	e.Static("/static/", conf.Server.Path+"/static/")
 	e.StaticFile("/favicon.ico", conf.Server.Path+"/favicon.ico")

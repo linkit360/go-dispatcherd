@@ -1,6 +1,5 @@
 package handlers
 
-// gather information from headers, etc
 import (
 	"encoding/json"
 	"fmt"
@@ -18,6 +17,7 @@ import (
 	inmem_service "github.com/vostrok/inmem/service"
 )
 
+// gather information from headers, etc
 func gatherInfo(c *gin.Context, campaign inmem_service.Campaign) (msg rbmq.AccessCampaignNotify) {
 	sessions.SetSession(c)
 	tid := sessions.GetTid(c)
@@ -31,16 +31,16 @@ func gatherInfo(c *gin.Context, campaign inmem_service.Campaign) (msg rbmq.Acces
 		headers = []byte("{}")
 	}
 	msg = rbmq.AccessCampaignNotify{
-		Tid:       tid,
-		UserAgent: r.UserAgent(),
-		Referer:   r.Referer(),
-		UrlPath:   r.URL.String(),
-		Method:    r.Method,
-		Headers:   string(headers),
+		Tid:          tid,
+		UserAgent:    r.UserAgent(),
+		Referer:      r.Referer(),
+		UrlPath:      r.URL.String(),
+		Method:       r.Method,
+		Headers:      string(headers),
+		CampaignId:   campaign.Id,
+		ServiceId:    campaign.ServiceId,
+		CampaignHash: campaign.Hash,
 	}
-	msg.CampaignId = campaign.Id
-	msg.ServiceId = campaign.ServiceId
-	msg.CampaignHash = campaign.Hash
 
 	//for _, e := range os.Environ() {
 	//	log.WithFields(log.Fields{

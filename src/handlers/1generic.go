@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
@@ -15,10 +14,15 @@ import (
 	inmem_client "github.com/vostrok/inmem/rpcclient"
 )
 
-var e *gin.Engine
+// generic:
+// mobilink
+// cheese
+// yondu
 
 func AddCampaignHandler(e *gin.Engine, rg *gin.RouterGroup) {
-	e.Group("/lp/:campaign_link", AccessHandler).GET("", serveCampaigns)
+	if !cnf.Service.LandingPages.Custom {
+		e.Group("/lp/:campaign_link", AccessHandler).GET("", serveCampaigns)
+	}
 
 	e.LoadHTMLGlob(cnf.Server.Path + "campaign/**/*")
 	e.GET("/updateTemplates", updateTemplates)
@@ -35,36 +39,6 @@ func updateTemplates(c *gin.Context) {
 	e.LoadHTMLGlob(path)
 	UpdateCampaigns()
 	c.JSON(200, struct{}{})
-}
-
-func AccessHandler(c *gin.Context) {
-	m.Access.Inc()
-
-	begin := time.Now()
-	c.Next()
-
-	responseTime := time.Since(begin)
-	tid := sessions.GetTid(c)
-
-	if len(c.Errors) > 0 {
-		log.WithFields(log.Fields{
-			"tid":    tid,
-			"method": c.Request.Method,
-			"path":   c.Request.URL.Path,
-			"req":    c.Request.URL.RawQuery,
-			"error":  c.Errors.String(),
-			"since":  responseTime,
-		}).Error(c.Errors.String())
-	} else {
-		log.WithFields(log.Fields{
-			"tid":    tid,
-			"method": c.Request.Method,
-			"path":   c.Request.URL.Path,
-			"req":    c.Request.URL.RawQuery,
-			"since":  responseTime,
-		}).Info("access")
-	}
-	c.Header("X-Response-Time", responseTime.String())
 }
 
 func serveCampaigns(c *gin.Context) {
@@ -160,7 +134,12 @@ func serveCampaigns(c *gin.Context) {
 		return
 	}
 
-	campaignByLink[campaignLink].SimpleServe(c)
+	autoClickInfo := struct {
+		AutoClick bool
+	}{
+		AutoClick: campaignByLink[campaignLink].CanAutoClick,
+	}
+	campaignByLink[campaignLink].SimpleServe(c, autoClickInfo)
 
 	m.CampaignAccess.Inc()
 	m.Success.Inc()

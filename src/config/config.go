@@ -51,7 +51,15 @@ type RejectedConfig struct {
 }
 
 type LPConfig struct {
+	Custom  bool               `yaml:"custom"`
 	Beeline BeelineLandingConf `yaml:"beeline"`
+	QRTech  BeelineLandingConf `yaml:"qrtech"`
+}
+
+type QRTechLandingConf struct {
+	Enabled bool   `yaml:"enabled"`
+	Url     string `yaml:"url"`
+	Timeout int    `yaml:"timeout"`
 }
 
 type BeelineLandingConf struct {

@@ -8,18 +8,24 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
 
-	content "github.com/vostrok/contentd/rpcclient"
+	content_client "github.com/vostrok/contentd/rpcclient"
+	content_service "github.com/vostrok/contentd/service"
 	"github.com/vostrok/dispatcherd/src/config"
 	m "github.com/vostrok/dispatcherd/src/metrics"
 	"github.com/vostrok/dispatcherd/src/rbmq"
+	"github.com/vostrok/dispatcherd/src/sessions"
 	inmem_client "github.com/vostrok/inmem/rpcclient"
 	inmem_service "github.com/vostrok/inmem/service"
 	redirect_client "github.com/vostrok/partners/rpcclient"
 	redirect_service "github.com/vostrok/partners/service"
 )
 
-var cnf config.AppConfig
+// file for global variables,
+// initialisation
+// common functions
 
+var cnf config.AppConfig
+var e *gin.Engine
 var notifierService rbmq.Notifier
 
 var campaignByLink map[string]*inmem_service.Campaign
@@ -30,7 +36,7 @@ func Init(conf config.AppConfig) {
 
 	cnf = conf
 
-	content.Init(conf.ContentClient)
+	content_client.Init(conf.ContentClient)
 	if err := inmem_client.Init(conf.InMemConfig); err != nil {
 		log.Fatal("cannot init inmem client")
 	}
@@ -41,7 +47,39 @@ func Init(conf config.AppConfig) {
 	notifierService = rbmq.NewNotifierService(conf.Notifier)
 }
 
+func AccessHandler(c *gin.Context) {
+	m.Access.Inc()
+
+	begin := time.Now()
+	c.Next()
+
+	responseTime := time.Since(begin)
+	tid := sessions.GetTid(c)
+
+	if len(c.Errors) > 0 {
+		log.WithFields(log.Fields{
+			"tid":    tid,
+			"method": c.Request.Method,
+			"path":   c.Request.URL.Path,
+			"req":    c.Request.URL.RawQuery,
+			"error":  c.Errors.String(),
+			"since":  responseTime,
+		}).Error(c.Errors.String())
+	} else {
+		log.WithFields(log.Fields{
+			"tid":    tid,
+			"method": c.Request.Method,
+			"path":   c.Request.URL.Path,
+			"req":    c.Request.URL.RawQuery,
+			"since":  responseTime,
+		}).Info("access")
+	}
+	c.Header("X-Response-Time", responseTime.String())
+}
+
 // update campaign list
+// when campaign changes, CQR request comes to inmem service
+// and from inmem service it goes to dispatcher
 func UpdateCampaigns() error {
 	log.WithFields(log.Fields{}).Debug("get all campaigns")
 	campaigns, err := inmem_client.GetAllCampaigns()
@@ -179,5 +217,52 @@ func redirect(msg rbmq.AccessCampaignNotify) (campaign inmem_service.Campaign, e
 		"campaign":  msg.CampaignId,
 		"2campaign": campaign.Id,
 	}).Debug("redirect")
+	return
+}
+
+// generate unique url for user
+// the unique url creation is inside contentd service
+func generateUniqueUrl(r rbmq.AccessCampaignNotify) (url string, err error) {
+	logCtx := log.WithFields(log.Fields{
+		"tid": r.Tid,
+	})
+	service, err := inmem_client.GetServiceById(r.ServiceId)
+	if err != nil {
+		m.UnknownService.Inc()
+
+		err = fmt.Errorf("inmem_client.GetServiceById: %s", err.Error())
+		logCtx.WithFields(log.Fields{
+			"serviceId": r.ServiceId,
+			"error":     err.Error(),
+		}).Error("cannot get service by id")
+		return
+	}
+	contentProperties, err := content_client.GetUniqueUrl(content_service.GetContentParams{
+		Msisdn:       r.Msisdn,
+		Tid:          r.Tid,
+		ServiceId:    r.ServiceId,
+		CampaignId:   r.CampaignId,
+		OperatorCode: r.OperatorCode,
+		CountryCode:  r.CountryCode,
+	})
+
+	if contentProperties.Error != "" {
+		m.ContentDeliveryErrors.Inc()
+		err = fmt.Errorf("content_client.GetUniqueUrl: %s", contentProperties.Error)
+		logCtx.WithFields(log.Fields{
+			"serviceId": r.ServiceId,
+			"error":     err.Error(),
+		}).Error("contentd internal error")
+		return
+	}
+	if err != nil {
+		err = fmt.Errorf("content_client.GetUniqueUrl: %s", err.Error())
+		logCtx.WithFields(log.Fields{
+			"serviceId": r.ServiceId,
+			"error":     err.Error(),
+		}).Error("cannot get unique content url")
+		return
+	}
+	url = fmt.Sprintf(service.SendContentTextTemplate, cnf.Server.Url+"/u/"+contentProperties.UniqueUrl)
 	return
 }

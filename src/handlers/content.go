@@ -8,13 +8,12 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
 
-	content "github.com/vostrok/contentd/rpcclient"
+	content_client "github.com/vostrok/contentd/rpcclient"
 	content_service "github.com/vostrok/contentd/service"
 	m "github.com/vostrok/dispatcherd/src/metrics"
 	"github.com/vostrok/dispatcherd/src/rbmq"
 	"github.com/vostrok/dispatcherd/src/sessions"
 	"github.com/vostrok/dispatcherd/src/utils"
-	inmem_client "github.com/vostrok/inmem/rpcclient"
 	inmem_service "github.com/vostrok/inmem/service"
 )
 
@@ -82,22 +81,12 @@ func ContentGet(c *gin.Context) {
 
 	wasAutoClick, _ := c.GetQuery("s")
 	if len(wasAutoClick) > 0 && msg.Msisdn != "" {
-		isRejected, err := inmem_client.IsMsisdnRejectedByService(campaign.ServiceId, msg.Msisdn)
-		if err != nil {
-			err = fmt.Errorf("inmem_client.IsMsisdnRejectedByService: %s", err.Error())
+		if err = startNewSubscription(c, msg); err == nil {
 			log.WithFields(log.Fields{
-				"tid":   msg.Tid,
-				"error": err.Error(),
-			}).Error("rejected check failed")
-		}
-		if !isRejected {
-			if err = startNewSubscription(c, msg); err == nil {
-				log.WithFields(log.Fields{
-					"tid":        msg.Tid,
-					"msisdn":     msg.Msisdn,
-					"campaignid": campaign.Id,
-				}).Info("added new subscritpion by click on get content")
-			}
+				"tid":        msg.Tid,
+				"msisdn":     msg.Msisdn,
+				"campaignid": campaign.Id,
+			}).Info("added new subscritpion by click on get content")
 		}
 	}
 
@@ -105,7 +94,7 @@ func ContentGet(c *gin.Context) {
 
 	logCtx.WithFields(log.Fields{}).Debug("gathered info, get content id..")
 
-	contentProperties, err = content.Get(content_service.GetContentParams{
+	contentProperties, err = content_client.Get(content_service.GetContentParams{
 		Msisdn:     msg.Msisdn,
 		Tid:        tid,
 		CampaignId: campaign.Id,
@@ -197,7 +186,7 @@ func UniqueUrlGet(c *gin.Context) {
 
 	if uniqueUrl == "get" {
 		m.RandomContentGet.Inc()
-		contentProperties, err = content.Get(content_service.GetContentParams{
+		contentProperties, err = content_client.Get(content_service.GetContentParams{
 			Msisdn:     sessions.GetFromSession("msisdn", c),
 			Tid:        tid,
 			ServiceId:  777,
@@ -205,7 +194,7 @@ func UniqueUrlGet(c *gin.Context) {
 		})
 	} else {
 		m.UniqueUrlGet.Inc()
-		contentProperties, err = content.GetByUniqueUrl(uniqueUrl)
+		contentProperties, err = content_client.GetByUniqueUrl(uniqueUrl)
 	}
 	if err != nil {
 		m.ContentDeliveryErrors.Inc()
