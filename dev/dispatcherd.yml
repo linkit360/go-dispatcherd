@@ -13,6 +13,18 @@ server:
     secure: false
     http_only: false
 
+inmem_client:
+  dsn: :50307
+  timeout: 10
+
+content_client:
+  dsn: :50301
+  timeout: 10
+
+redirect_client:
+  dsn: :50312
+  timeout: 10
+
 service:
   campaign_hash_length: 32
   error_redirect_url: http://id.slypee.com

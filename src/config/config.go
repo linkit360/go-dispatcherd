@@ -10,7 +10,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/jinzhu/configor"
 
-	content "github.com/vostrok/contentd/rpcclient"
+	content_client "github.com/vostrok/contentd/rpcclient"
 	"github.com/vostrok/dispatcherd/src/rbmq"
 	"github.com/vostrok/dispatcherd/src/sessions"
 	inmem_client "github.com/vostrok/inmem/rpcclient"
@@ -21,7 +21,7 @@ type AppConfig struct {
 	AppName        string                          `yaml:"app_name"`
 	Server         ServerConfig                    `yaml:"server"`
 	Service        ServiceConfig                   `yaml:"service"`
-	ContentClient  content.RPCClientConfig         `yaml:"content_client"`
+	ContentClient  content_client.RPCClientConfig  `yaml:"content_client"`
 	InMemConfig    inmem_client.RPCClientConfig    `yaml:"inmem_client"`
 	RedirectConfig redirect_client.RPCClientConfig `yaml:"redirect_client"`
 	Notifier       rbmq.NotifierConfig             `yaml:"notifier"`
