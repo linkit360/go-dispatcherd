@@ -15,6 +15,7 @@ import (
 	m "github.com/vostrok/dispatcherd/src/metrics"
 	"github.com/vostrok/dispatcherd/src/rbmq"
 	"github.com/vostrok/dispatcherd/src/sessions"
+	"github.com/vostrok/utils/rec"
 )
 
 func AddQRTechHandlers() {
@@ -97,7 +98,6 @@ func qrTechHandler(c *gin.Context) {
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
-
 	v := url.Values{}
 	v.Add("serviceid", strconv.FormatInt(campaign.ServiceId, 10))
 	v.Add("sp_content", contentUrl)
@@ -158,5 +158,23 @@ func qrTechHandler(c *gin.Context) {
 	}{
 		Url: parsedUrl,
 	}
+
+	val, ok := c.GetQuery("aff_sub")
+	if ok && len(val) >= 5 {
+		log.WithFields(log.Fields{
+			"tid": tid,
+		}).Debug("found pixel in get params")
+		if err := notifierService.PixelBufferNotify(rec.Record{
+			SentAt:     time.Now().UTC(),
+			CampaignId: msg.CampaignId,
+			Tid:        msg.Tid,
+			Pixel:      val,
+		}); err != nil {
+			logCtx.WithFields(log.Fields{
+				"error": err.Error(),
+			}).Error("send pixel")
+		}
+	}
+
 	campaignByLink[campaignLink].SimpleServe(c, qrTechInfo)
 }

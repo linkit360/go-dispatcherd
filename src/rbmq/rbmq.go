@@ -6,6 +6,8 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+
+	m "github.com/vostrok/dispatcherd/src/metrics"
 	inmem_service "github.com/vostrok/inmem/service"
 	redirect_service "github.com/vostrok/partners/service"
 	"github.com/vostrok/utils/amqp"
@@ -22,6 +24,8 @@ type Notifier interface {
 	ActionNotify(msg UserActionsNotify) error
 
 	ContentSentNotify(msg inmem_service.ContentSentProperties) error
+
+	PixelBufferNotify(r rec.Record) error
 }
 
 type NotifierConfig struct {
@@ -32,6 +36,7 @@ type Queues struct {
 	AccessCampaign   string `yaml:"access_campaign" default:"access_campaign"`
 	UserAction       string `yaml:"user_actions" default:"user_actions"`
 	ContentSent      string `yaml:"content_sent" default:"content_sent"`
+	Pixels           string `yaml:"pixels" default:"pixels"`
 	TrafficRedirects string `yaml:"traffic_redirects" default:"traffic_redirects"`
 }
 type notifier struct {
@@ -68,11 +73,13 @@ func (service notifier) RedirectNotify(msg redirect_service.DestinationHit) erro
 
 	body, err := json.Marshal(event)
 	if err != nil {
+		m.NotifyError.Inc()
 		return fmt.Errorf("json.Marshal: %s", err.Error())
 	}
 	service.mq.Publish(amqp.AMQPMessage{service.q.TrafficRedirects, uint8(1), body})
 	return nil
 }
+
 func (service notifier) NewSubscriptionNotify(queue string, msg rec.Record) error {
 	msg.SentAt = time.Now().UTC()
 	event := EventNotify{
@@ -81,6 +88,7 @@ func (service notifier) NewSubscriptionNotify(queue string, msg rec.Record) erro
 	}
 	body, err := json.Marshal(event)
 	if err != nil {
+		m.NotifyError.Inc()
 		return fmt.Errorf("json.Marshal: %s", err.Error())
 	}
 	log.Debugf("new subscription %s", body)
@@ -117,6 +125,7 @@ func (service notifier) AccessCampaignNotify(msg AccessCampaignNotify) error {
 
 	body, err := json.Marshal(event)
 	if err != nil {
+		m.NotifyError.Inc()
 		return fmt.Errorf("json.Marshal: %s", err.Error())
 	}
 
@@ -144,6 +153,7 @@ func (service notifier) ActionNotify(msg UserActionsNotify) error {
 	}
 	body, err := json.Marshal(event)
 	if err != nil {
+		m.NotifyError.Inc()
 		return fmt.Errorf("json.Marshal: %s", err.Error())
 	}
 	service.mq.Publish(amqp.AMQPMessage{service.q.UserAction, 0, body})
@@ -160,9 +170,25 @@ func (service notifier) ContentSentNotify(msg inmem_service.ContentSentPropertie
 
 	body, err := json.Marshal(event)
 	if err != nil {
+		m.NotifyError.Inc()
 		return fmt.Errorf("json.Marshal: %s", err.Error())
 	}
 
 	service.mq.Publish(amqp.AMQPMessage{service.q.ContentSent, 0, body})
+	return nil
+}
+
+func (service notifier) PixelBufferNotify(r rec.Record) error {
+	event := EventNotify{
+		EventName: "buffer",
+		EventData: r,
+	}
+
+	body, err := json.Marshal(event)
+	if err != nil {
+		m.NotifyError.Inc()
+		return fmt.Errorf("json.Marshal: %s", err.Error())
+	}
+	service.mq.Publish(amqp.AMQPMessage{service.q.Pixels, uint8(1), body})
 	return nil
 }

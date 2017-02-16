@@ -29,6 +29,7 @@ var (
 	NotSupported               m.Gauge
 	OperatorNameError          m.Gauge
 	NotifyNewSubscriptionError m.Gauge
+	NotifyError                m.Gauge
 )
 
 func newGaugeCommon(name, help string) m.Gauge {
@@ -66,7 +67,7 @@ func Init(name string) {
 	NotSupported = newGaugeGatherErrors("not_supported", " operator is not supported")
 	OperatorNameError = newGaugeGatherErrors("operator_name", "cannot determine operator name by code")
 	NotifyNewSubscriptionError = newGaugeCommon("notify_new_subscription_error", "cannot notify new subscription")
-
+	NotifyError = newGaugeCommon("notify_error", "cannot notify")
 	go func() {
 		for range time.Tick(time.Minute) {
 			Success.Update()
@@ -91,6 +92,7 @@ func Init(name string) {
 			NotSupported.Update()
 			OperatorNameError.Update()
 			NotifyNewSubscriptionError.Update()
+			NotifyError.Update()
 		}
 	}()
 }
