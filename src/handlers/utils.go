@@ -31,10 +31,11 @@ var notifierService rbmq.Notifier
 var campaignByLink map[string]*inmem_service.Campaign
 var campaignByHash map[string]inmem_service.Campaign
 
-func Init(conf config.AppConfig) {
+func Init(conf config.AppConfig, engine *gin.Engine) {
 	log.SetLevel(log.DebugLevel)
 
 	cnf = conf
+	e = engine
 
 	if err := content_client.Init(conf.ContentClient); err != nil {
 		log.Fatal("cannot init contentd client")

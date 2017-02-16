@@ -19,7 +19,7 @@ import (
 // cheese
 // yondu
 
-func AddCampaignHandler(e *gin.Engine, rg *gin.RouterGroup) {
+func AddCampaignHandler(rg *gin.RouterGroup) {
 	if !cnf.Service.LandingPages.Custom {
 		e.Group("/lp/:campaign_link", AccessHandler).GET("", serveCampaigns)
 	}

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -13,10 +15,9 @@ import (
 	m "github.com/vostrok/dispatcherd/src/metrics"
 	"github.com/vostrok/dispatcherd/src/rbmq"
 	"github.com/vostrok/dispatcherd/src/sessions"
-	"strconv"
 )
 
-func AddQRTechHandlers(e *gin.Engine) {
+func AddQRTechHandlers() {
 	if cnf.Service.LandingPages.QRTech.Enabled {
 		e.Group("/lp/:campaign_link", AccessHandler).GET("", qrTechHandler)
 	}
@@ -48,6 +49,8 @@ func qrTechHandler(c *gin.Context) {
 			logCtx.WithFields(log.Fields{
 				"error": err.Error(),
 			}).Error("serve campaign")
+		} else {
+			logCtx.WithFields(log.Fields{}).Error("serve ok")
 		}
 		if errAction := notifierService.ActionNotify(action); errAction != nil {
 			logCtx.WithFields(log.Fields{
@@ -95,14 +98,15 @@ func qrTechHandler(c *gin.Context) {
 		return
 	}
 
-	params := "serviceid=" + strconv.FormatInt(campaign.ServiceId, 10) + "&sp_content=" + contentUrl
-	reqUrl := cnf.Service.LandingPages.QRTech.Url
+	v := url.Values{}
+	v.Add("serviceid", strconv.FormatInt(campaign.ServiceId, 10))
+	v.Add("sp_content", contentUrl)
+	reqUrl := cnf.Service.LandingPages.QRTech.Url + "?" + v.Encode()
 	logCtx.WithFields(log.Fields{
-		"url":    reqUrl,
-		"params": params,
+		"url": reqUrl,
 	}).Debug("call")
 
-	req, err := http.NewRequest("POST", reqUrl, strings.NewReader(params))
+	req, err := http.NewRequest("GET", reqUrl, nil)
 	if err != nil {
 		err = fmt.Errorf("Cann't create request: %s", err.Error())
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
@@ -132,20 +136,27 @@ func qrTechHandler(c *gin.Context) {
 
 	logCtx.WithFields(log.Fields{
 		"response": string(qrTechResponse),
+		"len":      len(string(qrTechResponse)),
 	}).Debug("got response")
 
-	bodyArr := strings.SplitN(string(qrTechResponse), "Location: ", 2)
-	if len(bodyArr) < 2 {
-		err = fmt.Errorf("cannot get redirect url from response %s", qrTechResponse)
+	start := strings.Index(string(qrTechResponse), "url=http") + 4
+	if start < 0 {
+		err = fmt.Errorf("cannot parse response start: %s", string(qrTechResponse))
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
-	frameUrl := strings.SplitN(string(qrTechResponse), "Location: ", 2)[1]
-
+	end := strings.Index(string(qrTechResponse), `">`)
+	if end < 0 {
+		err = fmt.Errorf("cannot parse response end: %s", string(qrTechResponse))
+		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+		return
+	}
+	x := string(qrTechResponse)
+	parsedUrl := x[start:end]
 	qrTechInfo := struct {
 		Url string
 	}{
-		Url: frameUrl,
+		Url: parsedUrl,
 	}
 	campaignByLink[campaignLink].SimpleServe(c, qrTechInfo)
 }

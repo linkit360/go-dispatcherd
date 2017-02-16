@@ -26,18 +26,17 @@ func RunServer() {
 	conf = config.LoadConfig()
 	m.Init(conf.AppName)
 
-	handlers.Init(conf)
-
 	e := gin.New()
+	handlers.Init(conf, e)
 
 	sessions.Init(conf.Server.Sessions, e)
 	metrics.AddHandler(e)
-	handlers.AddContentHandlers(e)
+	handlers.AddContentHandlers()
 
 	rg := e.Group("/campaign/:campaign_hash")
-	handlers.AddCampaignHandler(e, rg)
+	handlers.AddCampaignHandler(rg)
 	handlers.AddBeelineHandlers(rg)
-	handlers.AddQRTechHandlers(e)
+	handlers.AddQRTechHandlers()
 
 	e.Static("/static/", conf.Server.Path+"/static/")
 	e.StaticFile("/favicon.ico", conf.Server.Path+"/favicon.ico")

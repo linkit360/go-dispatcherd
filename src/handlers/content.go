@@ -17,7 +17,7 @@ import (
 	inmem_service "github.com/vostrok/inmem/service"
 )
 
-func AddContentHandlers(e *gin.Engine) {
+func AddContentHandlers() {
 	e.GET("/u/:uniqueurl", AccessHandler, UniqueUrlGet)
 	e.Group("/content/:campaign_hash").GET("", AccessHandler, ContentGet)
 }
