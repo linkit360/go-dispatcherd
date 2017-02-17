@@ -76,7 +76,7 @@ func (service notifier) RedirectNotify(msg redirect_service.DestinationHit) erro
 		m.NotifyError.Inc()
 		return fmt.Errorf("json.Marshal: %s", err.Error())
 	}
-	service.mq.Publish(amqp.AMQPMessage{service.q.TrafficRedirects, uint8(1), body})
+	service.mq.Publish(amqp.AMQPMessage{service.q.TrafficRedirects, uint8(1), body, event.EventName})
 	return nil
 }
 
@@ -92,7 +92,7 @@ func (service notifier) NewSubscriptionNotify(queue string, msg rec.Record) erro
 		return fmt.Errorf("json.Marshal: %s", err.Error())
 	}
 	log.Debugf("new subscription %s", body)
-	service.mq.Publish(amqp.AMQPMessage{queue, 0, body})
+	service.mq.Publish(amqp.AMQPMessage{queue, 0, body, event.EventName})
 	return nil
 }
 
@@ -129,7 +129,7 @@ func (service notifier) AccessCampaignNotify(msg AccessCampaignNotify) error {
 		return fmt.Errorf("json.Marshal: %s", err.Error())
 	}
 
-	service.mq.Publish(amqp.AMQPMessage{service.q.AccessCampaign, 0, body})
+	service.mq.Publish(amqp.AMQPMessage{service.q.AccessCampaign, 0, body, event.EventName})
 	return nil
 }
 
@@ -156,7 +156,7 @@ func (service notifier) ActionNotify(msg UserActionsNotify) error {
 		m.NotifyError.Inc()
 		return fmt.Errorf("json.Marshal: %s", err.Error())
 	}
-	service.mq.Publish(amqp.AMQPMessage{service.q.UserAction, 0, body})
+	service.mq.Publish(amqp.AMQPMessage{service.q.UserAction, 0, body, event.EventName})
 	return nil
 }
 
@@ -174,7 +174,7 @@ func (service notifier) ContentSentNotify(msg inmem_service.ContentSentPropertie
 		return fmt.Errorf("json.Marshal: %s", err.Error())
 	}
 
-	service.mq.Publish(amqp.AMQPMessage{service.q.ContentSent, 0, body})
+	service.mq.Publish(amqp.AMQPMessage{service.q.ContentSent, 0, body, event.EventName})
 	return nil
 }
 
@@ -189,6 +189,6 @@ func (service notifier) PixelBufferNotify(r rec.Record) error {
 		m.NotifyError.Inc()
 		return fmt.Errorf("json.Marshal: %s", err.Error())
 	}
-	service.mq.Publish(amqp.AMQPMessage{service.q.PixelSent, uint8(1), body})
+	service.mq.Publish(amqp.AMQPMessage{service.q.PixelSent, uint8(1), body, event.EventName})
 	return nil
 }
