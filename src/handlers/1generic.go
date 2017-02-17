@@ -12,6 +12,8 @@ import (
 	"github.com/vostrok/dispatcherd/src/rbmq"
 	"github.com/vostrok/dispatcherd/src/sessions"
 	inmem_client "github.com/vostrok/inmem/rpcclient"
+	"github.com/vostrok/utils/rec"
+	"time"
 )
 
 // generic:
@@ -132,6 +134,25 @@ func serveCampaigns(c *gin.Context) {
 		}).Debug("gather info failed")
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
+	}
+
+	if cnf.Service.SendRestorePixelEnabled {
+		val, ok := c.GetQuery("aff_sub")
+		if ok && len(val) >= 5 {
+			log.WithFields(log.Fields{
+				"tid": tid,
+			}).Debug("found pixel in get params")
+			if err := notifierService.PixelBufferNotify(rec.Record{
+				SentAt:     time.Now().UTC(),
+				CampaignId: msg.CampaignId,
+				Tid:        msg.Tid,
+				Pixel:      val,
+			}); err != nil {
+				logCtx.WithFields(log.Fields{
+					"error": err.Error(),
+				}).Error("send pixel")
+			}
+		}
 	}
 
 	autoClickInfo := struct {
