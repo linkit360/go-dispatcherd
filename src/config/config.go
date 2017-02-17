@@ -42,7 +42,7 @@ type ServiceConfig struct {
 	Rejected               RejectedConfig `yaml:"rejected"`
 	CountryCode            int64          `yaml:"country_code"`
 	OperatorCode           int64          `yaml:"operator_code"`
-	LandingPages           LPConfig       `yaml:"landings"`
+	LandingPages           LPsConfig      `yaml:"landings"`
 }
 
 type RejectedConfig struct {
@@ -50,10 +50,10 @@ type RejectedConfig struct {
 	TrafficRedirectEnabled  bool `default:"false" yaml:"traffic_redirect_enabled"`
 }
 
-type LPConfig struct {
-	Custom  bool               `yaml:"custom"`
-	Beeline BeelineLandingConf `yaml:"beeline"`
-	QRTech  BeelineLandingConf `yaml:"qrtech"`
+type LPsConfig struct {
+	Custom  bool        `yaml:"custom"`
+	Beeline LandingConf `yaml:"beeline"`
+	QRTech  LandingConf `yaml:"qrtech"`
 }
 
 type QRTechLandingConf struct {
@@ -62,7 +62,7 @@ type QRTechLandingConf struct {
 	Timeout int    `yaml:"timeout"`
 }
 
-type BeelineLandingConf struct {
+type LandingConf struct {
 	Enabled bool   `yaml:"enabled"`
 	Url     string `yaml:"url"`
 	Timeout int    `yaml:"timeout"`

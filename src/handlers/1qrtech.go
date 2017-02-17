@@ -21,6 +21,7 @@ import (
 func AddQRTechHandlers() {
 	if cnf.Service.LandingPages.QRTech.Enabled {
 		e.Group("/lp/:campaign_link", AccessHandler).GET("", qrTechHandler)
+		log.WithFields(log.Fields{}).Debug("qrtech handlers init")
 	}
 }
 

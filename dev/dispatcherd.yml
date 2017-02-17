@@ -52,7 +52,7 @@ notifier:
     access_campaign: access_campaign
     user_actions: user_actions
     content_sent: content_sent
-    pixels: pixels
+    pixel_sent: pixel_sent
     traffic_redirects: traffic_redirects
 
   rbmq:

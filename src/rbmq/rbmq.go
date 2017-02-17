@@ -36,7 +36,7 @@ type Queues struct {
 	AccessCampaign   string `yaml:"access_campaign" default:"access_campaign"`
 	UserAction       string `yaml:"user_actions" default:"user_actions"`
 	ContentSent      string `yaml:"content_sent" default:"content_sent"`
-	Pixels           string `yaml:"pixels" default:"pixels"`
+	PixelSent        string `yaml:"pixel_sent" default:"pixel_sent"`
 	TrafficRedirects string `yaml:"traffic_redirects" default:"traffic_redirects"`
 }
 type notifier struct {
@@ -189,6 +189,6 @@ func (service notifier) PixelBufferNotify(r rec.Record) error {
 		m.NotifyError.Inc()
 		return fmt.Errorf("json.Marshal: %s", err.Error())
 	}
-	service.mq.Publish(amqp.AMQPMessage{service.q.Pixels, uint8(1), body})
+	service.mq.Publish(amqp.AMQPMessage{service.q.PixelSent, uint8(1), body})
 	return nil
 }

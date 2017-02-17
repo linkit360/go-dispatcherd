@@ -22,6 +22,7 @@ func AddBeelineHandlers(rg *gin.RouterGroup) {
 	if cnf.Service.LandingPages.Beeline.Enabled {
 		rg.GET("/:campaign_page", AccessHandler, returnBackCampaignPage)
 		rg.GET("", AccessHandler, redirectUserBeeline)
+		log.WithFields(log.Fields{}).Debug("beeline handlers init")
 	}
 }
 
