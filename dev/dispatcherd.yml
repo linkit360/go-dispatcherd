@@ -30,6 +30,7 @@ service:
   error_redirect_url: http://id.slypee.com
   not_found_redirect_url: http://dev.pk.linkit360.ru/lp/cpa.k.ak100
   redirect_on_gather_error: true
+  send_restore_pixel_enabled: true
   start_new_subscription_on_click: false
   rejected:
     campaign_redirect_enabled: false
