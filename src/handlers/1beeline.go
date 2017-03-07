@@ -18,10 +18,10 @@ import (
 	rec "github.com/vostrok/utils/rec"
 )
 
-func AddBeelineHandlers(rg *gin.RouterGroup) {
+func AddBeelineHandlers(e *gin.Engine) {
 	if cnf.Service.LandingPages.Beeline.Enabled {
-		rg.GET("/:campaign_page", AccessHandler, returnBackCampaignPage)
-		rg.GET("", AccessHandler, redirectUserBeeline)
+		e.Group("/lp").GET(":campaign_link", AccessHandler, redirectUserBeeline)
+		e.Group("/campaign/:campaign_hash").GET("/:campaign_page", AccessHandler, returnBackCampaignPage)
 		log.WithFields(log.Fields{}).Debug("beeline handlers init")
 	}
 }
@@ -30,6 +30,9 @@ func redirectUserBeeline(c *gin.Context) {
 	var r rec.Record
 	var err error
 	tid := sessions.GetTid(c)
+	if tid == "" {
+		tid = rec.GenerateTID()
+	}
 	msg := rbmq.AccessCampaignNotify{
 		CountryCode:  cnf.Service.CountryCode,
 		OperatorCode: cnf.Service.OperatorCode,
@@ -64,19 +67,11 @@ func redirectUserBeeline(c *gin.Context) {
 		}
 	}()
 
-	campaignHash := c.Params.ByName("campaign_hash")
-	if len(campaignHash) != cnf.Service.CampaignHashLength {
-		m.CampaignHashWrong.Inc()
-
-		err := fmt.Errorf("Wrong campaign length: len %d, %s", len(campaignHash), campaignHash)
-		c.Error(err)
-		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
-		return
-	}
-	campaign, ok := campaignByHash[campaignHash]
+	campaignLink := c.Params.ByName("campaign_link")
+	campaign, ok := campaignByLink[campaignLink]
 	if !ok {
-		m.CampaignHashWrong.Inc()
-		err = fmt.Errorf("Cann't find campaign by hash: %s", campaignHash)
+		m.CampaignLinkWrong.Inc()
+		err = fmt.Errorf("Cann't find campaign by link: %s", campaignLink)
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
@@ -107,6 +102,7 @@ func redirectUserBeeline(c *gin.Context) {
 	}
 	req.Close = false
 	req.SetBasicAuth(cnf.Service.LandingPages.Beeline.Auth.User, cnf.Service.LandingPages.Beeline.Auth.Pass)
+
 	httpClient := http.Client{
 		Timeout: time.Duration(cnf.Service.LandingPages.Beeline.Timeout) * time.Second,
 	}
@@ -114,6 +110,7 @@ func redirectUserBeeline(c *gin.Context) {
 	if err != nil {
 		err = fmt.Errorf("Cann't make request: %s", err.Error())
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+		return
 	}
 	beelineResponse, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -122,6 +119,18 @@ func redirectUserBeeline(c *gin.Context) {
 		return
 	}
 	defer resp.Body.Close()
+	log.WithFields(log.Fields{
+		"tid":    r.Tid,
+		"url":    reqUrl,
+		"status": resp.Status,
+		"body":   string(beelineResponse),
+	}).Debug("got resp")
+
+	if resp.StatusCode != 200 {
+		err = fmt.Errorf("Status code: %d", resp.StatusCode)
+		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+		return
+	}
 
 	operator, err := inmem_client.GetOperatorByCode(msg.OperatorCode)
 	if err != nil {
@@ -143,11 +152,6 @@ func redirectUserBeeline(c *gin.Context) {
 			}
 		}
 	}
-	log.WithFields(log.Fields{
-		"tid":  r.Tid,
-		"url":  reqUrl,
-		"body": string(beelineResponse),
-	}).Debug("got resp")
 
 	sArray := strings.SplitN(string(beelineResponse), "serviceId=", 2)
 	if len(sArray) < 2 {
@@ -159,6 +163,7 @@ func redirectUserBeeline(c *gin.Context) {
 			"error": err.Error(),
 		}).Debug("cannot redirect to OP LP")
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+		return
 	}
 	r.OperatorToken = sArray[1]
 
