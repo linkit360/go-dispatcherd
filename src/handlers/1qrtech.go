@@ -100,8 +100,8 @@ func qrTechHandler(c *gin.Context) {
 		return
 	}
 	v := url.Values{}
-	v.Add("serviceid", strconv.FormatInt(campaign.ServiceId, 10))
-	v.Add("sp_content", contentUrl)
+	v.Add("SHORTCODE", strconv.FormatInt(campaign.ServiceId, 10))
+	v.Add("SP_CONTENT", contentUrl)
 	reqUrl := cnf.Service.LandingPages.QRTech.Url + "?" + v.Encode()
 	logCtx.WithFields(log.Fields{
 		"url": reqUrl,
@@ -154,11 +154,6 @@ func qrTechHandler(c *gin.Context) {
 	}
 	x := string(qrTechResponse)
 	parsedUrl := x[start:end]
-	qrTechInfo := struct {
-		Url string
-	}{
-		Url: parsedUrl,
-	}
 
 	val, ok := c.GetQuery("aff_sub")
 	if ok && len(val) >= 5 {
@@ -177,5 +172,5 @@ func qrTechHandler(c *gin.Context) {
 		}
 	}
 
-	campaignByLink[campaignLink].SimpleServe(c, qrTechInfo)
+	http.Redirect(c.Writer, c.Request, parsedUrl, 303)
 }
