@@ -87,7 +87,7 @@ func redirectUserBeeline(c *gin.Context) {
 	v.Add("flagSubscribe", "True")
 	v.Add("contentUrl", url.QueryEscape(contentUrl))
 	v.Add("forwardURL", url.QueryEscape(forwardURL))
-	reqUrl := cnf.Service.LandingPages.Beeline.Url + v.Encode()
+	reqUrl := cnf.Service.LandingPages.Beeline.AisUrl + v.Encode()
 
 	log.WithFields(log.Fields{
 		"tid": r.Tid,

@@ -66,6 +66,23 @@ func qrTechHandler(c *gin.Context) {
 				"msg":   fmt.Sprintf("%#v", msg),
 			}).Error("notify access campaign")
 		}
+
+		val, ok := c.GetQuery("aff_sub")
+		if ok && len(val) >= 5 {
+			log.WithFields(log.Fields{
+				"tid": tid,
+			}).Debug("found pixel in get params")
+			if err := notifierService.PixelBufferNotify(rec.Record{
+				SentAt:     time.Now().UTC(),
+				CampaignId: msg.CampaignId,
+				Tid:        msg.Tid,
+				Pixel:      val,
+			}); err != nil {
+				logCtx.WithFields(log.Fields{
+					"error": err.Error(),
+				}).Error("send pixel")
+			}
+		}
 	}()
 
 	paths := strings.Split(c.Request.URL.Path, "/")
@@ -94,18 +111,34 @@ func qrTechHandler(c *gin.Context) {
 	msg.CampaignId = campaign.Id
 	msg.ServiceId = campaign.ServiceId
 
-	contentUrl, err := generateUniqueUrl(msg)
-	if err != nil {
-		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
-		return
-	}
 	v := url.Values{}
 	v.Add("SHORTCODE", strconv.FormatInt(campaign.ServiceId, 10))
-	v.Add("SP_CONTENT", contentUrl)
-	reqUrl := cnf.Service.LandingPages.QRTech.Url + "?" + v.Encode()
-	logCtx.WithFields(log.Fields{
-		"url": reqUrl,
-	}).Debug("call")
+	v.Add("SP_CONTENT", cnf.Service.LandingPages.QRTech.ContentUrl)
+	reqUrl := ""
+
+	telco, _ := c.GetQuery("telco")
+
+	if telco == "dtac" || msg.OperatorCode == int64(52005) { // dtac
+		reqUrl = cnf.Service.LandingPages.QRTech.DtacUrl + "?" + v.Encode()
+		log.WithFields(log.Fields{
+			"operator": "dtac",
+			"url":      reqUrl,
+		}).Debug("call")
+		http.Redirect(c.Writer, c.Request, reqUrl, 303)
+		return
+	}
+	if telco == "ais" || msg.OperatorCode == int64(52001) { // ais
+		reqUrl = cnf.Service.LandingPages.QRTech.AisUrl + "?" + v.Encode()
+		log.WithFields(log.Fields{
+			"operator": "ais",
+			"url":      reqUrl,
+		}).Info("determined")
+	} else {
+		log.WithFields(log.Fields{
+			"error": "cannot determine operator",
+		}).Error("cannot determine operator")
+		reqUrl = cnf.Service.LandingPages.QRTech.AisUrl + "?" + v.Encode()
+	}
 
 	req, err := http.NewRequest("GET", reqUrl, nil)
 	if err != nil {
@@ -140,37 +173,22 @@ func qrTechHandler(c *gin.Context) {
 		"len":      len(string(qrTechResponse)),
 	}).Debug("got response")
 
-	start := strings.Index(string(qrTechResponse), "url=http") + 4
-	if start < 0 {
-		err = fmt.Errorf("cannot parse response start: %s", string(qrTechResponse))
-		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
-		return
-	}
-	end := strings.Index(string(qrTechResponse), `">`)
-	if end < 0 {
-		err = fmt.Errorf("cannot parse response end: %s", string(qrTechResponse))
-		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
-		return
-	}
-	x := string(qrTechResponse)
-	parsedUrl := x[start:end]
-
-	val, ok := c.GetQuery("aff_sub")
-	if ok && len(val) >= 5 {
-		log.WithFields(log.Fields{
-			"tid": tid,
-		}).Debug("found pixel in get params")
-		if err := notifierService.PixelBufferNotify(rec.Record{
-			SentAt:     time.Now().UTC(),
-			CampaignId: msg.CampaignId,
-			Tid:        msg.Tid,
-			Pixel:      val,
-		}); err != nil {
-			logCtx.WithFields(log.Fields{
-				"error": err.Error(),
-			}).Error("send pixel")
+	if telco == "ais" {
+		start := strings.Index(string(qrTechResponse), "url=http") + 4
+		if start < 0 {
+			err = fmt.Errorf("cannot parse response start: %s", string(qrTechResponse))
+			http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+			return
 		}
+		end := strings.Index(string(qrTechResponse), `">`)
+		if end < 0 {
+			err = fmt.Errorf("cannot parse response end: %s", string(qrTechResponse))
+			http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+			return
+		}
+		x := string(qrTechResponse)
+		parsedUrl := x[start:end]
+		http.Redirect(c.Writer, c.Request, parsedUrl, 303)
+		return
 	}
-
-	http.Redirect(c.Writer, c.Request, parsedUrl, 303)
 }

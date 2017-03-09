@@ -47,7 +47,9 @@ service:
       pass: KhZbQo1n
     qrtech:
       enabled: false
-      url: http://wap.funspaz.com/wap/partner/linkit360/ais_wap.php
+      content_url: http://platform.th.linkit360.ru/qr/get
+      ais_url: http://wap.funspaz.com/wap/partner/linkit360/ais_wap.php
+      dtac_url: http://wap.funspaz.com/wap/partner/linkit360/aoc_dtac.php
 
 
 notifier:

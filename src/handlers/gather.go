@@ -43,11 +43,6 @@ func gatherInfo(c *gin.Context, campaign inmem_service.Campaign) (msg rbmq.Acces
 		CountryCode:  cnf.Service.CountryCode,
 		OperatorCode: cnf.Service.OperatorCode,
 	}
-	//for _, e := range os.Environ() {
-	//	log.WithFields(log.Fields{
-	//		"tid": tid,
-	//	}).Debug(e)
-	//}
 
 	//get all IP addresses
 	//get supported IP-s
@@ -63,8 +58,7 @@ func gatherInfo(c *gin.Context, campaign inmem_service.Campaign) (msg rbmq.Acces
 		if len(infos) > 0 {
 			info := inmem_service.GetSupportedIPInfo(infos)
 			if info.Supported == false {
-
-				logCtx.Debug("cannot determine IP address")
+				logCtx.WithField("ips", IPs).Debug("cannot determine IP address")
 			} else {
 				log.WithFields(log.Fields{
 					"ip":            info.IP,

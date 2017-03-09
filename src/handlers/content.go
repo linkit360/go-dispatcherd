@@ -145,6 +145,9 @@ func ContentGet(c *gin.Context) {
 	m.Success.Inc()
 }
 
+//  "cmd=s_exp&ch=WAP&tID=WAP@SDGApp5:9FI9jsI5&dad=66819197088&SN=421924601&spsID=14429034041972&
+// msisdn=66819197088&token=D39364E0356C1480757DD6CDA84595F2DEEEF89C052B2FDC51536CDFB6ACF5F7&
+// status=1000&reason=SUCCESS"
 func UniqueUrlGet(c *gin.Context) {
 
 	sessions.SetSession(c)
