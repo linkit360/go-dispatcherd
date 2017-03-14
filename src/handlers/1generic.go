@@ -145,6 +145,7 @@ func serveCampaigns(c *gin.Context) {
 			if err := notifierService.PixelBufferNotify(rec.Record{
 				SentAt:     time.Now().UTC(),
 				CampaignId: msg.CampaignId,
+				ServiceId:  msg.ServiceId,
 				Tid:        msg.Tid,
 				Pixel:      val,
 			}); err != nil {
@@ -165,43 +166,50 @@ func serveCampaigns(c *gin.Context) {
 	m.CampaignAccess.Inc()
 	m.Success.Inc()
 
-	if campaignByLink[campaignLink].CanAutoClick {
-		action := rbmq.UserActionsNotify{
-			Action: "autoclick",
-		}
-		defer func() {
-			if err != nil {
-				m.Errors.Inc()
-				action.Error = err.Error()
-				log.WithFields(log.Fields{
-					"tid":    msg.Tid,
-					"msisdn": msg.Msisdn,
-					"link":   campaignLink,
-					"error":  err.Error(),
-				}).Info("error add new subscription")
-			}
-			action.Tid = msg.Tid
-			action.Msisdn = msg.Msisdn
-			action.CampaignId = msg.CampaignId
-
-			if err := notifierService.ActionNotify(action); err != nil {
-				log.WithFields(log.Fields{
-					"error": err.Error(),
-					"tid":   msg.Tid,
-				}).Error("notify user action")
-			} else {
-			}
-		}()
-
-		if err = startNewSubscription(c, msg); err == nil {
-			log.WithFields(log.Fields{
-				"tid":        msg.Tid,
-				"link":       campaignLink,
-				"hash":       campaignByLink[campaignLink].Hash,
-				"msisdn":     msg.Msisdn,
-				"campaignid": campaignByLink[campaignLink].Id,
-			}).Info("added new subscritpion due to ratio")
-		}
+	if !cnf.Service.OnClickNewSubscription {
+		return
 	}
+	if !campaignByLink[campaignLink].CanAutoClick {
+		return
+	}
+
+	action = rbmq.UserActionsNotify{
+		Action: "autoclick",
+	}
+
+	defer func() {
+		if err != nil {
+			m.Errors.Inc()
+			action.Error = err.Error()
+			log.WithFields(log.Fields{
+				"tid":    msg.Tid,
+				"msisdn": msg.Msisdn,
+				"link":   campaignLink,
+				"error":  err.Error(),
+			}).Info("error add new subscription")
+		}
+		action.Tid = msg.Tid
+		action.Msisdn = msg.Msisdn
+		action.CampaignId = msg.CampaignId
+
+		if err := notifierService.ActionNotify(action); err != nil {
+			log.WithFields(log.Fields{
+				"error": err.Error(),
+				"tid":   msg.Tid,
+			}).Error("notify user action")
+		} else {
+		}
+	}()
+
+	if err = startNewSubscription(c, msg); err == nil {
+		log.WithFields(log.Fields{
+			"tid":        msg.Tid,
+			"link":       campaignLink,
+			"hash":       campaignByLink[campaignLink].Hash,
+			"msisdn":     msg.Msisdn,
+			"campaignid": campaignByLink[campaignLink].Id,
+		}).Info("added new subscritpion due to ratio")
+	}
+
 	return
 }

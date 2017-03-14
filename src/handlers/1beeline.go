@@ -81,7 +81,7 @@ func redirectUserBeeline(c *gin.Context) {
 	v := url.Values{}
 	v.Add("tid", r.Tid)
 	// we will parse parameters inserted who came
-	contentUrl := cnf.Server.Url + "/campaign/" + campaign.Hash + "/" + campaign.PageSuccess + v.Encode()
+	contentUrl := ""
 	forwardURL := cnf.Server.Url + "/campaign/" + campaign.Hash + "/" + campaign.PageError + v.Encode()
 
 	v.Add("flagSubscribe", "True")
