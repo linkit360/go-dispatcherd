@@ -18,7 +18,6 @@ import (
 	inmem_service "github.com/vostrok/inmem/service"
 	redirect_client "github.com/vostrok/partners/rpcclient"
 	redirect_service "github.com/vostrok/partners/service"
-	reporter_client "github.com/vostrok/reporter/rpcclient"
 )
 
 // file for global variables,
@@ -46,9 +45,6 @@ func Init(conf config.AppConfig, engine *gin.Engine) {
 	}
 	if err := redirect_client.Init(conf.RedirectConfig); err != nil {
 		log.Fatal("cannot redirect client")
-	}
-	if err := reporter_client.Init(conf.ReporterConfig); err != nil && conf.ReporterConfig.Enabled {
-		log.Fatal(fmt.Errorf("reporter_client.Init: %s", err.Error()))
 	}
 	UpdateCampaigns()
 	notifierService = rbmq.NewNotifierService(conf.Notifier)

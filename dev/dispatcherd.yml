@@ -25,12 +25,6 @@ redirect_client:
   dsn: :50312
   timeout: 10
 
-reporter_client:
-  enabled: true
-  dsn: :50316
-  timeout: 10
-
-
 service:
   campaign_hash_length: 32
   error_redirect_url: http://id.slypee.com

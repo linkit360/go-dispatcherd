@@ -15,7 +15,6 @@ import (
 	"github.com/vostrok/dispatcherd/src/sessions"
 	inmem_client "github.com/vostrok/inmem/rpcclient"
 	redirect_client "github.com/vostrok/partners/rpcclient"
-	reporter_client "github.com/vostrok/reporter/rpcclient"
 )
 
 type AppConfig struct {
@@ -25,7 +24,6 @@ type AppConfig struct {
 	ContentClient  content_client.ClientConfig     `yaml:"content_client"`
 	InMemConfig    inmem_client.ClientConfig       `yaml:"inmem_client"`
 	RedirectConfig redirect_client.RPCClientConfig `yaml:"redirect_client"`
-	ReporterConfig reporter_client.ClientConfig    `yaml:"reporter_client"`
 	Notifier       rbmq.NotifierConfig             `yaml:"notifier"`
 }
 
