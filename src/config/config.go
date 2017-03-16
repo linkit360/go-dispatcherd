@@ -38,6 +38,7 @@ type ServiceConfig struct {
 	NotFoundRedirectUrl     string         `default:"http://id.slypee.com" yaml:"not_found_redirect_url"`
 	RedirectOnGatherError   bool           `yaml:"redirect_on_gather_error"`
 	SendRestorePixelEnabled bool           `yaml:"send_restore_pixel_enabled"`
+	DetectByIpEnabled       bool           `yaml:"detect_by_ip_enabled"`
 	OnClickNewSubscription  bool           `yaml:"start_new_subscription_on_click"`
 	CampaignHashLength      int            `yaml:"campaign_hash_length" default:"32"`
 	Rejected                RejectedConfig `yaml:"rejected"`

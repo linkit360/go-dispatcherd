@@ -40,60 +40,9 @@ func gatherInfo(c *gin.Context, campaign inmem_service.Campaign) (msg rbmq.Acces
 		CampaignId:   campaign.Id,
 		ServiceId:    campaign.ServiceId,
 		CampaignHash: campaign.Hash,
+		Supported:    true,
 		CountryCode:  cnf.Service.CountryCode,
 		OperatorCode: cnf.Service.OperatorCode,
-	}
-
-	//get all IP addresses
-	//get supported IP-s
-	// in common, this branch of code in action
-	flagFoundIpInfo := false
-	IPs := getIPAdress(r)
-	if len(IPs) != 0 {
-		infos, err := inmem_client.GetIPInfoByIps(IPs)
-		if err != nil {
-			logCtx.Debug("cannot get ip infos")
-			err = nil
-		}
-		if len(infos) > 0 {
-			info := inmem_service.GetSupportedIPInfo(infos)
-			if info.Supported == false {
-				logCtx.WithField("ips", IPs).Debug("cannot determine IP address")
-			} else {
-				log.WithFields(log.Fields{
-					"ip":            info.IP,
-					"operator_code": info.OperatorCode,
-					"supported":     info.Supported,
-					"headers":       info.MsisdnHeaders,
-				}).Debug("got IP info")
-
-				flagFoundIpInfo = true
-				msg.IP = info.IP
-				msg.OperatorCode = info.OperatorCode
-				msg.CountryCode = info.CountryCode
-				msg.Supported = info.Supported
-
-				msg.Msisdn = ""
-				for _, header := range info.MsisdnHeaders {
-
-					msg.Msisdn = r.Header.Get(header)
-					if len(msg.Msisdn) > 0 {
-						log.WithFields(log.Fields{
-							"msisdn": msg.Msisdn,
-						}).Debug("found in header")
-						return msg
-					}
-					msg.Msisdn = os.Getenv(header)
-					if len(msg.Msisdn) > 0 {
-						log.WithFields(log.Fields{
-							"msisdn": msg.Msisdn,
-						}).Debug("found in environment")
-						return msg
-					}
-				}
-			}
-		}
-
 	}
 
 	// but for now we use get parameter to pass msisdn
@@ -114,21 +63,97 @@ func gatherInfo(c *gin.Context, campaign inmem_service.Campaign) (msg rbmq.Acces
 		}
 	}
 
-	// we worked hard and haven't found msisdn
-	if len(msg.Msisdn) <= 5 {
-		logCtx.WithFields(log.Fields{
-			"msisdn": msg.Msisdn,
-		}).Debug("msisdn is empty")
-
-		msg.Error = "Msisdn not found"
+	if err := detectByIpInfo(c, &msg); err != nil {
+		return msg
+	}
+	if !msg.Supported {
+		logCtx.WithField("IP", msg.IP).Debug("is not supported")
+		msg.Error = "Not supported"
 		return msg
 	}
 
-	if flagFoundIpInfo {
+	if len(msg.Msisdn) > 5 {
 		return msg
 	}
 
-	info, err := inmem_client.GetIPInfoByMsisdn(msg.Msisdn)
+	logCtx.WithFields(log.Fields{
+		"msisdn": msg.Msisdn,
+	}).Debug("msisdn is empty")
+	msg.Error = "Msisdn not found"
+
+	return msg
+}
+
+//get all IP addresses
+//get supported IP-s
+// in common, this branch of code in action
+func detectByIpInfo(c *gin.Context, msg *rbmq.AccessCampaignNotify) error {
+
+	if !cnf.Service.DetectByIpEnabled {
+		return nil
+	}
+
+	tid := sessions.GetTid(c)
+	logCtx := log.WithFields(log.Fields{
+		"tid": tid,
+	})
+
+	IPs := getIPAdress(c.Request)
+	if len(IPs) == 0 {
+		return nil
+
+	}
+	infos, err := inmem_client.GetIPInfoByIps(IPs)
+	if err != nil {
+		logCtx.WithField("error", err.Error()).Error("cannot get ip infos")
+		return nil
+	}
+	if len(infos) == 0 {
+		logCtx.WithField("error", "no ip info").Error("cannot get ip info")
+		return nil
+	}
+
+	info := inmem_service.GetSupportedIPInfo(infos)
+	msg.IP = info.IP
+	msg.OperatorCode = info.OperatorCode
+	msg.CountryCode = info.CountryCode
+	msg.Supported = info.Supported
+
+	if msg.Supported == false {
+		return nil
+	}
+
+	log.WithFields(log.Fields{
+		"ip":            info.IP,
+		"operator_code": info.OperatorCode,
+		"supported":     info.Supported,
+		"headers":       info.MsisdnHeaders,
+	}).Debug("got IP info")
+
+	for _, header := range info.MsisdnHeaders {
+
+		msisdn := c.Request.Header.Get(header)
+		if len(msisdn) > 5 {
+			log.WithFields(log.Fields{
+				"msisdn": msisdn,
+			}).Debug("found in header")
+			msg.Msisdn = msisdn
+			return nil
+		}
+		msisdn = os.Getenv(header)
+		if len(msisdn) > 0 {
+			log.WithFields(log.Fields{
+				"msisdn": msisdn,
+			}).Debug("found in environment")
+			msg.Msisdn = msisdn
+			return nil
+		}
+	}
+
+	if msg.Msisdn == "" {
+		return nil
+	}
+	info, err = inmem_client.GetIPInfoByMsisdn(msg.Msisdn)
 	if err != nil {
 		err = fmt.Errorf("operator.GetInfoByMsisdn: %s", err.Error())
 
@@ -136,25 +161,19 @@ func gatherInfo(c *gin.Context, campaign inmem_service.Campaign) (msg rbmq.Acces
 		logCtx.WithFields(log.Fields{
 			"error": err.Error(),
 		}).Debug("cannot find info by msisdn")
-		return msg
+		return nil
 	}
+
 	msg.IP = info.IP
 	msg.OperatorCode = info.OperatorCode
 	msg.CountryCode = info.CountryCode
 	msg.Supported = info.Supported
 
-	if !info.Supported {
-		msg.Error = "Not supported"
-		logCtx.WithFields(log.Fields{
-			"info": info,
-		}).Debug("operator is not supported")
-		return msg
-	}
 	logCtx.WithFields(log.Fields{
 		"msisdn": msg.Msisdn,
 		"code":   msg.OperatorCode,
 	}).Debug("found matched operator")
-	return
+	return nil
 }
 
 func getIPAdress(r *http.Request) []net.IP {
