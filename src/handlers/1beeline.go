@@ -81,13 +81,13 @@ func redirectUserBeeline(c *gin.Context) {
 	v := url.Values{}
 	v.Add("tid", r.Tid)
 	// we will parse parameters inserted who came
-	contentUrl := ""
+	contentUrl := "http://ru.slypee.com/bgetcontent%"
 	forwardURL := cnf.Server.Url + "/campaign/" + campaign.Hash + "/" + campaign.PageError + v.Encode()
 
 	v.Add("flagSubscribe", "True")
 	v.Add("contentUrl", url.QueryEscape(contentUrl))
 	v.Add("forwardURL", url.QueryEscape(forwardURL))
-	reqUrl := cnf.Service.LandingPages.Beeline.AisUrl + v.Encode()
+	reqUrl := cnf.Service.LandingPages.Beeline.Url + "?" + v.Encode()
 
 	log.WithFields(log.Fields{
 		"tid": r.Tid,

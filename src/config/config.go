@@ -15,15 +15,17 @@ import (
 	"github.com/vostrok/dispatcherd/src/sessions"
 	inmem_client "github.com/vostrok/inmem/rpcclient"
 	redirect_client "github.com/vostrok/partners/rpcclient"
+	reporter_client "github.com/vostrok/reporter/rpcclient"
 )
 
 type AppConfig struct {
 	AppName        string                          `yaml:"app_name"`
 	Server         ServerConfig                    `yaml:"server"`
 	Service        ServiceConfig                   `yaml:"service"`
-	ContentClient  content_client.RPCClientConfig  `yaml:"content_client"`
-	InMemConfig    inmem_client.RPCClientConfig    `yaml:"inmem_client"`
+	ContentClient  content_client.ClientConfig     `yaml:"content_client"`
+	InMemConfig    inmem_client.ClientConfig       `yaml:"inmem_client"`
 	RedirectConfig redirect_client.RPCClientConfig `yaml:"redirect_client"`
+	ReporterConfig reporter_client.ClientConfig    `yaml:"reporter_client"`
 	Notifier       rbmq.NotifierConfig             `yaml:"notifier"`
 }
 
@@ -65,6 +67,7 @@ type QRTechLandingConf struct {
 
 type LandingConf struct {
 	Enabled    bool   `yaml:"enabled"`
+	Url        string `yaml:"url"`
 	AisUrl     string `yaml:"ais_url"`
 	DtacUrl    string `yaml:"dtac_url"`
 	Timeout    int    `yaml:"timeout"`
