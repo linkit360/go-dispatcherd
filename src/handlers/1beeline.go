@@ -2,19 +2,17 @@ package handlers
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
 
+	"encoding/json"
 	m "github.com/vostrok/dispatcherd/src/metrics"
 	"github.com/vostrok/dispatcherd/src/rbmq"
 	"github.com/vostrok/dispatcherd/src/sessions"
-	inmem_client "github.com/vostrok/inmem/rpcclient"
 	rec "github.com/vostrok/utils/rec"
 )
 
@@ -64,6 +62,9 @@ func redirectUserBeeline(c *gin.Context) {
 				"tid":   r.Tid,
 			}).Error("notify user action")
 		} else {
+			log.WithFields(log.Fields{
+				"tid": r.Tid,
+			}).Info("sent to beeline")
 		}
 	}()
 
@@ -75,6 +76,7 @@ func redirectUserBeeline(c *gin.Context) {
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
+
 	msg.CampaignId = campaign.Id
 	msg.ServiceId = campaign.ServiceId
 
@@ -85,8 +87,8 @@ func redirectUserBeeline(c *gin.Context) {
 	forwardURL := cnf.Server.Url + "/campaign/" + campaign.Hash + "/" + campaign.PageError + v.Encode()
 
 	v.Add("flagSubscribe", "True")
-	v.Add("contentUrl", url.QueryEscape(contentUrl))
-	v.Add("forwardURL", url.QueryEscape(forwardURL))
+	v.Add("contentUrl", contentUrl)
+	v.Add("forwardURL", forwardURL)
 	reqUrl := cnf.Service.LandingPages.Beeline.Url + "?" + v.Encode()
 
 	log.WithFields(log.Fields{
@@ -104,70 +106,39 @@ func redirectUserBeeline(c *gin.Context) {
 	req.SetBasicAuth(cnf.Service.LandingPages.Beeline.Auth.User, cnf.Service.LandingPages.Beeline.Auth.Pass)
 
 	httpClient := http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 		Timeout: time.Duration(cnf.Service.LandingPages.Beeline.Timeout) * time.Second,
 	}
+
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		err = fmt.Errorf("Cann't make request: %s", err.Error())
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
-	beelineResponse, err := ioutil.ReadAll(resp.Body)
+	headers, err := json.Marshal(resp.Header)
 	if err != nil {
-		err = fmt.Errorf("ioutil.ReadAll: %s", err.Error())
-		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
-		return
+		log.Error("cannot marshal headers")
+		headers = []byte("{}")
 	}
 	defer resp.Body.Close()
 	log.WithFields(log.Fields{
-		"tid":    r.Tid,
-		"url":    reqUrl,
-		"status": resp.Status,
-		"body":   string(beelineResponse),
+		"tid":     r.Tid,
+		"url":     reqUrl,
+		"status":  resp.Status,
+		"headers": string(headers),
+		//"body":   string(beelineResponse),
 	}).Debug("got resp")
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != 302 {
 		err = fmt.Errorf("Status code: %d", resp.StatusCode)
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
-
-	operator, err := inmem_client.GetOperatorByCode(msg.OperatorCode)
-	if err != nil {
-		err = fmt.Errorf("inmem_client.GetOperatorByCode: %s", err.Error())
-		log.WithFields(log.Fields{
-			"tid":   msg.Tid,
-			"error": err.Error(),
-		}).Error("cannot get operator by code")
-	} else {
-		for _, header := range operator.MsisdnHeaders {
-			msg.Msisdn = c.Request.Header.Get(header)
-			if len(msg.Msisdn) > 7 {
-				log.WithFields(log.Fields{
-					"msisdn": msg.Msisdn,
-				}).Debug("found in header")
-				sessions.Set("msisdn", msg.Msisdn, c)
-				sessions.Set("tid", msg.Tid, c)
-				break
-			}
-		}
-	}
-
-	sArray := strings.SplitN(string(beelineResponse), "serviceId=", 2)
-	if len(sArray) < 2 {
-		err = fmt.Errorf("strings.SplitN: %s", "cannot determine service id")
-		log.WithFields(log.Fields{
-			"tid":   r.Tid,
-			"url":   reqUrl,
-			"body":  string(beelineResponse),
-			"error": err.Error(),
-		}).Debug("cannot redirect to OP LP")
-		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
-		return
-	}
-	r.OperatorToken = sArray[1]
-
-	http.Redirect(c.Writer, c.Request, strings.SplitN(string(beelineResponse), "Location: ", 2)[1], 303)
+	msg.UrlPath = resp.Header.Get("Location")
+	http.Redirect(c.Writer, c.Request, msg.UrlPath, 303)
 }
 
 // rg := e.Group("/campaign/:campaign_hash")
