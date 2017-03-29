@@ -18,8 +18,8 @@ import (
 
 func AddBeelineHandlers(e *gin.Engine) {
 	if cnf.Service.LandingPages.Beeline.Enabled {
-		e.Group("/lp").GET(":campaign_link", AccessHandler, redirectUserBeeline)
-		e.Group("/campaign/:campaign_hash").GET("/:campaign_page", AccessHandler, returnBackCampaignPage)
+		e.Group("/lp").GET(":campaign_link", AccessHandler, serveCampaigns)
+		e.Group("/campaign/:campaign_link").GET("", AccessHandler, redirectUserBeeline)
 		log.WithFields(log.Fields{}).Debug("beeline handlers init")
 	}
 }
@@ -83,7 +83,7 @@ func redirectUserBeeline(c *gin.Context) {
 	v := url.Values{}
 	v.Add("tid", r.Tid)
 	// we will parse parameters inserted who came
-	contentUrl := "http://ru.slypee.com/bgetcontent%"
+	contentUrl := "http://platform.ru.linkit360.ru/lp/campaign"
 	forwardURL := cnf.Server.Url + "/campaign/" + campaign.Hash + "/" + campaign.PageError + v.Encode()
 
 	v.Add("flagSubscribe", "True")
