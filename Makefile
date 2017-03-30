@@ -5,17 +5,6 @@ VERSION=$(shell git describe --always --long --dirty)
 version:
 	 @echo Version IS $(VERSION)
 
-rm:
-	rm ~/linkit/dispatcherd-linux-amd64; rm -v bin/dispatcherd-linux-amd64;
-
-build:
-	export GOOS=linux; export GOARCH=amd64; \
-	sed -i "s/%VERSION%/$(VERSION)/g" /home/centos/vostrok/utils/metrics/metrics.go; \
-  go build -ldflags "-s -w" -o bin/dispatcherd-linux-amd64 ; \
-
-cp:
-	cp  bin/dispatcherd-linux-amd64 ~/linkit; cp dev/dispatcherd.yml ~/linkit/
-
 access:
 	curl -L -H 'HTTP_MSISDN: 928974412092' -H 'X-Real-Ip: 10.80.128.1' -H 'Host: pk.linkit360.ru' "http://35.154.8.158/mobilink-p2" 
 

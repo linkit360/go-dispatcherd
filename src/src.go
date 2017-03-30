@@ -9,11 +9,11 @@ import (
 	//"github.com/fvbock/endless"
 	"github.com/gin-gonic/gin"
 
-	"github.com/vostrok/dispatcherd/src/config"
-	"github.com/vostrok/dispatcherd/src/handlers"
-	m "github.com/vostrok/dispatcherd/src/metrics"
-	"github.com/vostrok/dispatcherd/src/sessions"
-	"github.com/vostrok/utils/metrics"
+	"github.com/linkit360/go-dispatcherd/src/config"
+	"github.com/linkit360/go-dispatcherd/src/handlers"
+	m "github.com/linkit360/go-dispatcherd/src/metrics"
+	"github.com/linkit360/go-dispatcherd/src/sessions"
+	"github.com/linkit360/go-utils/metrics"
 )
 
 var conf config.AppConfig

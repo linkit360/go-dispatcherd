@@ -10,10 +10,10 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"encoding/json"
-	m "github.com/vostrok/dispatcherd/src/metrics"
-	"github.com/vostrok/dispatcherd/src/rbmq"
-	"github.com/vostrok/dispatcherd/src/sessions"
-	rec "github.com/vostrok/utils/rec"
+	m "github.com/linkit360/go-dispatcherd/src/metrics"
+	"github.com/linkit360/go-dispatcherd/src/rbmq"
+	"github.com/linkit360/go-dispatcherd/src/sessions"
+	rec "github.com/linkit360/go-utils/rec"
 )
 
 func AddBeelineHandlers(e *gin.Engine) {
@@ -129,7 +129,6 @@ func redirectUserBeeline(c *gin.Context) {
 		"url":     reqUrl,
 		"status":  resp.Status,
 		"headers": string(headers),
-		//"body":   string(beelineResponse),
 	}).Debug("got resp")
 
 	if resp.StatusCode != 302 {

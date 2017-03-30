@@ -8,13 +8,13 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
 
-	content_client "github.com/vostrok/contentd/rpcclient"
-	content_service "github.com/vostrok/contentd/service"
-	m "github.com/vostrok/dispatcherd/src/metrics"
-	"github.com/vostrok/dispatcherd/src/rbmq"
-	"github.com/vostrok/dispatcherd/src/sessions"
-	"github.com/vostrok/dispatcherd/src/utils"
-	inmem_service "github.com/vostrok/inmem/service"
+	content_client "github.com/linkit360/go-contentd/rpcclient"
+	content_service "github.com/linkit360/go-contentd/service"
+	m "github.com/linkit360/go-dispatcherd/src/metrics"
+	"github.com/linkit360/go-dispatcherd/src/rbmq"
+	"github.com/linkit360/go-dispatcherd/src/sessions"
+	"github.com/linkit360/go-dispatcherd/src/utils"
+	inmem_service "github.com/linkit360/go-inmem/service"
 )
 
 func AddContentHandlers() {

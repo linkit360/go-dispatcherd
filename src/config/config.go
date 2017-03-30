@@ -10,11 +10,11 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/jinzhu/configor"
 
-	content_client "github.com/vostrok/contentd/rpcclient"
-	"github.com/vostrok/dispatcherd/src/rbmq"
-	"github.com/vostrok/dispatcherd/src/sessions"
-	inmem_client "github.com/vostrok/inmem/rpcclient"
-	redirect_client "github.com/vostrok/partners/rpcclient"
+	content_client "github.com/linkit360/go-contentd/rpcclient"
+	"github.com/linkit360/go-dispatcherd/src/rbmq"
+	"github.com/linkit360/go-dispatcherd/src/sessions"
+	inmem_client "github.com/linkit360/go-inmem/rpcclient"
+	redirect_client "github.com/linkit360/go-partners/rpcclient"
 )
 
 type AppConfig struct {

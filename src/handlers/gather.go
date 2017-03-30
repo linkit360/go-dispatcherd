@@ -11,10 +11,10 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
 
-	"github.com/vostrok/dispatcherd/src/rbmq"
-	"github.com/vostrok/dispatcherd/src/sessions"
-	inmem_client "github.com/vostrok/inmem/rpcclient"
-	inmem_service "github.com/vostrok/inmem/service"
+	"github.com/linkit360/go-dispatcherd/src/rbmq"
+	"github.com/linkit360/go-dispatcherd/src/sessions"
+	inmem_client "github.com/linkit360/go-inmem/rpcclient"
+	inmem_service "github.com/linkit360/go-inmem/service"
 )
 
 // gather information from headers, etc

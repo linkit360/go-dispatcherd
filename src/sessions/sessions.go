@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/contrib/sessions"
 	"github.com/gin-gonic/gin"
 
-	rec "github.com/vostrok/utils/rec"
+	rec "github.com/linkit360/go-utils/rec"
 )
 
 var store sessions.CookieStore

@@ -9,12 +9,12 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
 
-	m "github.com/vostrok/dispatcherd/src/metrics"
-	"github.com/vostrok/dispatcherd/src/rbmq"
-	"github.com/vostrok/dispatcherd/src/sessions"
-	inmem_client "github.com/vostrok/inmem/rpcclient"
-	queue_config "github.com/vostrok/utils/config"
-	rec "github.com/vostrok/utils/rec"
+	m "github.com/linkit360/go-dispatcherd/src/metrics"
+	"github.com/linkit360/go-dispatcherd/src/rbmq"
+	"github.com/linkit360/go-dispatcherd/src/sessions"
+	inmem_client "github.com/linkit360/go-inmem/rpcclient"
+	queue_config "github.com/linkit360/go-utils/config"
+	rec "github.com/linkit360/go-utils/rec"
 )
 
 func HandlePull(c *gin.Context) {

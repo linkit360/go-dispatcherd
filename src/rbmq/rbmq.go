@@ -7,11 +7,11 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	m "github.com/vostrok/dispatcherd/src/metrics"
-	inmem_service "github.com/vostrok/inmem/service"
-	redirect_service "github.com/vostrok/partners/service"
-	"github.com/vostrok/utils/amqp"
-	"github.com/vostrok/utils/rec"
+	m "github.com/linkit360/go-dispatcherd/src/metrics"
+	inmem_service "github.com/linkit360/go-inmem/service"
+	redirect_service "github.com/linkit360/go-partners/service"
+	"github.com/linkit360/go-utils/amqp"
+	"github.com/linkit360/go-utils/rec"
 )
 
 type Notifier interface {

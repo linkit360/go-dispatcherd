@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/vostrok/dispatcherd/src"
+	"github.com/linkit360/go-dispatcherd/src"
 )
 
 func main() {

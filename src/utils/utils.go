@@ -3,10 +3,10 @@ package utils
 import (
 	"fmt"
 	"io/ioutil"
+	"strings"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
-	"strings"
 )
 
 func ServeAttachment(filePath, name string, c *gin.Context, log *logrus.Entry) error {

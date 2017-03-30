@@ -8,16 +8,16 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
 
-	content_client "github.com/vostrok/contentd/rpcclient"
-	content_service "github.com/vostrok/contentd/service"
-	"github.com/vostrok/dispatcherd/src/config"
-	m "github.com/vostrok/dispatcherd/src/metrics"
-	"github.com/vostrok/dispatcherd/src/rbmq"
-	"github.com/vostrok/dispatcherd/src/sessions"
-	inmem_client "github.com/vostrok/inmem/rpcclient"
-	inmem_service "github.com/vostrok/inmem/service"
-	redirect_client "github.com/vostrok/partners/rpcclient"
-	redirect_service "github.com/vostrok/partners/service"
+	content_client "github.com/linkit360/go-contentd/rpcclient"
+	content_service "github.com/linkit360/go-contentd/service"
+	"github.com/linkit360/go-dispatcherd/src/config"
+	m "github.com/linkit360/go-dispatcherd/src/metrics"
+	"github.com/linkit360/go-dispatcherd/src/rbmq"
+	"github.com/linkit360/go-dispatcherd/src/sessions"
+	inmem_client "github.com/linkit360/go-inmem/rpcclient"
+	inmem_service "github.com/linkit360/go-inmem/service"
+	redirect_client "github.com/linkit360/go-partners/rpcclient"
+	redirect_service "github.com/linkit360/go-partners/service"
 )
 
 // file for global variables,

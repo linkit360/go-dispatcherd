@@ -1,8 +1,9 @@
 package metrics
 
 import (
-	m "github.com/vostrok/utils/metrics"
 	"time"
+
+	m "github.com/linkit360/go-utils/metrics"
 )
 
 var (
