@@ -137,7 +137,37 @@ func redirectUserBeeline(c *gin.Context) {
 		return
 	}
 	msg.UrlPath = resp.Header.Get("Location")
+
 	http.Redirect(c.Writer, c.Request, msg.UrlPath, 303)
+
+	u, err := url.Parse(msg.UrlPath)
+	if err != nil {
+		err = fmt.Errorf("Cannot get service id: %d", err.Error())
+		return
+	}
+
+	notifyBeelineUrl := cnf.Service.LandingPages.Beeline.Url + "?serviceId=" + u.Query().Get("serviceId")
+	req, err = http.NewRequest("GET", notifyBeelineUrl, nil)
+	if err != nil {
+		err = fmt.Errorf("Beeline Notify: Cann't create request: %s, url: %s", err.Error(), notifyBeelineUrl)
+		return
+	}
+	req.Close = false
+	httpClient = http.Client{
+		Timeout: time.Duration(cnf.Service.LandingPages.Beeline.Timeout) * time.Second,
+	}
+	req.SetBasicAuth(cnf.Service.LandingPages.Beeline.Auth.User, cnf.Service.LandingPages.Beeline.Auth.Pass)
+
+	resp, err = httpClient.Do(req)
+	if err != nil {
+		err = fmt.Errorf("Beeline Notify: httpClient.Do: %s, url: %s", err.Error(), notifyBeelineUrl)
+		return
+	}
+	if resp.StatusCode != 200 {
+		err = fmt.Errorf("Beeline Notify: status: %s, url: %s", resp.Status, notifyBeelineUrl)
+		return
+	}
+	return
 }
 
 // rg := e.Group("/campaign/:campaign_hash")
