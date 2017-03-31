@@ -76,9 +76,6 @@ func gatherInfo(c *gin.Context, campaign inmem_service.Campaign) (msg rbmq.Acces
 		return msg
 	}
 
-	logCtx.WithFields(log.Fields{
-		"msisdn": msg.Msisdn,
-	}).Debug("msisdn is empty")
 	msg.Error = "Msisdn not found"
 
 	return msg

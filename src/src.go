@@ -41,7 +41,7 @@ func RunServer() {
 	e.Static("/static/", conf.Server.Path+"/static/")
 	e.StaticFile("/favicon.ico", conf.Server.Path+"/favicon.ico")
 	e.StaticFile("/robots.txt", conf.Server.Path+"/robots.txt")
-	e.NoRoute(notFound)
+	e.NoRoute(handlers.AccessHandler, notFound)
 
 	e.RedirectTrailingSlash = true
 	e.Run(":" + conf.Server.Port)
