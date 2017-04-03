@@ -53,3 +53,7 @@ func notFound(c *gin.Context) {
 	m.PageNotFoundError.Inc()
 	http.Redirect(c.Writer, c.Request, conf.Service.NotFoundRedirectUrl, 303)
 }
+
+func OnExit() {
+	handlers.SaveState()
+}

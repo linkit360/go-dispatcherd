@@ -1,15 +1,18 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
+	cache "github.com/patrickmn/go-cache"
 
-	"encoding/json"
 	m "github.com/linkit360/go-dispatcherd/src/metrics"
 	"github.com/linkit360/go-dispatcherd/src/rbmq"
 	"github.com/linkit360/go-dispatcherd/src/sessions"
@@ -18,10 +21,153 @@ import (
 
 func AddBeelineHandlers(e *gin.Engine) {
 	if cnf.Service.LandingPages.Beeline.Enabled {
-		e.Group("/lp").GET(":campaign_link", AccessHandler, serveCampaigns)
+		e.Group("/lp").GET(":campaign_link", AccessHandler, notifyBeeline, serveCampaigns)
 		e.Group("/campaign/:campaign_link").GET("", AccessHandler, redirectUserBeeline)
 		log.WithFields(log.Fields{}).Debug("beeline handlers init")
 	}
+}
+
+var beelineCache *cache.Cache
+
+type BeelineAbonentInfoLanding struct {
+	Url    string    `json:"url"`
+	Tid    string    `json:"tid"`
+	SentAt time.Time `json:"sent_at"`
+}
+
+func initBeeline() {
+	if !cnf.Service.LandingPages.Beeline.Enabled {
+		return
+	}
+	beelineSessions, err := ioutil.ReadFile(cnf.Service.LandingPages.Beeline.SessionPath)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+			"pid":   os.Getpid(),
+		}).Debug("load sessions")
+
+		beelineCache = cache.New(15*time.Minute, time.Minute)
+	} else {
+		var cacheItems map[string]cache.Item
+		if err = json.Unmarshal(beelineSessions, &cacheItems); err != nil {
+			log.WithFields(log.Fields{
+				"error":    err.Error(),
+				"sessions": beelineCache,
+				"pid":      os.Getpid(),
+			}).Error("load")
+			beelineCache = cache.New(15*time.Minute, time.Minute)
+		} else {
+			beelineCache = cache.NewFrom(15*time.Minute, time.Minute, cacheItems)
+			log.WithFields(log.Fields{
+				"len": len(cacheItems),
+				"pid": os.Getpid(),
+			}).Debug("load")
+		}
+	}
+}
+
+func beelineSaveState() {
+	if !cnf.Service.LandingPages.Beeline.Enabled {
+		return
+	}
+	beelineSessions, err := json.Marshal(beelineCache.Items())
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": fmt.Errorf("json.Marshal: %s", err.Error()),
+			"len":   beelineCache.Items(),
+			"pid":   os.Getpid(),
+		}).Error("beeline save session")
+		return
+	}
+	if err := ioutil.WriteFile(cnf.Service.LandingPages.Beeline.SessionPath, beelineSessions, 0666); err != nil {
+		log.WithFields(log.Fields{
+			"error": fmt.Errorf("ioutil.WriteFile: %s", err.Error()),
+			"pid":   os.Getpid(),
+		}).Error("beeline save session")
+
+		return
+	}
+
+	log.WithFields(log.Fields{
+		"len": len(beelineCache.Items()),
+		"pid": os.Getpid(),
+	}).Info("beeline save session ok")
+}
+
+func notifyBeeline(c *gin.Context) {
+	if !cnf.Service.LandingPages.Beeline.Enabled {
+		return
+	}
+	log.WithFields(log.Fields{}).Debug("beeline notify...")
+
+	var err error
+	var tid string
+	var notifyBeelineUrl string
+	var status string
+
+	defer func() {
+		fields := log.Fields{}
+		if tid != "" {
+			fields["tid"] = tid
+		}
+		if notifyBeelineUrl != "" {
+			fields["req"] = notifyBeelineUrl
+		}
+		if status != "" {
+			fields["status"] = status
+		}
+		if err == nil {
+			fields["success"] = true
+			log.WithFields(fields).Info("notify")
+		} else {
+			fields["error"] = err.Error()
+			log.WithFields(fields).Error("notify")
+		}
+
+	}()
+
+	serviceId, _ := c.GetQuery("serviceId")
+	if serviceId == "" {
+		err = fmt.Errorf("ServiceId not found%s", "")
+		return
+	}
+	landI, found := beelineCache.Get(serviceId)
+	if !found {
+		err = fmt.Errorf("ServiceId not found: %v", serviceId)
+		return
+	}
+	land, ok := landI.(BeelineAbonentInfoLanding)
+	if !ok {
+		err = fmt.Errorf("Wrong type: %T", landI)
+		return
+	}
+	tid = land.Tid
+
+	notifyBeelineUrl = cnf.Service.LandingPages.Beeline.Url + "?serviceId=" + serviceId
+	req, err := http.NewRequest("GET", notifyBeelineUrl, nil)
+	if err != nil {
+		err = fmt.Errorf("Beeline Notify: Cann't create request: %s, url: %s", err.Error(), notifyBeelineUrl)
+		return
+	}
+	req.Close = false
+	httpClient := http.Client{
+		Timeout: time.Duration(cnf.Service.LandingPages.Beeline.Timeout) * time.Second,
+	}
+	req.SetBasicAuth(cnf.Service.LandingPages.Beeline.Auth.User, cnf.Service.LandingPages.Beeline.Auth.Pass)
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		err = fmt.Errorf("Beeline Notify: httpClient.Do: %s, url: %s", err.Error(), notifyBeelineUrl)
+		return
+	}
+	status = resp.Status
+
+	if resp.StatusCode != 200 {
+		err = fmt.Errorf("Beeline Notify: status: %s, url: %s", resp.Status, notifyBeelineUrl)
+		return
+	}
+	beelineCache.Delete(serviceId)
+	return
 }
 
 func redirectUserBeeline(c *gin.Context) {
@@ -49,7 +195,7 @@ func redirectUserBeeline(c *gin.Context) {
 
 			log.WithFields(log.Fields{
 				"error": err.Error(),
-				"tid":   r.Tid,
+				"tid":   msg.Tid,
 			}).Error("beeline redirect to lp")
 		}
 		action.Msisdn = msg.Msisdn
@@ -63,7 +209,7 @@ func redirectUserBeeline(c *gin.Context) {
 			}).Error("notify user action")
 		} else {
 			log.WithFields(log.Fields{
-				"tid": r.Tid,
+				"tid": msg.Tid,
 			}).Info("sent to beeline")
 		}
 	}()
@@ -136,37 +282,21 @@ func redirectUserBeeline(c *gin.Context) {
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
+	// save to cache
 	msg.UrlPath = resp.Header.Get("Location")
-
-	http.Redirect(c.Writer, c.Request, msg.UrlPath, 303)
-
 	u, err := url.Parse(msg.UrlPath)
 	if err != nil {
 		err = fmt.Errorf("Cannot get service id: %d", err.Error())
 		return
 	}
+	serviceId := u.Query().Get("serviceId")
+	beelineCache.SetDefault(serviceId, BeelineAbonentInfoLanding{
+		Url:    msg.UrlPath,
+		Tid:    tid,
+		SentAt: time.Now().UTC(),
+	})
 
-	notifyBeelineUrl := cnf.Service.LandingPages.Beeline.Url + "?serviceId=" + u.Query().Get("serviceId")
-	req, err = http.NewRequest("GET", notifyBeelineUrl, nil)
-	if err != nil {
-		err = fmt.Errorf("Beeline Notify: Cann't create request: %s, url: %s", err.Error(), notifyBeelineUrl)
-		return
-	}
-	req.Close = false
-	httpClient = http.Client{
-		Timeout: time.Duration(cnf.Service.LandingPages.Beeline.Timeout) * time.Second,
-	}
-	req.SetBasicAuth(cnf.Service.LandingPages.Beeline.Auth.User, cnf.Service.LandingPages.Beeline.Auth.Pass)
-
-	resp, err = httpClient.Do(req)
-	if err != nil {
-		err = fmt.Errorf("Beeline Notify: httpClient.Do: %s, url: %s", err.Error(), notifyBeelineUrl)
-		return
-	}
-	if resp.StatusCode != 200 {
-		err = fmt.Errorf("Beeline Notify: status: %s, url: %s", resp.Status, notifyBeelineUrl)
-		return
-	}
+	http.Redirect(c.Writer, c.Request, msg.UrlPath, 303)
 	return
 }
 

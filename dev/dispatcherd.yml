@@ -42,6 +42,7 @@ service:
     custom: false
     beeline:
       enabled: false
+      session_path: /home/centos/linkit/beeline_session.json
       url: http://217.118.84.12:8888/CDP_WapTester/emulator
       timeout: 30
       user: 1637572

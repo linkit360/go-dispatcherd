@@ -53,9 +53,9 @@ type RejectedConfig struct {
 }
 
 type LPsConfig struct {
-	Custom  bool        `yaml:"custom"`
-	Beeline LandingConf `yaml:"beeline"`
-	QRTech  LandingConf `yaml:"qrtech"`
+	Custom  bool               `yaml:"custom"`
+	Beeline BeelineLandingConf `yaml:"beeline"`
+	QRTech  LandingConf        `yaml:"qrtech"`
 }
 
 type QRTechLandingConf struct {
@@ -63,10 +63,20 @@ type QRTechLandingConf struct {
 	Url     string `yaml:"url"`
 	Timeout int    `yaml:"timeout"`
 }
+type BeelineLandingConf struct {
+	Enabled     bool   `yaml:"enabled"`
+	Url         string `yaml:"url"`
+	SessionPath string `yaml:"session_path"`
+	Timeout     int    `yaml:"timeout"`
+	ContentUrl  string `yaml:"content_url"`
+	Auth        struct {
+		User string `yaml:"user"`
+		Pass string `yaml:"pass"`
+	} `yaml:"auth"`
+}
 
 type LandingConf struct {
 	Enabled    bool   `yaml:"enabled"`
-	Url        string `yaml:"url"`
 	AisUrl     string `yaml:"ais_url"`
 	DtacUrl    string `yaml:"dtac_url"`
 	Timeout    int    `yaml:"timeout"`

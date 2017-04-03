@@ -46,8 +46,14 @@ func Init(conf config.AppConfig, engine *gin.Engine) {
 	if err := redirect_client.Init(conf.RedirectConfig); err != nil {
 		log.Fatal("cannot redirect client")
 	}
+	initBeeline()
+
 	UpdateCampaigns()
 	notifierService = rbmq.NewNotifierService(conf.Notifier)
+}
+
+func SaveState() {
+	beelineSaveState()
 }
 
 func AccessHandler(c *gin.Context) {
