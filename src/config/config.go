@@ -71,7 +71,6 @@ type BeelineLandingConf struct {
 	OperatorCode int64  `yaml:"operator_code" default:"25099"`
 	CountryCode  int64  `yaml:"country_code" default:"66"`
 	Timeout      int    `yaml:"timeout"`
-	ContentUrl   string `yaml:"content_url"`
 	Auth         struct {
 		User string `yaml:"user"`
 		Pass string `yaml:"pass"`

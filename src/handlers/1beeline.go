@@ -177,7 +177,7 @@ func notifyBeeline(c *gin.Context) {
 			"error": err.Error(),
 			"tid":   land.Tid,
 		}).Error("notify new subscription")
-		return err
+		return
 	}
 	return
 }
@@ -245,7 +245,7 @@ func redirectUserBeeline(c *gin.Context) {
 			"error":      err.Error(),
 			"service_id": msg.ServiceId,
 		}).Error("cannot get service by id")
-		return err
+		return
 	}
 
 	v := url.Values{}
@@ -315,6 +315,8 @@ func redirectUserBeeline(c *gin.Context) {
 
 	beelineCache.SetDefault(serviceId, rec.Record{
 		Tid:                      tid,
+		CountryCode:              cnf.Service.LandingPages.Beeline.CountryCode,
+		OperatorCode:             cnf.Service.LandingPages.Beeline.OperatorCode,
 		SentAt:                   time.Now().UTC(),
 		CampaignId:               campaign.Id,
 		ServiceId:                campaign.ServiceId,
