@@ -16,6 +16,7 @@ import (
 	m "github.com/linkit360/go-dispatcherd/src/metrics"
 	"github.com/linkit360/go-dispatcherd/src/rbmq"
 	"github.com/linkit360/go-dispatcherd/src/sessions"
+	inmem_client "github.com/linkit360/go-inmem/rpcclient"
 	rec "github.com/linkit360/go-utils/rec"
 )
 
@@ -136,7 +137,7 @@ func notifyBeeline(c *gin.Context) {
 		err = fmt.Errorf("ServiceId not found: %v", serviceId)
 		return
 	}
-	land, ok := landI.(BeelineAbonentInfoLanding)
+	land, ok := landI.(rec.Record)
 	if !ok {
 		err = fmt.Errorf("Wrong type: %T", landI)
 		return
@@ -167,6 +168,17 @@ func notifyBeeline(c *gin.Context) {
 		return
 	}
 	beelineCache.Delete(serviceId)
+
+	if err = notifierService.NewSubscriptionNotify(cnf.Service.LandingPages.Beeline.MOQueue, land); err != nil {
+		m.NotifyNewSubscriptionError.Inc()
+
+		err = fmt.Errorf("notifierService.NewSubscriptionNotify: %s", err.Error())
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+			"tid":   land.Tid,
+		}).Error("notify new subscription")
+		return err
+	}
 	return
 }
 
@@ -225,11 +237,21 @@ func redirectUserBeeline(c *gin.Context) {
 
 	msg.CampaignId = campaign.Id
 	msg.ServiceId = campaign.ServiceId
+	service, err := inmem_client.GetServiceById(msg.ServiceId)
+	if err != nil {
+		err = fmt.Errorf("inmem_client.GetServiceById: %s", err.Error())
+		log.WithFields(log.Fields{
+			"tid":        msg.Tid,
+			"error":      err.Error(),
+			"service_id": msg.ServiceId,
+		}).Error("cannot get service by id")
+		return err
+	}
 
 	v := url.Values{}
 	v.Add("tid", r.Tid)
 	// we will parse parameters inserted who came
-	contentUrl := "http://platform.ru.linkit360.ru/lp/campaign"
+	contentUrl := campaign.PageThankYou
 	forwardURL := cnf.Server.Url + "/campaign/" + campaign.Hash + "/" + campaign.PageError + v.Encode()
 
 	v.Add("flagSubscribe", "True")
@@ -290,10 +312,23 @@ func redirectUserBeeline(c *gin.Context) {
 		return
 	}
 	serviceId := u.Query().Get("serviceId")
-	beelineCache.SetDefault(serviceId, BeelineAbonentInfoLanding{
-		Url:    msg.UrlPath,
-		Tid:    tid,
-		SentAt: time.Now().UTC(),
+
+	beelineCache.SetDefault(serviceId, rec.Record{
+		Tid:                      tid,
+		SentAt:                   time.Now().UTC(),
+		CampaignId:               campaign.Id,
+		ServiceId:                campaign.ServiceId,
+		Publisher:                sessions.GetFromSession("publisher", c),
+		Pixel:                    sessions.GetFromSession("pixel", c),
+		DelayHours:               service.DelayHours,
+		PaidHours:                service.PaidHours,
+		KeepDays:                 service.KeepDays,
+		Price:                    100 * int(service.Price),
+		Periodic:                 true,
+		PeriodicDays:             service.PeriodicDays,
+		PeriodicAllowedFromHours: service.PeriodicAllowedFrom,
+		PeriodicAllowedToHours:   service.PeriodicAllowedTo,
+		SMSText:                  "",
 	})
 
 	http.Redirect(c.Writer, c.Request, msg.UrlPath, 303)

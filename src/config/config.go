@@ -64,12 +64,15 @@ type QRTechLandingConf struct {
 	Timeout int    `yaml:"timeout"`
 }
 type BeelineLandingConf struct {
-	Enabled     bool   `yaml:"enabled"`
-	Url         string `yaml:"url"`
-	SessionPath string `yaml:"session_path"`
-	Timeout     int    `yaml:"timeout"`
-	ContentUrl  string `yaml:"content_url"`
-	Auth        struct {
+	Enabled      bool   `yaml:"enabled"`
+	Url          string `yaml:"url"`
+	SessionPath  string `yaml:"session_path"`
+	MOQueue      string `yaml:"mo"`
+	OperatorCode int64  `yaml:"operator_code" default:"25099"`
+	CountryCode  int64  `yaml:"country_code" default:"66"`
+	Timeout      int    `yaml:"timeout"`
+	ContentUrl   string `yaml:"content_url"`
+	Auth         struct {
 		User string `yaml:"user"`
 		Pass string `yaml:"pass"`
 	} `yaml:"auth"`
