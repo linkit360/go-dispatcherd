@@ -42,8 +42,8 @@ func Init(conf SessionsConfig, r *gin.Engine) {
 func SetSession(c *gin.Context) {
 	var tid string
 	session := sessions.Default(c)
-	v := session.Get("tid")
 
+	v := session.Get("tid")
 	if v == nil || len(string(v.(string))) < 40 {
 		tid = rec.GenerateTID()
 		log.WithFields(log.Fields{

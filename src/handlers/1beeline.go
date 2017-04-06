@@ -30,12 +30,6 @@ func AddBeelineHandlers(e *gin.Engine) {
 
 var beelineCache *cache.Cache
 
-type BeelineAbonentInfoLanding struct {
-	Url    string    `json:"url"`
-	Tid    string    `json:"tid"`
-	SentAt time.Time `json:"sent_at"`
-}
-
 func initBeeline() {
 	if !cnf.Service.LandingPages.Beeline.Enabled {
 		return
@@ -105,7 +99,12 @@ func notifyBeeline(c *gin.Context) {
 	var tid string
 	var notifyBeelineUrl string
 	var status string
+	var land rec.Record
 
+	action := rbmq.UserActionsNotify{
+		Action: "pull_click",
+		Tid:    tid,
+	}
 	defer func() {
 		fields := log.Fields{}
 		if tid != "" {
@@ -125,6 +124,20 @@ func notifyBeeline(c *gin.Context) {
 			log.WithFields(fields).Error("notify")
 		}
 
+		action.CampaignId = land.CampaignId
+		action.Tid = land.Tid
+
+		if err := notifierService.ActionNotify(action); err != nil {
+			log.WithFields(log.Fields{
+				"error": err.Error(),
+				"tid":   land.Tid,
+			}).Error("notify user action")
+		} else {
+			log.WithFields(log.Fields{
+				"tid": land.Tid,
+			}).Info("sent to beeline")
+		}
+
 	}()
 
 	serviceId, _ := c.GetQuery("serviceId")
@@ -137,7 +150,8 @@ func notifyBeeline(c *gin.Context) {
 		err = fmt.Errorf("ServiceId not found: %v", serviceId)
 		return
 	}
-	land, ok := landI.(rec.Record)
+	var ok bool
+	land, ok = landI.(rec.Record)
 	if !ok {
 		err = fmt.Errorf("Wrong type: %T", landI)
 		return
@@ -185,17 +199,12 @@ func notifyBeeline(c *gin.Context) {
 func redirectUserBeeline(c *gin.Context) {
 	var r rec.Record
 	var err error
+	sessions.SetSession(c)
 	tid := sessions.GetTid(c)
-	if tid == "" {
-		tid = rec.GenerateTID()
-	}
-	msg := rbmq.AccessCampaignNotify{
-		CountryCode:  cnf.Service.CountryCode,
-		OperatorCode: cnf.Service.OperatorCode,
-		Tid:          tid,
-	}
+	var msg rbmq.AccessCampaignNotify
+
 	action := rbmq.UserActionsNotify{
-		Action: "pull_click",
+		Action: "access",
 		Tid:    tid,
 	}
 	defer func() {
@@ -218,11 +227,18 @@ func redirectUserBeeline(c *gin.Context) {
 			log.WithFields(log.Fields{
 				"error": err.Error(),
 				"tid":   r.Tid,
-			}).Error("notify user action")
+			}).Error("notify action error")
 		} else {
 			log.WithFields(log.Fields{
 				"tid": msg.Tid,
-			}).Info("sent to beeline")
+			}).Info("notify action ok")
+		}
+		if errAccessCampaign := notifierService.AccessCampaignNotify(msg); errAccessCampaign != nil {
+			log.WithFields(log.Fields{
+				"tid":   r.Tid,
+				"error": errAccessCampaign.Error(),
+				"msg":   fmt.Sprintf("%#v", msg),
+			}).Error("notify access campaign error")
 		}
 	}()
 
@@ -234,9 +250,10 @@ func redirectUserBeeline(c *gin.Context) {
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
+	msg = gatherInfo(c, *campaign)
+	msg.CountryCode = cnf.Service.LandingPages.Beeline.CountryCode
+	msg.OperatorCode = cnf.Service.LandingPages.Beeline.OperatorCode
 
-	msg.CampaignId = campaign.Id
-	msg.ServiceId = campaign.ServiceId
 	service, err := inmem_client.GetServiceById(msg.ServiceId)
 	if err != nil {
 		err = fmt.Errorf("inmem_client.GetServiceById: %s", err.Error())
