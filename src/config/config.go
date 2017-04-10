@@ -53,9 +53,10 @@ type RejectedConfig struct {
 }
 
 type LPsConfig struct {
-	Custom  bool               `yaml:"custom"`
-	Beeline BeelineLandingConf `yaml:"beeline"`
-	QRTech  LandingConf        `yaml:"qrtech"`
+	Custom   bool                `yaml:"custom"`
+	Beeline  BeelineLandingConf  `yaml:"beeline"`
+	QRTech   QRTechLandingConf   `yaml:"qrtech"`
+	Mobilink MobilinkLandingConf `yaml:"mobilink"`
 }
 
 type QRTechLandingConf struct {
@@ -77,7 +78,7 @@ type BeelineLandingConf struct {
 	} `yaml:"auth"`
 }
 
-type LandingConf struct {
+type QRTechLandingConf struct {
 	Enabled    bool   `yaml:"enabled"`
 	AisUrl     string `yaml:"ais_url"`
 	DtacUrl    string `yaml:"dtac_url"`
@@ -87,6 +88,16 @@ type LandingConf struct {
 		User string `yaml:"user"`
 		Pass string `yaml:"pass"`
 	} `yaml:"auth"`
+}
+
+type MobilinkLandingConf struct {
+	Enabled          bool   `yaml:"enabled"`
+	SMSCodeQueueName string `yaml:"sms_code_queue"`
+	Cache            struct {
+		ExpirationHours      int    `yaml:"expiration_hours"`
+		CleanupIntervalHours int    `yaml:"cleanup_interval"`
+		Path                 string `yaml:"cache_path"`
+	} `yaml:"cache"`
 }
 
 func LoadConfig() AppConfig {

@@ -26,12 +26,15 @@ type Notifier interface {
 	ContentSentNotify(msg inmem_service.ContentSentProperties) error
 
 	PixelBufferNotify(r rec.Record) error
+
+	Notify(queue, eventName string, r rec.Record) error
 }
 
 type NotifierConfig struct {
 	Queues       Queues              `yaml:"queues"`
 	RBMQNotifier amqp.NotifierConfig `yaml:"rbmq"`
 }
+
 type Queues struct {
 	AccessCampaign   string `yaml:"access_campaign" default:"access_campaign"`
 	UserAction       string `yaml:"user_actions" default:"user_actions"`
@@ -190,5 +193,20 @@ func (service notifier) PixelBufferNotify(r rec.Record) error {
 		return fmt.Errorf("json.Marshal: %s", err.Error())
 	}
 	service.mq.Publish(amqp.AMQPMessage{service.q.PixelSent, uint8(1), body, event.EventName})
+	return nil
+}
+
+func (service notifier) Notify(queue, eventName string, r rec.Record) error {
+	event := EventNotify{
+		EventName: eventName,
+		EventData: r,
+	}
+
+	body, err := json.Marshal(event)
+	if err != nil {
+		m.NotifyError.Inc()
+		return fmt.Errorf("json.Marshal: %s", err.Error())
+	}
+	service.mq.Publish(amqp.AMQPMessage{queue, uint8(1), body, event.EventName})
 	return nil
 }

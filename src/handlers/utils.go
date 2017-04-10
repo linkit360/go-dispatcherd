@@ -54,6 +54,7 @@ func Init(conf config.AppConfig, engine *gin.Engine) {
 
 func SaveState() {
 	beelineSaveState()
+	mobilinkISaveState()
 }
 
 func AccessHandler(c *gin.Context) {

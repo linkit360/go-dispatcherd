@@ -21,11 +21,12 @@ import (
 )
 
 func AddBeelineHandlers(e *gin.Engine) {
-	if cnf.Service.LandingPages.Beeline.Enabled {
-		e.Group("/lp").GET(":campaign_link", AccessHandler, notifyBeeline, serveCampaigns)
-		e.Group("/campaign/:campaign_link").GET("", AccessHandler, redirectUserBeeline)
-		log.WithFields(log.Fields{}).Debug("beeline handlers init")
+	if !cnf.Service.LandingPages.Beeline.Enabled {
+		return
 	}
+	e.Group("/lp").GET(":campaign_link", AccessHandler, notifyBeeline, serveCampaigns)
+	e.Group("/campaign/:campaign_link").GET("", AccessHandler, redirectUserBeeline)
+	log.WithFields(log.Fields{}).Debug("beeline handlers init")
 }
 
 var beelineCache *cache.Cache
@@ -42,23 +43,25 @@ func initBeeline() {
 		}).Debug("load sessions")
 
 		beelineCache = cache.New(15*time.Minute, time.Minute)
-	} else {
-		var cacheItems map[string]cache.Item
-		if err = json.Unmarshal(beelineSessions, &cacheItems); err != nil {
-			log.WithFields(log.Fields{
-				"error":    err.Error(),
-				"sessions": beelineCache,
-				"pid":      os.Getpid(),
-			}).Error("load")
-			beelineCache = cache.New(15*time.Minute, time.Minute)
-		} else {
-			beelineCache = cache.NewFrom(15*time.Minute, time.Minute, cacheItems)
-			log.WithFields(log.Fields{
-				"len": len(cacheItems),
-				"pid": os.Getpid(),
-			}).Debug("load")
-		}
+		return
 	}
+
+	var cacheItems map[string]cache.Item
+	if err = json.Unmarshal(beelineSessions, &cacheItems); err != nil {
+		log.WithFields(log.Fields{
+			"error":    err.Error(),
+			"sessions": beelineCache,
+			"pid":      os.Getpid(),
+		}).Error("load")
+		beelineCache = cache.New(15*time.Minute, time.Minute)
+		return
+	}
+
+	beelineCache = cache.NewFrom(15*time.Minute, time.Minute, cacheItems)
+	log.WithFields(log.Fields{
+		"len": len(cacheItems),
+		"pid": os.Getpid(),
+	}).Debug("load")
 }
 
 func beelineSaveState() {
