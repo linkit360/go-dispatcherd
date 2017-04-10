@@ -132,10 +132,12 @@ func generateCode(c *gin.Context) {
 		Notice:             code,
 	}
 	mobilinkCodeCache.SetDefault(msg.Msisdn, r)
-	notifierService.Notify("send_sms", cnf.Service.LandingPages.Mobilink.SMSCodeQueueName, r)
+	notifierService.Notify("send_sms", cnf.Service.LandingPages.Mobilink.Queues.SMS, r)
 }
 
 func verifyCode(c *gin.Context) {
+	var r rec.Record
+
 	sessions.SetSession(c)
 	tid := sessions.GetTid(c)
 	logCtx := log.WithFields(log.Fields{
@@ -148,47 +150,28 @@ func verifyCode(c *gin.Context) {
 	m.Incoming.Inc()
 
 	var err error
-	var msg rbmq.AccessCampaignNotify
 	defer func() {
-		action.Msisdn = msg.Msisdn
-		action.CampaignId = msg.CampaignId
-		action.Tid = msg.Tid
+		action.Msisdn = r.Msisdn
+		action.CampaignId = r.CampaignId
+		action.Tid = r.Tid
 		if err != nil {
 			action.Error = err.Error()
-			msg.Error = msg.Error + " " + err.Error()
 
 			logCtx.WithFields(log.Fields{
 				"error": err.Error(),
-			}).Error("serve campaign")
+			}).Error("code verify")
 		}
 		if errAction := notifierService.ActionNotify(action); errAction != nil {
 			logCtx.WithFields(log.Fields{
 				"error":  errAction.Error(),
 				"action": fmt.Sprintf("%#v", action),
-			}).Error("notify user action")
+			}).Error("code verify notify user action")
 		}
 	}()
 
-	paths := strings.Split(c.Request.URL.Path, "/")
-	campaignLink := paths[len(paths)-1]
-	campaign, ok := campaignByLink[campaignLink]
+	recI, ok := mobilinkCodeCache.Get(r.Msisdn)
 	if !ok {
-		m.PageNotFoundError.Inc()
-		err = fmt.Errorf("page not found: %s", campaignLink)
-
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Error("cannot get campaign by link")
-		c.JSON(500, gin.H{"error": err.Error()})
-		return
-	}
-
-	msg = gatherInfo(c, *campaign)
-
-	// todo: verify code
-	recI, ok := mobilinkCodeCache.Get(msg.Msisdn)
-	if !ok {
-		err = fmt.Errorf("msisdn code not found: %s", msg.Msisdn)
+		err = fmt.Errorf("msisdn code not found: %s", r.Msisdn)
 
 		log.WithFields(log.Fields{
 			"error": err.Error(),
@@ -196,7 +179,7 @@ func verifyCode(c *gin.Context) {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
-	r, ok := recI.(rec.Record)
+	r, ok = recI.(rec.Record)
 	if !ok {
 		err = fmt.Errorf("code cache type %T, expected %T", recI, rec.Record{})
 
@@ -213,20 +196,23 @@ func verifyCode(c *gin.Context) {
 		log.WithFields(log.Fields{
 			"error": err.Error(),
 		}).Error("wrong code")
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.JSON(500, gin.H{"error": err.Error(), "message": "wrong code"})
 		return
 	}
 
-	if err = startNewSubscription(c, msg); err == nil {
-		log.WithFields(log.Fields{
-			"tid":        msg.Tid,
-			"link":       campaignLink,
-			"hash":       campaignByLink[campaignLink].Hash,
-			"msisdn":     msg.Msisdn,
-			"campaignid": campaignByLink[campaignLink].Id,
-		}).Info("added new subscritpion due to ratio")
+	if err = notifierService.NewSubscriptionNotify(cnf.Service.LandingPages.Mobilink.Queues.MO, r); err != nil {
+		m.NotifyNewSubscriptionError.Inc()
+
+		err = fmt.Errorf("notifierService.NewSubscriptionNotify: %s", err.Error())
+		logCtx.WithField("error", err.Error()).Error("notify new subscription")
+		return err
 	}
 
+	if err = sentContent(cnf.Service.LandingPages.Mobilink.Queues.SMS, r.Notice, r); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(500, gin.H{"message": "content sent"})
 	return
 }
 

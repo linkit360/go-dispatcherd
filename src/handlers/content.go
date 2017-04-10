@@ -15,6 +15,7 @@ import (
 	"github.com/linkit360/go-dispatcherd/src/sessions"
 	"github.com/linkit360/go-dispatcherd/src/utils"
 	inmem_service "github.com/linkit360/go-inmem/service"
+	"github.com/linkit360/go-utils/rec"
 )
 
 func AddContentHandlers() {
@@ -248,4 +249,48 @@ func UniqueUrlGet(c *gin.Context) {
 	logCtx.WithFields(log.Fields{}).Debug("served file ok")
 
 	m.Success.Inc()
+}
+
+func sentContent(queue, contentTemplate string, r rec.Record) (err error) {
+	logCtx := log.WithFields(log.Fields{
+		"tid": r.Tid,
+	})
+
+	contentProperties, err := content_client.GetUniqueUrl(content_service.GetContentParams{
+		Msisdn:         r.Msisdn,
+		Tid:            r.Tid,
+		ServiceId:      r.ServiceId,
+		CampaignId:     r.CampaignId,
+		OperatorCode:   r.OperatorCode,
+		CountryCode:    r.CountryCode,
+		SubscriptionId: r.SubscriptionId,
+	})
+
+	if contentProperties.Error != "" {
+		err = fmt.Errorf("content_client.GetUniqueUrl: %s", contentProperties.Error)
+		logCtx.WithFields(log.Fields{
+			"serviceId": r.ServiceId,
+			"error":     err.Error(),
+		}).Error("contentd internal error")
+		return
+	}
+	if err != nil {
+		err = fmt.Errorf("content_client.GetUniqueUrl: %s", err.Error())
+		logCtx.WithFields(log.Fields{
+			"serviceId": r.ServiceId,
+			"error":     err.Error(),
+		}).Error("cannot get unique content url")
+		return
+	}
+
+	url := cnf.Server.Url + contentProperties.UniqueUrl
+	r.SMSText = fmt.Sprintf(contentTemplate, url)
+	if err = notifierService.Notify(queue, "content", r); err != nil {
+		logCtx.WithField("error", err.Error()).Error("send content")
+		return
+	}
+	logCtx.WithFields(log.Fields{
+		"text": r.SMSText,
+	}).Info("send text")
+	return
 }

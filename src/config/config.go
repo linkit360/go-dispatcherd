@@ -91,12 +91,17 @@ type QRTechLandingConf struct {
 }
 
 type MobilinkLandingConf struct {
-	Enabled          bool   `yaml:"enabled"`
-	SMSCodeQueueName string `yaml:"sms_code_queue"`
-	Cache            struct {
+	Enabled bool `yaml:"enabled"`
+
+	Queues struct {
+		SMS string `yaml:"sms"`
+		MO  string `yaml:"mo"`
+	} `yaml:"queues"`
+
+	Cache struct {
 		ExpirationHours      int    `yaml:"expiration_hours"`
 		CleanupIntervalHours int    `yaml:"cleanup_interval"`
-		Path                 string `yaml:"cache_path"`
+		Path                 string `yaml:"file_path"`
 	} `yaml:"cache"`
 }
 

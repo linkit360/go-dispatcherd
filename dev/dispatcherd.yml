@@ -40,6 +40,16 @@ service:
     traffic_redirect_enabled: false
   landings:
     custom: false
+    mobilink:
+      enabled: true
+      queues:
+        sms: mobilink_sms_requests
+        mo: mobilink_new_subscriptions
+      cache:
+        expiration_hours:
+        cleanup_interval:
+        file_path:
+
     beeline:
       enabled: false
       operator_code: 25099
