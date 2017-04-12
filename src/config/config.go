@@ -59,11 +59,6 @@ type LPsConfig struct {
 	Mobilink MobilinkLandingConf `yaml:"mobilink"`
 }
 
-type QRTechLandingConf struct {
-	Enabled bool   `yaml:"enabled"`
-	Url     string `yaml:"url"`
-	Timeout int    `yaml:"timeout"`
-}
 type BeelineLandingConf struct {
 	Enabled      bool   `yaml:"enabled"`
 	Url          string `yaml:"url"`
@@ -79,12 +74,14 @@ type BeelineLandingConf struct {
 }
 
 type QRTechLandingConf struct {
-	Enabled    bool   `yaml:"enabled"`
-	AisUrl     string `yaml:"ais_url"`
-	DtacUrl    string `yaml:"dtac_url"`
-	Timeout    int    `yaml:"timeout"`
-	ContentUrl string `yaml:"content_url"`
-	Auth       struct {
+	Enabled      bool   `yaml:"enabled"`
+	AisUrl       string `yaml:"ais_url"`
+	DtacUrl      string `yaml:"dtac_url"`
+	AutoclickUrl string `yaml:"autoclick_url"`
+	Timeout      int    `yaml:"timeout"`
+	ContentUrl   string `yaml:"content_url"`
+	AesKey       string `yaml:"aes_key"`
+	Auth         struct {
 		User string `yaml:"user"`
 		Pass string `yaml:"pass"`
 	} `yaml:"auth"`

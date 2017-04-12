@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"crypto/aes"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -12,9 +13,12 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
 
+	content_client "github.com/linkit360/go-contentd/rpcclient"
+	content_service "github.com/linkit360/go-contentd/service"
 	m "github.com/linkit360/go-dispatcherd/src/metrics"
 	"github.com/linkit360/go-dispatcherd/src/rbmq"
 	"github.com/linkit360/go-dispatcherd/src/sessions"
+	inmem_client "github.com/linkit360/go-inmem/rpcclient"
 	"github.com/linkit360/go-utils/rec"
 )
 
@@ -113,10 +117,96 @@ func qrTechHandler(c *gin.Context) {
 
 	v := url.Values{}
 	v.Add("SHORTCODE", strconv.FormatInt(campaign.ServiceId, 10))
-	v.Add("SP_CONTENT", cnf.Service.LandingPages.QRTech.ContentUrl)
+	v.Add("SP_CONTENT", cnf.Service.LandingPages.QRTech.ContentUrl+"/get")
 	reqUrl := ""
 
 	telco, _ := c.GetQuery("telco")
+	operatorCode := int64(0)
+	if telco == "dtac" {
+		operatorCode = 52005
+	} else if telco == "ais" {
+		operatorCode = 52001
+	}
+	msg.OperatorCode = operatorCode
+
+	if campaign.CanAutoClick {
+		logCtx.WithFields(log.Fields{}).Debug("autoclick enabled")
+		service, err := inmem_client.GetServiceById(msg.ServiceId)
+		if err != nil {
+			err = fmt.Errorf("inmem_client.GetServiceById: %s", err.Error())
+			logCtx.WithFields(log.Fields{
+				"error":      err.Error(),
+				"service_id": msg.ServiceId,
+			}).Error("cannot get service by id")
+			http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+			return
+		}
+		r := rec.Record{
+			Msisdn:             msg.Msisdn,
+			Tid:                msg.Tid,
+			SubscriptionStatus: "",
+			CountryCode:        msg.CountryCode,
+			OperatorCode:       msg.OperatorCode,
+			Publisher:          sessions.GetFromSession("publisher", c),
+			Pixel:              sessions.GetFromSession("pixel", c),
+			CampaignId:         msg.CampaignId,
+			ServiceId:          msg.ServiceId,
+			DelayHours:         service.DelayHours,
+			PaidHours:          service.PaidHours,
+			KeepDays:           service.KeepDays,
+			Price:              100 * int(service.Price),
+		}
+		contentProperties, err := content_client.GetUniqueUrl(content_service.GetContentParams{
+			Msisdn:         r.Msisdn,
+			Tid:            r.Tid,
+			ServiceId:      r.ServiceId,
+			CampaignId:     r.CampaignId,
+			OperatorCode:   r.OperatorCode,
+			CountryCode:    r.CountryCode,
+			SubscriptionId: r.SubscriptionId,
+		})
+
+		if contentProperties.Error != "" {
+			err = fmt.Errorf("content_client.GetUniqueUrl: %s", contentProperties.Error)
+			logCtx.WithFields(log.Fields{
+				"serviceId": r.ServiceId,
+				"error":     err.Error(),
+			}).Error("contentd internal error")
+			http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+			return
+		}
+		if err != nil {
+			err = fmt.Errorf("content_client.GetUniqueUrl: %s", err.Error())
+			logCtx.WithFields(log.Fields{
+				"serviceId": r.ServiceId,
+				"error":     err.Error(),
+			}).Error("cannot get unique content url")
+			http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+			return
+		}
+
+		contentUrl := cnf.Service.LandingPages.QRTech.ContentUrl + contentProperties.UniqueUrl
+		aesBlock, err := aes.NewCipher([]byte(cnf.Service.LandingPages.QRTech.AesKey))
+		var contentUrlEncrypted []byte
+		aesBlock.Encrypt(contentUrlEncrypted, []byte(contentUrl))
+		v.Add("content_url", string(contentUrlEncrypted))
+		v.Add("telco", telco)
+		if telco == "dtac" {
+			v.Add("telco_url", cnf.Service.LandingPages.QRTech.DtacUrl)
+		}
+		if telco == "ais" {
+			v.Add("telco_url", cnf.Service.LandingPages.QRTech.AisUrl)
+		}
+		reqUrl = cnf.Service.LandingPages.QRTech.AutoclickUrl + "?" + v.Encode()
+		logCtx.WithFields(log.Fields{
+			"content_url":           contentUrl,
+			"content_url_encrypted": string(contentUrlEncrypted),
+			"result_url":            reqUrl,
+		}).Debug("send to autoclick")
+
+		http.Redirect(c.Writer, c.Request, reqUrl, 303)
+		return
+	}
 
 	if telco == "dtac" || msg.OperatorCode == int64(52005) { // dtac
 		reqUrl = cnf.Service.LandingPages.QRTech.DtacUrl + "?" + v.Encode()
@@ -127,6 +217,7 @@ func qrTechHandler(c *gin.Context) {
 		http.Redirect(c.Writer, c.Request, reqUrl, 303)
 		return
 	}
+
 	if telco == "ais" || msg.OperatorCode == int64(52001) { // ais
 		reqUrl = cnf.Service.LandingPages.QRTech.AisUrl + "?" + v.Encode()
 		log.WithFields(log.Fields{
@@ -148,7 +239,7 @@ func qrTechHandler(c *gin.Context) {
 	}
 	req.Close = false
 	httpClient := http.Client{
-		Timeout: time.Duration(cnf.Service.LandingPages.Beeline.Timeout) * time.Second,
+		Timeout: time.Duration(cnf.Service.LandingPages.QRTech.Timeout) * time.Second,
 	}
 	resp, err := httpClient.Do(req)
 	if err != nil {

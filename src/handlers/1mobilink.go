@@ -110,7 +110,8 @@ func generateCode(c *gin.Context) {
 			"error":      err.Error(),
 			"service_id": msg.ServiceId,
 		}).Error("cannot get service by id")
-		return err
+		c.JSON(500, gin.H{"error": "Cannot get service"})
+		return
 	}
 	// generate code
 	code := "123"
@@ -133,6 +134,7 @@ func generateCode(c *gin.Context) {
 	}
 	mobilinkCodeCache.SetDefault(msg.Msisdn, r)
 	notifierService.Notify("send_sms", cnf.Service.LandingPages.Mobilink.Queues.SMS, r)
+	c.JSON(200, gin.H{"message": "Sent"})
 }
 
 func verifyCode(c *gin.Context) {
@@ -205,14 +207,16 @@ func verifyCode(c *gin.Context) {
 
 		err = fmt.Errorf("notifierService.NewSubscriptionNotify: %s", err.Error())
 		logCtx.WithField("error", err.Error()).Error("notify new subscription")
-		return err
-	}
 
-	if err = sentContent(cnf.Service.LandingPages.Mobilink.Queues.SMS, r.Notice, r); err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(500, gin.H{"message": "content sent"})
+
+	if err = sentContent(cnf.Service.LandingPages.Mobilink.Queues.SMS, r.SMSText, r); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"message": "content sent"})
 	return
 }
 
@@ -231,8 +235,8 @@ func MobilinkInitCache() {
 		}).Debug("load sessions")
 
 		mobilinkCodeCache = cache.New(
-			time.Duration(cacheConf.ExpirationHours*time.Hour),
-			time.Duration(cacheConf.ExpirationHours*time.Hour),
+			time.Duration(cacheConf.ExpirationHours)*time.Hour,
+			time.Duration(cacheConf.ExpirationHours)*time.Hour,
 		)
 		return
 	}
@@ -245,15 +249,15 @@ func MobilinkInitCache() {
 			"pid":      os.Getpid(),
 		}).Error("load")
 		mobilinkCodeCache = cache.New(
-			time.Duration(cacheConf.ExpirationHours*time.Hour),
-			time.Duration(cacheConf.ExpirationHours*time.Hour),
+			time.Duration(cacheConf.ExpirationHours)*time.Hour,
+			time.Duration(cacheConf.ExpirationHours)*time.Hour,
 		)
 		return
 	}
 
 	mobilinkCodeCache = cache.NewFrom(
-		time.Duration(cacheConf.ExpirationHours*time.Hour),
-		time.Duration(cacheConf.ExpirationHours*time.Hour),
+		time.Duration(cacheConf.ExpirationHours)*time.Hour,
+		time.Duration(cacheConf.ExpirationHours)*time.Hour,
 		cacheItems,
 	)
 	log.WithFields(log.Fields{
