@@ -33,22 +33,24 @@ service:
   send_restore_pixel_enabled:  false
   start_new_subscription_on_click: true
   detect_by_ip_enabled: false
-  country_code: 7
+  country_code: 92
   operator_code: 41001
   rejected:
     campaign_redirect_enabled: false
     traffic_redirect_enabled: false
+
   landings:
-    custom: false
+    custom: true
+
     mobilink:
-      enabled: true
+      enabled: false
       queues:
         sms: mobilink_sms_requests
         mo: mobilink_new_subscriptions
       cache:
-        expiration_hours:
-        cleanup_interval:
-        file_path:
+        expiration_hours: 24
+        cleanup_interval: 1
+        file_path: /home/centos/linkit/dispatcher.cache
 
     beeline:
       enabled: false
@@ -62,11 +64,15 @@ service:
       pass: KhZbQo1n
 
     qrtech:
-      enabled: false
+      enabled: true
       content_url: http://platform.th.linkit360.ru/qr/
+      autoclick_url: http://id.slypee.com
+      aes_key: 5432104769mb8552
+      country_code:  66
+      dtac_operator_code: 52005
+      ais_operator_code:  52001
       ais_url: http://wap.funspaz.com/wap/partner/linkit360/ais_wap.php
       dtac_url: http://wap.funspaz.com/wap/partner/linkit360/aoc_dtac.php
-
 
 notifier:
   queues:

@@ -42,8 +42,8 @@ type ServiceConfig struct {
 	OnClickNewSubscription  bool           `yaml:"start_new_subscription_on_click"`
 	CampaignHashLength      int            `yaml:"campaign_hash_length" default:"32"`
 	Rejected                RejectedConfig `yaml:"rejected"`
-	CountryCode             int64          `yaml:"country_code"`
-	OperatorCode            int64          `yaml:"operator_code"`
+	OperatorCode            int64          `yaml:"operator_code" default:"25099"`
+	CountryCode             int64          `yaml:"country_code" default:"7"`
 	LandingPages            LPsConfig      `yaml:"landings"`
 }
 
@@ -65,7 +65,7 @@ type BeelineLandingConf struct {
 	SessionPath  string `yaml:"session_path"`
 	MOQueue      string `yaml:"mo"`
 	OperatorCode int64  `yaml:"operator_code" default:"25099"`
-	CountryCode  int64  `yaml:"country_code" default:"66"`
+	CountryCode  int64  `yaml:"country_code" default:"7"`
 	Timeout      int    `yaml:"timeout"`
 	Auth         struct {
 		User string `yaml:"user"`
@@ -74,21 +74,26 @@ type BeelineLandingConf struct {
 }
 
 type QRTechLandingConf struct {
-	Enabled      bool   `yaml:"enabled"`
-	AisUrl       string `yaml:"ais_url"`
-	DtacUrl      string `yaml:"dtac_url"`
-	AutoclickUrl string `yaml:"autoclick_url"`
-	Timeout      int    `yaml:"timeout"`
-	ContentUrl   string `yaml:"content_url"`
-	AesKey       string `yaml:"aes_key"`
-	Auth         struct {
+	Enabled          bool   `yaml:"enabled"`
+	CountryCode      int64  `yaml:"country_code" default:"66"`
+	DtacOperatorCode int64  `yaml:"dtac_operator_code" default:"52005"`
+	AisOperatorCode  int64  `yaml:"ais_operator_code" default:"52001"`
+	AisUrl           string `yaml:"ais_url"`
+	DtacUrl          string `yaml:"dtac_url"`
+	AutoclickUrl     string `yaml:"autoclick_url"`
+	Timeout          int    `yaml:"timeout"`
+	ContentUrl       string `yaml:"content_url"`
+	AesKey           string `yaml:"aes_key"`
+	Auth             struct {
 		User string `yaml:"user"`
 		Pass string `yaml:"pass"`
 	} `yaml:"auth"`
 }
 
 type MobilinkLandingConf struct {
-	Enabled bool `yaml:"enabled"`
+	Enabled      bool  `yaml:"enabled"`
+	OperatorCode int64 `yaml:"operator_code" default:"41001"`
+	CountryCode  int64 `yaml:"country_code" default:"92"`
 
 	Queues struct {
 		SMS string `yaml:"sms"`

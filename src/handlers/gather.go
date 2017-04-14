@@ -45,6 +45,11 @@ func gatherInfo(c *gin.Context, campaign inmem_service.Campaign) (msg rbmq.Acces
 		OperatorCode: cnf.Service.OperatorCode,
 	}
 
+	logCtx.WithFields(log.Fields{
+		"urlpath": c.Request.URL.Path + "?" + c.Request.URL.RawQuery,
+		"url":     r.URL.String(),
+	}).Debug("log")
+
 	// but for now we use get parameter to pass msisdn
 	// and there not always could be the correct IP adress
 	// so, if operator code or country code not found

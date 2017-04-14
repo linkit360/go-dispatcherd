@@ -27,8 +27,9 @@ func AddMobilinkHandlers(e *gin.Engine) {
 		return
 	}
 
+	e.Group("/lp/:campaign_link", AccessHandler).GET("", serveCampaigns)
 	e.Group("/lp/:campaign_link", AccessHandler).GET("/generate", generateCode)
-	e.Group("/lp/:campaign_link", AccessHandler).GET("/veryfy", verifyCode)
+	e.Group("/lp/:campaign_link", AccessHandler).GET("/verify", verifyCode)
 	log.WithFields(log.Fields{}).Debug("mobilink handlers init")
 }
 
@@ -89,6 +90,8 @@ func generateCode(c *gin.Context) {
 	}
 
 	msg = gatherInfo(c, *campaign)
+	msg.CountryCode = cnf.Service.LandingPages.Mobilink.CountryCode
+	msg.OperatorCode = cnf.Service.LandingPages.Mobilink.OperatorCode
 	if msg.IP == "" {
 		m.IPNotFoundError.Inc()
 	}

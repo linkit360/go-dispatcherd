@@ -2,7 +2,11 @@ package handlers
 
 import (
 	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -30,6 +34,8 @@ func AddQRTechHandlers() {
 }
 
 func qrTechHandler(c *gin.Context) {
+	m.Incoming.Inc()
+
 	var err error
 	tid := sessions.GetTid(c)
 	m.Incoming.Inc()
@@ -56,7 +62,10 @@ func qrTechHandler(c *gin.Context) {
 				"error": err.Error(),
 			}).Error("serve campaign")
 		} else {
-			logCtx.WithFields(log.Fields{}).Error("serve ok")
+			m.CampaignAccess.Inc()
+			m.Success.Inc()
+
+			logCtx.WithFields(log.Fields{}).Info("serve ok")
 		}
 		if errAction := notifierService.ActionNotify(action); errAction != nil {
 			logCtx.WithFields(log.Fields{
@@ -105,6 +114,7 @@ func qrTechHandler(c *gin.Context) {
 		return
 	}
 	msg = gatherInfo(c, *campaign)
+	msg.CountryCode = cnf.Service.LandingPages.QRTech.CountryCode
 	if msg.IP == "" {
 		m.IPNotFoundError.Inc()
 	}
@@ -121,15 +131,20 @@ func qrTechHandler(c *gin.Context) {
 	reqUrl := ""
 
 	telco, _ := c.GetQuery("telco")
-	operatorCode := int64(0)
 	if telco == "dtac" {
-		operatorCode = 52005
+		msg.OperatorCode = cnf.Service.LandingPages.QRTech.DtacOperatorCode
 	} else if telco == "ais" {
-		operatorCode = 52001
+		msg.OperatorCode = cnf.Service.LandingPages.QRTech.AisOperatorCode
+	} else {
+		logCtx.WithFields(log.Fields{
+			"telco": telco,
+		}).Error("unknown telco")
+		err = fmt.Errorf("Unknown telco: %s", telco)
+		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+		return
 	}
-	msg.OperatorCode = operatorCode
 
-	if campaign.CanAutoClick {
+	if campaign.AutoClickEnabled {
 		logCtx.WithFields(log.Fields{}).Debug("autoclick enabled")
 		service, err := inmem_client.GetServiceById(msg.ServiceId)
 		if err != nil {
@@ -186,9 +201,20 @@ func qrTechHandler(c *gin.Context) {
 		}
 
 		contentUrl := cnf.Service.LandingPages.QRTech.ContentUrl + contentProperties.UniqueUrl
-		aesBlock, err := aes.NewCipher([]byte(cnf.Service.LandingPages.QRTech.AesKey))
-		var contentUrlEncrypted []byte
-		aesBlock.Encrypt(contentUrlEncrypted, []byte(contentUrl))
+		logCtx.WithFields(log.Fields{
+			"content_url": contentUrl,
+		}).Debug("encrypting...")
+
+		contentUrlEncrypted, err := cbcEncrypt([]byte(contentUrl))
+		if err != nil {
+			err = fmt.Errorf("encrypt: %s", err.Error())
+			logCtx.WithFields(log.Fields{
+				"error": err.Error(),
+			}).Error("cannot encrypt url")
+			http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+			return
+		}
+
 		v.Add("content_url", string(contentUrlEncrypted))
 		v.Add("telco", telco)
 		if telco == "dtac" {
@@ -282,4 +308,88 @@ func qrTechHandler(c *gin.Context) {
 		http.Redirect(c.Writer, c.Request, parsedUrl, 303)
 		return
 	}
+}
+
+func cbcEncrypt(plaintext []byte) (res string, err error) {
+	key := []byte(cnf.Service.LandingPages.QRTech.AesKey)
+
+	// CBC mode works on blocks so plaintexts may need to be padded to the
+	// next whole block. For an example of such padding, see
+	// https://tools.ietf.org/html/rfc5246#section-6.2.3.2. Here we'll
+	// assume that the plaintext is already of the correct length.
+	slice := make([]byte, len(plaintext)+aes.BlockSize-len(plaintext)%aes.BlockSize)
+	copy(slice, plaintext)
+
+	if len(slice)%aes.BlockSize != 0 {
+		err = fmt.Errorf("plaintext is not a multiple of the block size: %v", len(plaintext)%aes.BlockSize)
+		return
+	}
+
+	var block cipher.Block
+	block, err = aes.NewCipher(key)
+	if err != nil {
+		err = fmt.Errorf("aes.NewCipher: %s", err.Error())
+		return
+	}
+
+	// The IV needs to be unique, but not secure. Therefore it's common to
+	// include it at the beginning of the ciphertext.
+	ciphertext := make([]byte, aes.BlockSize+len(slice))
+	iv := ciphertext[:aes.BlockSize]
+	if _, err = io.ReadFull(rand.Reader, iv); err != nil {
+		err = fmt.Errorf("io.ReadFull: %s", err.Error())
+		return
+	}
+
+	mode := cipher.NewCBCEncrypter(block, iv)
+	mode.CryptBlocks(ciphertext[aes.BlockSize:], slice)
+
+	// It's important to remember that ciphertexts must be authenticated
+	// (i.e. by using crypto/hmac) as well as being encrypted in order to
+	// be secure.
+	res = hex.EncodeToString(slice)
+	return
+}
+
+func cbcDecrypt(decodeString string) (res string, err error) {
+	key := []byte(cnf.Service.LandingPages.QRTech.AesKey)
+	ciphertext, err := hex.DecodeString(decodeString)
+
+	var block cipher.Block
+	block, err = aes.NewCipher(key)
+	if err != nil {
+		err = fmt.Errorf("aes.NewCipher: %s", err.Error())
+		return
+	}
+
+	// The IV needs to be unique, but not secure. Therefore it's common to
+	// include it at the beginning of the ciphertext.
+	if len(ciphertext) < aes.BlockSize {
+		err = fmt.Errorf("Cipher text too short: %s", err.Error())
+		return
+	}
+	iv := ciphertext[:aes.BlockSize]
+	ciphertext = ciphertext[aes.BlockSize:]
+
+	// CBC mode always works in whole blocks.
+	if len(ciphertext)%aes.BlockSize != 0 {
+		err = fmt.Errorf("Ciphertext is not a multiple of the block size: %s", err.Error())
+		return
+	}
+
+	mode := cipher.NewCBCDecrypter(block, iv)
+
+	// CryptBlocks can work in-place if the two arguments are the same.
+	mode.CryptBlocks(ciphertext, ciphertext)
+
+	// If the original plaintext lengths are not a multiple of the block
+	// size, padding would have to be added when encrypting, which would be
+	// removed at this point. For an example, see
+	// https://tools.ietf.org/html/rfc5246#section-6.2.3.2. However, it's
+	// critical to note that ciphertexts must be authenticated (i.e. by
+	// using crypto/hmac) before being decrypted in order to avoid creating
+	// a padding oracle.
+
+	res = string(ciphertext)
+	return
 }
