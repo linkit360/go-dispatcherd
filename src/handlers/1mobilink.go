@@ -5,19 +5,44 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"strings"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
 	cache "github.com/patrickmn/go-cache"
-
-	m "github.com/linkit360/go-dispatcherd/src/metrics"
-	"github.com/linkit360/go-dispatcherd/src/rbmq"
-	"github.com/linkit360/go-dispatcherd/src/sessions"
-	inmem_client "github.com/linkit360/go-inmem/rpcclient"
-	"github.com/linkit360/go-utils/rec"
 )
+
+//VOSTOK user flow (confirmed by Alain):
+//
+//1 User came on VOSTOK LP.(Приешл на ЛП)
+//
+//2 User presses DOWNLOAD button. (Нажал скачать)
+//
+//3 User see POPUP window on the SAME LP with OK and CANCEL buttons (попап с двумя кнопками)
+//
+//3.1 User presses CANCEL -> NOTHING happens. (ничего не происхожит)
+//
+//3.2 User presses OK -> initiated subscription and charging (создается daily подписка и начинается тарификация за первый день)
+//
+//4 User REDIRECTED to content immediately after point 3.2. ( Мы можем первый раз отдать после подтверждения подписки контент через редирект пользователя. Все последующие дги по подписке отдавать контент через СМС)
+//
+//Purge flow
+//
+//1 По умолчанию подписка создается на 7 дней.
+//
+//2 Если в течении подписки 3 подряд неуспешные тарифицкации - подписка анулируется.
+//
+//3 (Если контент скачан хотя бы 2 раза в течении первыйх 7 дней, то пользователь считается активным)
+//
+//4 Если пользователь активный, то подписка продливается на 8ой день.
+//
+//5 Если 8ой день была успешная тарификация, то подписка продливается на 9ый день.
+//
+//6 Если 9ый день была успешная тарификация, то полписка продливается на 10ый день.
+//
+//7 Мы информируем через СМС абонента только в случае подписки и отписки.
+//
+//8 Нет ретраев вообще на данный момент.
 
 func init() {
 	MobilinkInitCache()
@@ -28,199 +53,8 @@ func AddMobilinkHandlers(e *gin.Engine) {
 	}
 
 	e.Group("/lp/:campaign_link", AccessHandler).GET("", serveCampaigns)
-	e.Group("/lp/:campaign_link", AccessHandler).GET("/generate", generateCode)
-	e.Group("/lp/:campaign_link", AccessHandler).GET("/verify", verifyCode)
+	e.Group("/lp/:campaign_link").GET("ok", AccessHandler, HandlePull)
 	log.WithFields(log.Fields{}).Debug("mobilink handlers init")
-}
-
-func generateCode(c *gin.Context) {
-	sessions.SetSession(c)
-	tid := sessions.GetTid(c)
-	logCtx := log.WithFields(log.Fields{
-		"tid": tid,
-	})
-	action := rbmq.UserActionsNotify{
-		Action: "generate_code",
-		Tid:    tid,
-	}
-	m.Incoming.Inc()
-
-	var err error
-	var msg rbmq.AccessCampaignNotify
-	defer func() {
-		action.Msisdn = msg.Msisdn
-		action.CampaignId = msg.CampaignId
-		action.Tid = msg.Tid
-		if err != nil {
-			action.Error = err.Error()
-			msg.Error = msg.Error + " " + err.Error()
-
-			logCtx.WithFields(log.Fields{
-				"error": err.Error(),
-			}).Error("code generate")
-		}
-		if errAction := notifierService.ActionNotify(action); errAction != nil {
-			logCtx.WithFields(log.Fields{
-				"error":  errAction.Error(),
-				"action": fmt.Sprintf("%#v", action),
-			}).Error("notify user action")
-		}
-		if errAccessCampaign := notifierService.AccessCampaignNotify(msg); errAccessCampaign != nil {
-			logCtx.WithFields(log.Fields{
-				"error": errAccessCampaign.Error(),
-				"msg":   fmt.Sprintf("%#v", msg),
-			}).Error("notify access campaign")
-		}
-	}()
-
-	// important, do not use campaign from this operation
-	// bcz we need to inc counter to process ratio
-	paths := strings.Split(c.Request.URL.Path, "/")
-	campaignLink := paths[len(paths)-1]
-	campaign, ok := campaignByLink[campaignLink]
-	if !ok {
-		m.PageNotFoundError.Inc()
-		err = fmt.Errorf("page not found: %s", campaignLink)
-
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Error("cannot get campaign by link")
-		c.JSON(500, gin.H{"error": err.Error()})
-		return
-	}
-
-	msg = gatherInfo(c, *campaign)
-	msg.CountryCode = cnf.Service.LandingPages.Mobilink.CountryCode
-	msg.OperatorCode = cnf.Service.LandingPages.Mobilink.OperatorCode
-	if msg.IP == "" {
-		m.IPNotFoundError.Inc()
-	}
-	if msg.Error == "Msisdn not found" {
-		m.MsisdnNotFoundError.Inc()
-		c.JSON(500, gin.H{"error": msg.Error})
-		return
-	}
-	if !msg.Supported {
-		m.NotSupported.Inc()
-		c.JSON(500, gin.H{"error": "Not supported"})
-		return
-	}
-
-	service, err := inmem_client.GetServiceById(msg.ServiceId)
-	if err != nil {
-		err = fmt.Errorf("inmem_client.GetServiceById: %s", err.Error())
-		logCtx.WithFields(log.Fields{
-			"error":      err.Error(),
-			"service_id": msg.ServiceId,
-		}).Error("cannot get service by id")
-		c.JSON(500, gin.H{"error": "Cannot get service"})
-		return
-	}
-	// generate code
-	code := "123"
-	r := rec.Record{
-		Msisdn:             msg.Msisdn,
-		Tid:                msg.Tid,
-		SubscriptionStatus: "",
-		CountryCode:        msg.CountryCode,
-		OperatorCode:       msg.OperatorCode,
-		Publisher:          sessions.GetFromSession("publisher", c),
-		Pixel:              sessions.GetFromSession("pixel", c),
-		CampaignId:         msg.CampaignId,
-		ServiceId:          msg.ServiceId,
-		DelayHours:         service.DelayHours,
-		PaidHours:          service.PaidHours,
-		KeepDays:           service.KeepDays,
-		Price:              100 * int(service.Price),
-		SMSText:            "Your code: " + code,
-		Notice:             code,
-	}
-	mobilinkCodeCache.SetDefault(msg.Msisdn, r)
-	notifierService.Notify("send_sms", cnf.Service.LandingPages.Mobilink.Queues.SMS, r)
-	c.JSON(200, gin.H{"message": "Sent"})
-}
-
-func verifyCode(c *gin.Context) {
-	var r rec.Record
-
-	sessions.SetSession(c)
-	tid := sessions.GetTid(c)
-	logCtx := log.WithFields(log.Fields{
-		"tid": tid,
-	})
-	action := rbmq.UserActionsNotify{
-		Action: "verify_code",
-		Tid:    tid,
-	}
-	m.Incoming.Inc()
-
-	var err error
-	defer func() {
-		action.Msisdn = r.Msisdn
-		action.CampaignId = r.CampaignId
-		action.Tid = r.Tid
-		if err != nil {
-			action.Error = err.Error()
-
-			logCtx.WithFields(log.Fields{
-				"error": err.Error(),
-			}).Error("code verify")
-		}
-		if errAction := notifierService.ActionNotify(action); errAction != nil {
-			logCtx.WithFields(log.Fields{
-				"error":  errAction.Error(),
-				"action": fmt.Sprintf("%#v", action),
-			}).Error("code verify notify user action")
-		}
-	}()
-
-	recI, ok := mobilinkCodeCache.Get(r.Msisdn)
-	if !ok {
-		err = fmt.Errorf("msisdn code not found: %s", r.Msisdn)
-
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Error("cannot get code for msisdn")
-		c.JSON(500, gin.H{"error": err.Error()})
-		return
-	}
-	r, ok = recI.(rec.Record)
-	if !ok {
-		err = fmt.Errorf("code cache type %T, expected %T", recI, rec.Record{})
-
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Error("cannot get code for msisdn")
-		c.JSON(500, gin.H{"error": err.Error()})
-		return
-	}
-	code, _ := c.GetQuery("code")
-
-	if r.Notice != code {
-		err = fmt.Errorf("Code is incorrect: %v, expected %v", code, r.Notice)
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Error("wrong code")
-		c.JSON(500, gin.H{"error": err.Error(), "message": "wrong code"})
-		return
-	}
-
-	if err = notifierService.NewSubscriptionNotify(cnf.Service.LandingPages.Mobilink.Queues.MO, r); err != nil {
-		m.NotifyNewSubscriptionError.Inc()
-
-		err = fmt.Errorf("notifierService.NewSubscriptionNotify: %s", err.Error())
-		logCtx.WithField("error", err.Error()).Error("notify new subscription")
-
-		c.JSON(500, gin.H{"error": err.Error()})
-		return
-	}
-
-	if err = sentContent(cnf.Service.LandingPages.Mobilink.Queues.SMS, r.SMSText, r); err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(200, gin.H{"message": "content sent"})
-	return
 }
 
 var mobilinkCodeCache *cache.Cache
@@ -298,3 +132,5 @@ func mobilinkISaveState() {
 		"pid": os.Getpid(),
 	}).Info("mobilink save session ok")
 }
+
+//
