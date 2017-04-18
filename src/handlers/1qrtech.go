@@ -5,6 +5,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -17,7 +18,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
 
-	"encoding/base64"
 	content_client "github.com/linkit360/go-contentd/rpcclient"
 	content_service "github.com/linkit360/go-contentd/service"
 	m "github.com/linkit360/go-dispatcherd/src/metrics"
@@ -129,7 +129,6 @@ func qrTechHandler(c *gin.Context) {
 	v := url.Values{}
 	v.Add("SHORTCODE", strconv.FormatInt(campaign.ServiceId, 10))
 	v.Add("SP_CONTENT", cnf.Service.LandingPages.QRTech.ContentUrl+"/get")
-	reqUrl := ""
 
 	telco, _ := c.GetQuery("telco")
 	telco = strings.ToLower(telco)
@@ -221,9 +220,45 @@ func qrTechHandler(c *gin.Context) {
 			http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 			return
 		}
-		telcoUrl = telcoUrl + "?" + encVars.Encode()
 
-		telcoUrlEncrypted, err := cbcEncrypt([]byte(telcoUrl))
+		telcoUrl = telcoUrl + "?" + encVars.Encode()
+		req, err := http.NewRequest("GET", telcoUrl, nil)
+		if err != nil {
+			err = fmt.Errorf("Cann't create request: %s", err.Error())
+			http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+			return
+		}
+		httpClient := http.Client{
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+			Timeout: time.Duration(cnf.Service.LandingPages.Beeline.Timeout) * time.Second,
+		}
+
+		resp, err := httpClient.Do(req)
+		if err != nil {
+			err = fmt.Errorf("Cann't make request: %s", err.Error())
+			http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+			return
+		}
+		defer resp.Body.Close()
+		msg.UrlPath = resp.Header.Get("Location")
+
+		logCtx.WithFields(log.Fields{
+			"reqUrl":     telcoUrl,
+			"contentUrl": contentUrl,
+			"location":   msg.UrlPath,
+		}).Debug("send to autoclick")
+
+		if len(msg.UrlPath) == 0 {
+			err = fmt.Errorf("no location in headers%s", "")
+			logCtx.WithFields(log.Fields{
+				"error": err.Error(),
+			}).Error("cannot get location")
+			http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+			return
+		}
+		telcoUrlEncrypted, err := cbcEncrypt([]byte(msg.UrlPath))
 		if err != nil {
 			err = fmt.Errorf("encrypt: %s", err.Error())
 			logCtx.WithFields(log.Fields{
@@ -233,15 +268,20 @@ func qrTechHandler(c *gin.Context) {
 			return
 		}
 
-		reqUrl = cnf.Service.LandingPages.QRTech.AutoclickUrl + "?url=" + telcoUrlEncrypted + "&telco=" + telco
+		autoClickV := url.Values{}
+		autoClickV.Add("telco", telco)
+		autoClickV.Add("url", telcoUrlEncrypted)
+		reqUrl := cnf.Service.LandingPages.QRTech.AutoclickUrl + "?" + autoClickV.Encode()
 		logCtx.WithFields(log.Fields{
-			"reqUrl": reqUrl,
+			"telcoUrl":  msg.UrlPath,
+			"encrypted": telcoUrlEncrypted,
+			"reqUrl":    reqUrl,
 		}).Debug("send to autoclick")
 
 		http.Redirect(c.Writer, c.Request, reqUrl, 303)
 		return
 	}
-
+	reqUrl := ""
 	if telco == "dtac" || msg.OperatorCode == int64(52005) { // dtac
 		reqUrl = cnf.Service.LandingPages.QRTech.DtacUrl + "?" + v.Encode()
 		log.WithFields(log.Fields{
@@ -357,8 +397,7 @@ func cbcEncrypt(plaintext []byte) (res string, err error) {
 	// (i.e. by using crypto/hmac) as well as being encrypted in order to
 	// be secure.
 
-	fmt.Printf("%s\n", base64.StdEncoding.EncodeToString(ciphertext))
-	return base64.StdEncoding.EncodeToString(ciphertext), nil
+	return hex.EncodeToString(ciphertext), nil
 }
 
 func padding(src []byte, blockSize int) []byte {
