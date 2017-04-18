@@ -461,8 +461,15 @@ func verifyCode(c *gin.Context) {
 		return
 	}
 
-	if err = sentContent(cnf.Service.LandingPages.Mobilink.Queues.SMS, r.SMSText, r); err != nil {
+	contentUrl, err := createUniqueUrl(r)
+	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	// XXX: check content url
+	r.SMSText = fmt.Sprintf("%s", contentUrl)
+	if err = notifierService.Notify(cnf.Service.LandingPages.Mobilink.Queues.SMS, "content", r); err != nil {
+		logCtx.WithField("error", err.Error()).Error("send content")
 		return
 	}
 	c.JSON(200, gin.H{"message": "content sent"})

@@ -16,22 +16,12 @@ import (
 	"github.com/linkit360/go-utils/rec"
 )
 
-// generic:
-// cheese
-// yondu
-
 func AddCampaignHandler(rg *gin.RouterGroup) {
 	if !cnf.Service.LandingPages.Custom {
 		e.Group("/lp/:campaign_link", AccessHandler).GET("", serveCampaigns)
 	}
-
 	e.LoadHTMLGlob(cnf.Server.Path + "campaign/**/*")
 	e.GET("/updateTemplates", updateTemplates)
-
-	// if operator used LP, then lp hits on this location instead of handle pull handler
-	if cnf.Service.OnClickNewSubscription {
-		rg.GET("", AccessHandler, HandlePull)
-	}
 }
 
 func updateTemplates(c *gin.Context) {
@@ -160,11 +150,13 @@ func serveCampaigns(c *gin.Context) {
 	}{
 		AutoClick: campaignByLink[campaignLink].CanAutoClick,
 	}
+
 	campaignByLink[campaignLink].SimpleServe(c, autoClickInfo)
 
 	m.CampaignAccess.Inc()
 	m.Success.Inc()
 
+	// finish. Here is autoclick goes
 	if !cnf.Service.OnClickNewSubscription {
 		return
 	}

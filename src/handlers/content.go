@@ -23,8 +23,7 @@ func AddContentHandlers() {
 	e.Group("/content/:campaign_hash").GET("", AccessHandler, ContentGet)
 }
 
-// same as handle pull, but do not create subscription
-// and has different metrics in the end
+// gets the random content and sends it as a file
 func ContentGet(c *gin.Context) {
 	var err error
 
@@ -146,9 +145,10 @@ func ContentGet(c *gin.Context) {
 	m.Success.Inc()
 }
 
-//  "cmd=s_exp&ch=WAP&tID=WAP@SDGApp5:9FI9jsI5&dad=66819197088&SN=421924601&spsID=14429034041972&
-// msisdn=66819197088&token=D39364E0356C1480757DD6CDA84595F2DEEEF89C052B2FDC51536CDFB6ACF5F7&
-// status=1000&reason=SUCCESS"
+// unique link generated before (in mt, in dispatcher...)
+// here user receives content by unique link
+// if unique link was == "get" then we get
+// unique content and send it, without unique link
 func UniqueUrlGet(c *gin.Context) {
 
 	sessions.SetSession(c)
@@ -159,7 +159,7 @@ func UniqueUrlGet(c *gin.Context) {
 		"tid": tid,
 		"url": uniqueUrl,
 	})
-	logCtx.Debug("get unique url")
+	logCtx.Debug("receive content by unique link")
 
 	contentProperties := &inmem_service.ContentSentProperties{}
 	action := rbmq.UserActionsNotify{
@@ -251,7 +251,8 @@ func UniqueUrlGet(c *gin.Context) {
 	m.Success.Inc()
 }
 
-func sentContent(queue, contentTemplate string, r rec.Record) (err error) {
+// create unique url
+func createUniqueUrl(r rec.Record) (contentUrl string, err error) {
 	logCtx := log.WithFields(log.Fields{
 		"tid": r.Tid,
 	})
@@ -267,7 +268,7 @@ func sentContent(queue, contentTemplate string, r rec.Record) (err error) {
 	})
 
 	if contentProperties.Error != "" {
-		err = fmt.Errorf("content_client.GetUniqueUrl: %s", contentProperties.Error)
+		err = fmt.Errorf("contentProperties.Error: %s", contentProperties.Error)
 		logCtx.WithFields(log.Fields{
 			"serviceId": r.ServiceId,
 			"error":     err.Error(),
@@ -283,14 +284,6 @@ func sentContent(queue, contentTemplate string, r rec.Record) (err error) {
 		return
 	}
 
-	url := cnf.Server.Url + contentProperties.UniqueUrl
-	r.SMSText = fmt.Sprintf(contentTemplate, url)
-	if err = notifierService.Notify(queue, "content", r); err != nil {
-		logCtx.WithField("error", err.Error()).Error("send content")
-		return
-	}
-	logCtx.WithFields(log.Fields{
-		"text": r.SMSText,
-	}).Info("send text")
+	contentUrl = cnf.Server.Url + contentProperties.UniqueUrl
 	return
 }
