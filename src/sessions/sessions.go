@@ -39,7 +39,7 @@ func Init(conf SessionsConfig, r *gin.Engine) {
 }
 
 // tid example 1477597462-3f66f7ea-afef-42a2-69ad-549a6a38b5ff
-func SetSession(c *gin.Context) {
+func SetSession(c *gin.Context) (msisdn string, pixel string, publisher string) {
 	var tid string
 	session := sessions.Default(c)
 
@@ -56,16 +56,17 @@ func SetSession(c *gin.Context) {
 	}
 	session.Set("tid", tid)
 
-	msisdn := getFromParamsOrSession(tid, c, "msisdn", session, "msisdn", 5)
+	msisdn = getFromParamsOrSession(tid, c, "msisdn", session, "msisdn", 5)
 	session.Set("msisdn", msisdn)
 
-	pixel := getFromParamsOrSession(tid, c, "aff_sub", session, "pixel", 5)
+	pixel = getFromParamsOrSession(tid, c, "aff_sub", session, "pixel", 5)
 	session.Set("pixel", pixel)
 
-	publisher := getFromParamsOrSession(tid, c, "aff_pr", session, "publisher", 5)
+	publisher = getFromParamsOrSession(tid, c, "aff_pr", session, "publisher", 5)
 	session.Set("publisher", publisher)
-
 	session.Save()
+
+	return
 }
 
 func Set(name string, val interface{}, c *gin.Context) {
@@ -94,10 +95,6 @@ func getFromParamsOrSession(
 	if v == nil || len(string(v.(string))) < length {
 		return ""
 	}
-	log.WithFields(log.Fields{
-		"tid":         tid,
-		sessParamName: v,
-	}).Debug("found in session")
 	return string(v.(string))
 
 }

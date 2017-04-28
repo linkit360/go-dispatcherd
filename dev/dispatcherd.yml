@@ -43,7 +43,7 @@ service:
     custom: true
 
     mobilink:
-      enabled: false
+      enabled: true
       queues:
         sms: mobilink_sms_requests
         mo: mobilink_new_subscriptions
@@ -64,7 +64,7 @@ service:
       pass: KhZbQo1n
 
     qrtech:
-      enabled: true
+      enabled: false
       content_url: http://platform.th.linkit360.ru/qr/
       autoclick_url: http://id.slypee.com
       aes_key: 5432104769mb8552

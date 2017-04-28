@@ -79,14 +79,24 @@ func ContentGet(c *gin.Context) {
 	action.CampaignId = campaign.Id
 	msg := gatherInfo(c, campaign)
 
-	wasAutoClick, _ := c.GetQuery("s")
-	if len(wasAutoClick) > 0 && msg.Msisdn != "" {
+	startNewSubscriptionFlag, _ := c.GetQuery("s")
+	if len(startNewSubscriptionFlag) > 0 && msg.Msisdn != "" {
 		if err = startNewSubscription(c, msg); err == nil {
 			log.WithFields(log.Fields{
 				"tid":        msg.Tid,
 				"msisdn":     msg.Msisdn,
 				"campaignid": campaign.Id,
-			}).Info("added new subscritpion by click on get content")
+			}).Info("added new subscritpion")
+
+			subAction := rbmq.UserActionsNotify{
+				Action:     "pull_click",
+				Tid:        tid,
+				Msisdn:     msg.Msisdn,
+				CampaignId: campaign.Id,
+			}
+			if err := notifierService.ActionNotify(subAction); err != nil {
+				logCtx.WithField("error", err.Error()).Error("notify user action")
+			}
 		}
 	}
 
@@ -94,11 +104,21 @@ func ContentGet(c *gin.Context) {
 
 	logCtx.WithFields(log.Fields{}).Debug("gathered info, get content id..")
 
+	operatorCode := int64(0)
+	countryCode := int64(0)
+	if cnf.Service.LandingPages.Mobilink.Enabled {
+		operatorCode = cnf.Service.LandingPages.Mobilink.OperatorCode
+		countryCode = cnf.Service.LandingPages.Mobilink.CountryCode
+	} else {
+		log.Error("content send: opcode/country code: not implemented for this telco")
+	}
 	contentProperties, err = content_client.Get(content_service.GetContentParams{
-		Msisdn:     msg.Msisdn,
-		Tid:        tid,
-		CampaignId: campaign.Id,
-		ServiceId:  campaign.ServiceId,
+		Msisdn:       msg.Msisdn,
+		Tid:          tid,
+		CampaignId:   campaign.Id,
+		ServiceId:    campaign.ServiceId,
+		OperatorCode: operatorCode,
+		CountryCode:  countryCode,
 	})
 	if err != nil {
 		m.ContentDeliveryErrors.Inc()

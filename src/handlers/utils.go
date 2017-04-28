@@ -56,7 +56,6 @@ func Init(conf config.AppConfig, engine *gin.Engine) {
 
 func SaveState() {
 	beelineSaveState()
-	mobilinkISaveState()
 }
 
 func AccessHandler(c *gin.Context) {
@@ -381,7 +380,7 @@ func generateCode(c *gin.Context) {
 		SMSText:            "Your code: " + code,
 		Notice:             code,
 	}
-	mobilinkCodeCache.SetDefault(msg.Msisdn, r)
+	//mobilinkCodeCache.SetDefault(msg.Msisdn, r)
 	notifierService.Notify("send_sms", cnf.Service.LandingPages.Mobilink.Queues.SMS, r)
 	c.JSON(200, gin.H{"message": "Sent"})
 }
@@ -420,7 +419,9 @@ func verifyCode(c *gin.Context) {
 		}
 	}()
 
-	recI, ok := mobilinkCodeCache.Get(r.Msisdn)
+	//recI, ok := mobilinkCodeCache.Get(r.Msisdn)
+	var recI interface{}
+	var ok bool
 	if !ok {
 		err = fmt.Errorf("msisdn code not found: %s", r.Msisdn)
 

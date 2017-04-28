@@ -32,6 +32,7 @@ func gatherInfo(c *gin.Context, campaign inmem_service.Campaign) (msg rbmq.Acces
 	}
 	msg = rbmq.AccessCampaignNotify{
 		Tid:          tid,
+		IP:           r.Header.Get("X-Forwarded-For"),
 		UserAgent:    r.UserAgent(),
 		Referer:      r.Referer(),
 		UrlPath:      r.URL.String(),
@@ -103,8 +104,8 @@ func detectByIpInfo(c *gin.Context, msg *rbmq.AccessCampaignNotify) error {
 	IPs := getIPAdress(c.Request)
 	if len(IPs) == 0 {
 		return nil
-
 	}
+
 	infos, err := inmem_client.GetIPInfoByIps(IPs)
 	if err != nil {
 		logCtx.WithField("error", err.Error()).Error("cannot get ip infos")

@@ -12,7 +12,6 @@ import (
 	"github.com/linkit360/go-dispatcherd/src/rbmq"
 	"github.com/linkit360/go-dispatcherd/src/sessions"
 	inmem_client "github.com/linkit360/go-inmem/rpcclient"
-	queue_config "github.com/linkit360/go-utils/config"
 	rec "github.com/linkit360/go-utils/rec"
 )
 
@@ -86,24 +85,14 @@ func startNewSubscription(c *gin.Context, msg rbmq.AccessCampaignNotify) error {
 		KeepDays:           service.KeepDays,
 		Price:              100 * int(service.Price),
 	}
-	if service.SendNotPaidTextEnabled {
-		r.SMSSend = true
-		r.SMSText = service.NotPaidText
-	}
 
-	operator, err := inmem_client.GetOperatorByCode(msg.OperatorCode)
-	if err != nil {
-		m.OperatorNameError.Inc()
-
-		err = fmt.Errorf("inmem_client.GetOperatorByCode: %s", err.Error())
-		logCtx.WithFields(log.Fields{
-			"error": err.Error(),
-			"code":  msg.OperatorCode,
-		}).Error("cannot get operator by code")
-		return err
+	var moQueue string
+	if cnf.Service.LandingPages.Mobilink.Enabled {
+		moQueue = cnf.Service.LandingPages.Mobilink.Queues.MO
+	} else {
+		log.Fatal("not implemented for this telco")
 	}
-	queue := queue_config.NewSubscriptionQueueName(operator.Name)
-	if err = notifierService.NewSubscriptionNotify(queue, r); err != nil {
+	if err = notifierService.NewSubscriptionNotify(moQueue, r); err != nil {
 		m.NotifyNewSubscriptionError.Inc()
 
 		err = fmt.Errorf("notifierService.NewSubscriptionNotify: %s", err.Error())
