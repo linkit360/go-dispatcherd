@@ -242,7 +242,32 @@ func qrTechHandler(c *gin.Context) {
 			return
 		}
 		defer resp.Body.Close()
-		msg.UrlPath = resp.Header.Get("Location")
+
+		if telco == "dtac" {
+			msg.UrlPath = resp.Header.Get("Location")
+		} else {
+			qrTechResponse, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				err = fmt.Errorf("ioutil.ReadAll: %s", err.Error())
+				http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+				return
+			}
+			start := strings.Index(string(qrTechResponse), "url=http") + 4
+			if start < 0 {
+				err = fmt.Errorf("cannot parse response start: %s", string(qrTechResponse))
+				http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+				return
+			}
+			end := strings.Index(string(qrTechResponse), `">`)
+			if end < 0 {
+				err = fmt.Errorf("cannot parse response end: %s", string(qrTechResponse))
+				http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
+				return
+			}
+			x := string(qrTechResponse)
+			parsedUrl := x[start:end]
+			msg.UrlPath = parsedUrl
+		}
 
 		logCtx.WithFields(log.Fields{
 			"reqUrl":     telcoUrl,
