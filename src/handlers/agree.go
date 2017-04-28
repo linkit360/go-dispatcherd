@@ -4,7 +4,6 @@ package handlers
 
 import (
 	"fmt"
-	"net/http"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
