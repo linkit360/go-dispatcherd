@@ -1,7 +1,5 @@
 package handlers
 
-// on click - start new subscription without any confirmation from telco side
-
 import (
 	"fmt"
 
@@ -13,7 +11,111 @@ import (
 	"github.com/linkit360/go-dispatcherd/src/sessions"
 	inmem_client "github.com/linkit360/go-inmem/rpcclient"
 	rec "github.com/linkit360/go-utils/rec"
+	"strings"
+	"time"
 )
+
+// on click - start new subscription API for south team
+
+func initiateSubscription(c *gin.Context) {
+	sessions.SetSession(c)
+	tid := sessions.GetTid(c)
+	logCtx := log.WithFields(log.Fields{
+		"tid": tid,
+	})
+	action := rbmq.UserActionsNotify{
+		Action: "direct_start",
+		Tid:    tid,
+	}
+	m.Incoming.Inc()
+
+	var err error
+	var msg rbmq.AccessCampaignNotify
+	defer func() {
+		action.Msisdn = msg.Msisdn
+		action.CampaignId = msg.CampaignId
+		action.Tid = msg.Tid
+		if err != nil {
+			action.Error = err.Error()
+			msg.Error = msg.Error + " " + err.Error()
+
+			logCtx.WithFields(log.Fields{
+				"error": err.Error(),
+			}).Error("subscribe")
+		}
+		if errAction := notifierService.ActionNotify(action); errAction != nil {
+			logCtx.WithFields(log.Fields{
+				"error":  errAction.Error(),
+				"action": fmt.Sprintf("%#v", action),
+			}).Error("notify user action")
+		}
+	}()
+
+	paths := strings.Split(c.Request.URL.Path, "/")
+	campaignLink := paths[len(paths)-1]
+
+	// important, do not use campaign from this operation
+	// bcz we need to inc counter to process ratio
+	campaign, ok := campaignByLink[campaignLink]
+	if !ok {
+		m.PageNotFoundError.Inc()
+		err = fmt.Errorf("page not found: %s", campaignLink)
+
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Error("cannot get campaign by link")
+		c.JSON(500, gin.H{"error": "Unknown campaign"})
+		return
+	}
+
+	msg = gatherInfo(c, *campaign)
+	if msg.IP == "" {
+		m.IPNotFoundError.Inc()
+	}
+	if msg.Error == "Msisdn not found" {
+		m.MsisdnNotFoundError.Inc()
+
+		log.WithFields(log.Fields{
+			"error": msg.Error,
+		}).Error("msisdn required")
+		c.JSON(500, gin.H{"error": "msisdn required"})
+		return
+	}
+
+	if !msg.Supported {
+		m.NotSupported.Inc()
+
+		err = fmt.Errorf("Operator not recognized: %s", msg.Msisdn)
+		log.WithFields(log.Fields{
+			"error": msg.Error,
+		}).Error("cann't process")
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	if msg.Error != "" {
+		log.WithFields(log.Fields{
+			"err": msg.Error,
+		}).Error("gather info failed")
+		c.JSON(500, gin.H{"error": msg.Error})
+		return
+	}
+	if err = startNewSubscription(c, msg); err == nil {
+		log.WithFields(log.Fields{
+			"tid":        msg.Tid,
+			"link":       campaignLink,
+			"hash":       campaignByLink[campaignLink].Hash,
+			"msisdn":     msg.Msisdn,
+			"campaignid": campaignByLink[campaignLink].Id,
+		}).Info("added new subscritpion due to ratio")
+	} else {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	m.Success.Inc()
+	c.JSON(200, gin.H{"state": "success"})
+}
 
 func startNewSubscription(c *gin.Context, msg rbmq.AccessCampaignNotify) error {
 	if cnf.Service.Rejected.CampaignRedirectEnabled {
