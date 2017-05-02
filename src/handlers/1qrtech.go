@@ -169,7 +169,7 @@ func qrTechHandler(c *gin.Context) {
 			ServiceId:          msg.ServiceId,
 			DelayHours:         service.DelayHours,
 			PaidHours:          service.PaidHours,
-			KeepDays:           service.KeepDays,
+			RetryDays:          service.RetryDays,
 			Price:              100 * int(service.Price),
 		}
 		contentProperties, err := content_client.GetUniqueUrl(content_service.GetContentParams{

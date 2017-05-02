@@ -274,7 +274,7 @@ func generateUniqueUrl(r rbmq.AccessCampaignNotify) (url string, err error) {
 		}).Error("cannot get unique content url")
 		return
 	}
-	url = fmt.Sprintf(service.SendContentTextTemplate, cnf.Server.Url+"/u/"+contentProperties.UniqueUrl)
+	url = fmt.Sprintf(service.SMSOnContent, cnf.Server.Url+"/u/"+contentProperties.UniqueUrl)
 	return
 }
 

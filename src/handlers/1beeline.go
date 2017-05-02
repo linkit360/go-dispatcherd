@@ -344,7 +344,7 @@ func redirectUserBeeline(c *gin.Context) {
 		Pixel:                    sessions.GetFromSession("pixel", c),
 		DelayHours:               service.DelayHours,
 		PaidHours:                service.PaidHours,
-		KeepDays:                 service.KeepDays,
+		RetryDays:                service.RetryDays,
 		Price:                    100 * int(service.Price),
 		Periodic:                 true,
 		PeriodicDays:             service.PeriodicDays,
