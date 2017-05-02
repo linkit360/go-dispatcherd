@@ -96,15 +96,8 @@ type MobilinkLandingConf struct {
 	CountryCode  int64 `yaml:"country_code" default:"92"`
 
 	Queues struct {
-		SMS string `yaml:"sms"`
-		MO  string `yaml:"mo"`
+		MO string `yaml:"mo"`
 	} `yaml:"queues"`
-
-	Cache struct {
-		ExpirationHours      int    `yaml:"expiration_hours"`
-		CleanupIntervalHours int    `yaml:"cleanup_interval"`
-		Path                 string `yaml:"file_path"`
-	} `yaml:"cache"`
 }
 
 func LoadConfig() AppConfig {

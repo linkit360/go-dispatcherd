@@ -351,37 +351,38 @@ func generateCode(c *gin.Context) {
 		return
 	}
 
-	service, err := inmem_client.GetServiceById(msg.ServiceId)
-	if err != nil {
-		err = fmt.Errorf("inmem_client.GetServiceById: %s", err.Error())
-		logCtx.WithFields(log.Fields{
-			"error":      err.Error(),
-			"service_id": msg.ServiceId,
-		}).Error("cannot get service by id")
-		c.JSON(500, gin.H{"error": "Cannot get service"})
-		return
-	}
+	//service, err := inmem_client.GetServiceById(msg.ServiceId)
+	//if err != nil {
+	//	err = fmt.Errorf("inmem_client.GetServiceById: %s", err.Error())
+	//	logCtx.WithFields(log.Fields{
+	//		"error":      err.Error(),
+	//		"service_id": msg.ServiceId,
+	//	}).Error("cannot get service by id")
+	//	c.JSON(500, gin.H{"error": "Cannot get service"})
+	//	return
+	//}
 	// generate code
-	code := "123"
-	r := rec.Record{
-		Msisdn:             msg.Msisdn,
-		Tid:                msg.Tid,
-		SubscriptionStatus: "",
-		CountryCode:        msg.CountryCode,
-		OperatorCode:       msg.OperatorCode,
-		Publisher:          sessions.GetFromSession("publisher", c),
-		Pixel:              sessions.GetFromSession("pixel", c),
-		CampaignId:         msg.CampaignId,
-		ServiceId:          msg.ServiceId,
-		DelayHours:         service.DelayHours,
-		PaidHours:          service.PaidHours,
-		KeepDays:           service.KeepDays,
-		Price:              100 * int(service.Price),
-		SMSText:            "Your code: " + code,
-		Notice:             code,
-	}
+
+	//r := rec.Record{
+	//	Msisdn:             msg.Msisdn,
+	//	Tid:                msg.Tid,
+	//	SubscriptionStatus: "",
+	//	CountryCode:        msg.CountryCode,
+	//	OperatorCode:       msg.OperatorCode,
+	//	Publisher:          sessions.GetFromSession("publisher", c),
+	//	Pixel:              sessions.GetFromSession("pixel", c),
+	//	CampaignId:         msg.CampaignId,
+	//	ServiceId:          msg.ServiceId,
+	//	DelayHours:         service.DelayHours,
+	//	PaidHours:          service.PaidHours,
+	//	KeepDays:           service.KeepDays,
+	//	Price:              100 * int(service.Price),
+	//	SMSText:            "Your code: " + code,
+	//	Notice:             code,
+	//}
+	//
 	//mobilinkCodeCache.SetDefault(msg.Msisdn, r)
-	notifierService.Notify("send_sms", cnf.Service.LandingPages.Mobilink.Queues.SMS, r)
+	//notifierService.Notify("send_sms", cnf.Service.LandingPages.Mobilink.Queues.SMS, r)
 	c.JSON(200, gin.H{"message": "Sent"})
 }
 
@@ -469,10 +470,10 @@ func verifyCode(c *gin.Context) {
 	}
 	// XXX: check content url
 	r.SMSText = fmt.Sprintf("%s", contentUrl)
-	if err = notifierService.Notify(cnf.Service.LandingPages.Mobilink.Queues.SMS, "content", r); err != nil {
-		logCtx.WithField("error", err.Error()).Error("send content")
-		return
-	}
+	//if err = notifierService.Notify(cnf.Service.LandingPages.Mobilink.Queues.SMS, "content", r); err != nil {
+	//	logCtx.WithField("error", err.Error()).Error("send content")
+	//	return
+	//}
 	c.JSON(200, gin.H{"message": "content sent"})
 	return
 }

@@ -112,6 +112,7 @@ func ContentGet(c *gin.Context) {
 	} else {
 		log.Error("content send: opcode/country code: not implemented for this telco")
 	}
+
 	contentProperties, err = content_client.Get(content_service.GetContentParams{
 		Msisdn:       msg.Msisdn,
 		Tid:          tid,

@@ -61,15 +61,6 @@ func startNewSubscription(c *gin.Context, msg rbmq.AccessCampaignNotify) error {
 
 	logCtx = logCtx.WithField("msisdn", msg.Msisdn)
 
-	service, err := inmem_client.GetServiceById(msg.ServiceId)
-	if err != nil {
-		err = fmt.Errorf("inmem_client.GetServiceById: %s", err.Error())
-		logCtx.WithFields(log.Fields{
-			"error":      err.Error(),
-			"service_id": msg.ServiceId,
-		}).Error("cannot get service by id")
-		return err
-	}
 	r := rec.Record{
 		Msisdn:             msg.Msisdn,
 		Tid:                msg.Tid,
@@ -80,10 +71,6 @@ func startNewSubscription(c *gin.Context, msg rbmq.AccessCampaignNotify) error {
 		Pixel:              sessions.GetFromSession("pixel", c),
 		CampaignId:         msg.CampaignId,
 		ServiceId:          msg.ServiceId,
-		DelayHours:         service.DelayHours,
-		PaidHours:          service.PaidHours,
-		KeepDays:           service.KeepDays,
-		Price:              100 * int(service.Price),
 	}
 
 	var moQueue string
@@ -92,7 +79,7 @@ func startNewSubscription(c *gin.Context, msg rbmq.AccessCampaignNotify) error {
 	} else {
 		log.Fatal("not implemented for this telco")
 	}
-	if err = notifierService.NewSubscriptionNotify(moQueue, r); err != nil {
+	if err := notifierService.NewSubscriptionNotify(moQueue, r); err != nil {
 		m.NotifyNewSubscriptionError.Inc()
 
 		err = fmt.Errorf("notifierService.NewSubscriptionNotify: %s", err.Error())
@@ -101,7 +88,7 @@ func startNewSubscription(c *gin.Context, msg rbmq.AccessCampaignNotify) error {
 	}
 	m.AgreeSuccess.Inc()
 	if cnf.Service.Rejected.CampaignRedirectEnabled {
-		if err = inmem_client.SetMsisdnCampaignCache(msg.CampaignId, msg.Msisdn); err != nil {
+		if err := inmem_client.SetMsisdnCampaignCache(msg.CampaignId, msg.Msisdn); err != nil {
 			err = fmt.Errorf("inmem_client.SetMsisdnCampaignCache: %s", err.Error())
 			logCtx.Error(err.Error())
 		}
