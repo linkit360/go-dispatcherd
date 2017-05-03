@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
@@ -11,12 +12,10 @@ import (
 	"github.com/linkit360/go-dispatcherd/src/sessions"
 	inmem_client "github.com/linkit360/go-inmem/rpcclient"
 	rec "github.com/linkit360/go-utils/rec"
-	"strings"
-	"time"
 )
 
 // on click - start new subscription API for south team
-
+// ALTER TABLE public.xmp_subscriptions ADD channel VARCHAR(255) DEFAULT '' NOT NULL;
 func initiateSubscription(c *gin.Context) {
 	sessions.SetSession(c)
 	tid := sessions.GetTid(c)
@@ -173,6 +172,7 @@ func startNewSubscription(c *gin.Context, msg rbmq.AccessCampaignNotify) error {
 		Pixel:              sessions.GetFromSession("pixel", c),
 		CampaignId:         msg.CampaignId,
 		ServiceId:          msg.ServiceId,
+		Channel:            c.DefaultQuery("channel", ""),
 	}
 
 	var moQueue string
