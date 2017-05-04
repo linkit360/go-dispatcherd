@@ -96,7 +96,8 @@ type MobilinkLandingConf struct {
 	CountryCode  int64 `yaml:"country_code" default:"92"`
 
 	Queues struct {
-		MO string `yaml:"mo"`
+		MO        string `yaml:"mo"`
+		DBActions string `yaml:"db_actions"`
 	} `yaml:"queues"`
 }
 

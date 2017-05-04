@@ -45,6 +45,7 @@ service:
     mobilink:
       enabled: true
       queues:
+        db_actions: mt_manager
         sms: mobilink_sms_requests
         mo: mobilink_new_subscriptions
       cache:
@@ -89,4 +90,3 @@ notifier:
       host: localhost
       port: 5672
     chan_capacity: 100
-    pending_buffer_path: /home/centos/linkit/dispatcherd_pending.json

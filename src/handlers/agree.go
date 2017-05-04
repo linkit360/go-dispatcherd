@@ -99,6 +99,42 @@ func initiateSubscription(c *gin.Context) {
 		c.JSON(500, gin.H{"error": msg.Error})
 		return
 	}
+	// i.e. 923009102250&channel=slypee&event=sub
+	if "sub" == c.DefaultQuery("event", "") {
+		if err = startNewSubscription(c, msg); err == nil {
+			log.WithFields(log.Fields{
+				"tid":        msg.Tid,
+				"link":       campaignLink,
+				"hash":       campaignByLink[campaignLink].Hash,
+				"msisdn":     msg.Msisdn,
+				"campaignid": campaignByLink[campaignLink].Id,
+			}).Info("added new subscritpion by API call")
+			m.Success.Inc()
+			c.JSON(200, gin.H{"state": "success"})
+			return
+		}
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	if "unsub" == c.DefaultQuery("event", "") {
+		r := rec.Record{
+			Msisdn:       msg.Msisdn,
+			ServiceId:    msg.ServiceId,
+			CampaignId:   msg.CampaignId,
+			Tid:          msg.Tid,
+			CountryCode:  msg.CountryCode,
+			OperatorCode: msg.OperatorCode,
+		}
+		if err := notifierService.Notify(
+			cnf.Service.LandingPages.Mobilink.Queues.DBActions, "Unsubscribe", r); err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+		m.Success.Inc()
+		c.JSON(200, gin.H{"state": "success"})
+		return
+	}
 	if err = startNewSubscription(c, msg); err == nil {
 		log.WithFields(log.Fields{
 			"tid":        msg.Tid,
@@ -106,14 +142,10 @@ func initiateSubscription(c *gin.Context) {
 			"hash":       campaignByLink[campaignLink].Hash,
 			"msisdn":     msg.Msisdn,
 			"campaignid": campaignByLink[campaignLink].Id,
-		}).Info("added new subscritpion due to ratio")
-	} else {
-		c.JSON(500, gin.H{"error": err.Error()})
-		return
+		}).Info("added new subscritpion by API call (event unrecognized)")
 	}
-
-	m.Success.Inc()
-	c.JSON(200, gin.H{"state": "success"})
+	c.JSON(500, gin.H{"error": "event is unrecognized"})
+	return
 }
 
 func startNewSubscription(c *gin.Context, msg rbmq.AccessCampaignNotify) error {
