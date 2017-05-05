@@ -97,7 +97,7 @@ type MobilinkLandingConf struct {
 
 	Queues struct {
 		MO        string `yaml:"mo"`
-		DBActions string `yaml:"db_actions"`
+		Responses string `yaml:"responses"`
 	} `yaml:"queues"`
 }
 

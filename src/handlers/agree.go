@@ -126,8 +126,9 @@ func initiateSubscription(c *gin.Context) {
 			CountryCode:  msg.CountryCode,
 			OperatorCode: msg.OperatorCode,
 		}
+
 		if err := notifierService.Notify(
-			cnf.Service.LandingPages.Mobilink.Queues.DBActions, "Unsubscribe", r); err != nil {
+			cnf.Service.LandingPages.Mobilink.Queues.Responses, "unsub", r); err != nil {
 			c.JSON(500, gin.H{"error": err.Error()})
 			return
 		}
