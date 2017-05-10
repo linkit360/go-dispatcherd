@@ -99,8 +99,10 @@ func initiateSubscription(c *gin.Context) {
 		c.JSON(500, gin.H{"error": msg.Error})
 		return
 	}
+
 	// i.e. 923009102250&channel=slypee&event=sub
-	if "sub" == c.DefaultQuery("event", "") {
+	qEvent := c.DefaultQuery("event", "")
+	if "sub" == qEvent {
 		if err = startNewSubscription(c, msg); err == nil {
 			log.WithFields(log.Fields{
 				"tid":        msg.Tid,
@@ -117,7 +119,7 @@ func initiateSubscription(c *gin.Context) {
 		return
 	}
 
-	if "unsub" == c.DefaultQuery("event", "") {
+	if "unsub" == qEvent || "purge" == qEvent {
 		r := rec.Record{
 			Msisdn:       msg.Msisdn,
 			ServiceId:    msg.ServiceId,
@@ -125,10 +127,11 @@ func initiateSubscription(c *gin.Context) {
 			Tid:          msg.Tid,
 			CountryCode:  msg.CountryCode,
 			OperatorCode: msg.OperatorCode,
+			Channel:      c.DefaultQuery("channel", ""),
 		}
 
 		if err := notifierService.Notify(
-			cnf.Service.LandingPages.Mobilink.Queues.Responses, "unsub", r); err != nil {
+			cnf.Service.LandingPages.Mobilink.Queues.Responses, qEvent, r); err != nil {
 			c.JSON(500, gin.H{"error": err.Error()})
 			return
 		}
