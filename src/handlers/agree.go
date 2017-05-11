@@ -23,7 +23,7 @@ func initiateSubscription(c *gin.Context) {
 		"tid": tid,
 	})
 	action := rbmq.UserActionsNotify{
-		Action: "direct_start",
+		Action: "api_subscribe",
 		Tid:    tid,
 	}
 	m.Incoming.Inc()
@@ -119,7 +119,11 @@ func initiateSubscription(c *gin.Context) {
 		return
 	}
 
-	if "unsub" == qEvent || "purge" == qEvent {
+	if "unsub" == qEvent || "purge" == qEvent || "unreg" == qEvent {
+		if qEvent == "unsub" {
+			qEvent = "unreg"
+		}
+		action.Action = qEvent
 		r := rec.Record{
 			Msisdn:       msg.Msisdn,
 			ServiceId:    msg.ServiceId,

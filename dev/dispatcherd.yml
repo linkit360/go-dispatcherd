@@ -9,7 +9,7 @@ server:
     secret: rCs7h2h_NqB5Kx-
     path: /
     domain: dev.pk.linkit360.ru
-    cookie_ttl: 300
+    cookie_ttl: 1036800
     secure: false
     http_only: false
 
@@ -45,8 +45,7 @@ service:
     mobilink:
       enabled: true
       queues:
-        db_actions: mt_manager
-        sms: mobilink_sms_requests
+        responses: mobilink_responses
         mo: mobilink_new_subscriptions
       cache:
         expiration_hours: 24
