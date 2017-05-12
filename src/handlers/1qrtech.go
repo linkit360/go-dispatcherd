@@ -19,7 +19,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	content_client "github.com/linkit360/go-contentd/rpcclient"
-	content_service "github.com/linkit360/go-contentd/service"
+	content_service "github.com/linkit360/go-contentd/server/src/service"
 	m "github.com/linkit360/go-dispatcherd/src/metrics"
 	"github.com/linkit360/go-dispatcherd/src/rbmq"
 	"github.com/linkit360/go-dispatcherd/src/sessions"
