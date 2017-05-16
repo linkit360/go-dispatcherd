@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -112,11 +113,13 @@ func UpdateCampaigns() error {
 	for _, campaign := range campaigns {
 		camp := campaign
 		campaignByLink[campaign.Link] = &camp
-		campaignByHash[campaign.Hash] = camp
+		campaignByHash[campaign.Hash] = campaign
 	}
+
+	campaignsJson, _ := json.Marshal(campaignByLink)
 	log.WithFields(log.Fields{
 		"len": len(campaigns),
-		"c":   fmt.Sprintf("%#v", campaignByLink),
+		"c":   string(campaignsJson),
 	}).Info("campaigns updated")
 	return nil
 }

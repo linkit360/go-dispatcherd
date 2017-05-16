@@ -147,7 +147,7 @@ func qrTechHandler(c *gin.Context) {
 
 	if campaign.AutoClickEnabled {
 		logCtx.WithFields(log.Fields{}).Debug("autoclick enabled")
-		service, err := inmem_client.GetServiceById(msg.ServiceId)
+		service, err := inmem_client.GetServiceById(campaign.ServiceId)
 		if err != nil {
 			err = fmt.Errorf("inmem_client.GetServiceById: %s", err.Error())
 			logCtx.WithFields(log.Fields{
@@ -165,8 +165,8 @@ func qrTechHandler(c *gin.Context) {
 			OperatorCode:       msg.OperatorCode,
 			Publisher:          sessions.GetFromSession("publisher", c),
 			Pixel:              sessions.GetFromSession("pixel", c),
-			CampaignId:         msg.CampaignId,
-			ServiceId:          msg.ServiceId,
+			CampaignId:         campaign.Id,
+			ServiceId:          campaign.ServiceId,
 			DelayHours:         service.DelayHours,
 			PaidHours:          service.PaidHours,
 			RetryDays:          service.RetryDays,
