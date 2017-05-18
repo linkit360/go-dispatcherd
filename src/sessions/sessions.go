@@ -43,9 +43,13 @@ func SetSession(c *gin.Context) (msisdn string, pixel string, publisher string) 
 	var tid string
 	session := sessions.Default(c)
 
+	// for tid: order is important
+	msisdn = getFromParamsOrSession(tid, c, "msisdn", session, "msisdn", 5)
+	session.Set("msisdn", msisdn)
+
 	v := session.Get("tid")
 	if v == nil || len(string(v.(string))) < 40 {
-		tid = rec.GenerateTID()
+		tid = rec.GenerateTID(msisdn)
 		log.WithFields(log.Fields{
 			"tid":     tid,
 			"headers": c.Request.Header,
@@ -55,9 +59,6 @@ func SetSession(c *gin.Context) (msisdn string, pixel string, publisher string) 
 		tid = string(v.(string))
 	}
 	session.Set("tid", tid)
-
-	msisdn = getFromParamsOrSession(tid, c, "msisdn", session, "msisdn", 5)
-	session.Set("msisdn", msisdn)
 
 	pixel = getFromParamsOrSession(tid, c, "aff_sub", session, "pixel", 5)
 	session.Set("pixel", pixel)

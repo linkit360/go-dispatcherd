@@ -127,7 +127,7 @@ func notifyBeeline(c *gin.Context) {
 			log.WithFields(fields).Error("notify")
 		}
 
-		action.CampaignId = land.CampaignId
+		action.CampaignCode = land.CampaignCode
 		action.Tid = land.Tid
 
 		if err := notifierService.ActionNotify(action); err != nil {
@@ -223,7 +223,7 @@ func redirectUserBeeline(c *gin.Context) {
 			}).Error("beeline redirect to lp")
 		}
 		action.Msisdn = msg.Msisdn
-		action.CampaignId = msg.CampaignId
+		action.CampaignCode = msg.CampaignCode
 		action.Tid = msg.Tid
 
 		if err := notifierService.ActionNotify(action); err != nil {
@@ -257,13 +257,13 @@ func redirectUserBeeline(c *gin.Context) {
 	msg.CountryCode = cnf.Service.LandingPages.Beeline.CountryCode
 	msg.OperatorCode = cnf.Service.LandingPages.Beeline.OperatorCode
 
-	service, err := inmem_client.GetServiceById(msg.ServiceId)
+	service, err := inmem_client.GetServiceByCode(msg.ServiceCode)
 	if err != nil {
 		err = fmt.Errorf("inmem_client.GetServiceById: %s", err.Error())
 		log.WithFields(log.Fields{
 			"tid":        msg.Tid,
 			"error":      err.Error(),
-			"service_id": msg.ServiceId,
+			"service_id": msg.ServiceCode,
 		}).Error("cannot get service by id")
 		return
 	}
@@ -338,8 +338,8 @@ func redirectUserBeeline(c *gin.Context) {
 		CountryCode:              cnf.Service.LandingPages.Beeline.CountryCode,
 		OperatorCode:             cnf.Service.LandingPages.Beeline.OperatorCode,
 		SentAt:                   time.Now().UTC(),
-		CampaignId:               campaign.Id,
-		ServiceId:                campaign.ServiceId,
+		CampaignCode:             campaign.Code,
+		ServiceCode:              campaign.ServiceCode,
 		Publisher:                sessions.GetFromSession("publisher", c),
 		Pixel:                    sessions.GetFromSession("pixel", c),
 		DelayHours:               service.DelayHours,
@@ -399,10 +399,10 @@ func returnBackCampaignPage(c *gin.Context) {
 	}
 
 	action := rbmq.UserActionsNotify{
-		Action:     "return_back",
-		Tid:        tid,
-		CampaignId: campaign.Id,
-		Msisdn:     sessions.GetFromSession("msisdn", c),
+		Action:       "return_back",
+		Tid:          tid,
+		CampaignCode: campaign.Code,
+		Msisdn:       sessions.GetFromSession("msisdn", c),
 	}
 	campaignPage := c.Params.ByName("campaign_page")
 	for _, v := range campaignByHash {

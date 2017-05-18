@@ -48,7 +48,7 @@ func serveCampaigns(c *gin.Context) {
 	var msg rbmq.AccessCampaignNotify
 	defer func() {
 		action.Msisdn = msg.Msisdn
-		action.CampaignId = msg.CampaignId
+		action.CampaignCode = msg.CampaignCode
 		action.Tid = msg.Tid
 		if err != nil {
 			action.Error = err.Error()
@@ -102,7 +102,7 @@ func serveCampaigns(c *gin.Context) {
 
 	if cnf.Service.Rejected.TrafficRedirectEnabled {
 		// check if rejected: if rejected, then campaignId differs from campaign.id
-		isRejected, err := inmem_client.IsMsisdnRejectedByService(msg.ServiceId, msg.Msisdn)
+		isRejected, err := inmem_client.IsMsisdnRejectedByService(msg.ServiceCode, msg.Msisdn)
 		if err != nil {
 			err = fmt.Errorf("inmem_client.IsMsisdnRejectedByService: %s", err.Error())
 			log.WithFields(log.Fields{
@@ -132,11 +132,11 @@ func serveCampaigns(c *gin.Context) {
 				"tid": tid,
 			}).Debug("found pixel in get params")
 			if err := notifierService.PixelBufferNotify(rec.Record{
-				SentAt:     time.Now().UTC(),
-				CampaignId: msg.CampaignId,
-				ServiceId:  msg.ServiceId,
-				Tid:        msg.Tid,
-				Pixel:      val,
+				SentAt:       time.Now().UTC(),
+				CampaignCode: msg.CampaignCode,
+				ServiceCode:  msg.ServiceCode,
+				Tid:          msg.Tid,
+				Pixel:        val,
 			}); err != nil {
 				logCtx.WithFields(log.Fields{
 					"error": err.Error(),
@@ -181,7 +181,7 @@ func serveCampaigns(c *gin.Context) {
 		}
 		action.Tid = msg.Tid
 		action.Msisdn = msg.Msisdn
-		action.CampaignId = msg.CampaignId
+		action.CampaignCode = msg.CampaignCode
 
 		if err := notifierService.ActionNotify(action); err != nil {
 			log.WithFields(log.Fields{
@@ -198,7 +198,7 @@ func serveCampaigns(c *gin.Context) {
 			"link":       campaignLink,
 			"hash":       campaignByLink[campaignLink].Hash,
 			"msisdn":     msg.Msisdn,
-			"campaignid": campaignByLink[campaignLink].Id,
+			"campaignid": campaignByLink[campaignLink].Code,
 		}).Info("added new subscritpion due to ratio")
 	}
 

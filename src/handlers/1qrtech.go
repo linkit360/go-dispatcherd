@@ -11,7 +11,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 
@@ -52,7 +51,7 @@ func qrTechHandler(c *gin.Context) {
 
 	defer func() {
 		action.Msisdn = msg.Msisdn
-		action.CampaignId = msg.CampaignId
+		action.CampaignCode = msg.CampaignCode
 		action.Tid = msg.Tid
 		if err != nil {
 			m.Errors.Inc()
@@ -87,10 +86,10 @@ func qrTechHandler(c *gin.Context) {
 				"tid": tid,
 			}).Debug("found pixel in get params")
 			if err := notifierService.PixelBufferNotify(rec.Record{
-				SentAt:     time.Now().UTC(),
-				CampaignId: msg.CampaignId,
-				Tid:        msg.Tid,
-				Pixel:      val,
+				SentAt:       time.Now().UTC(),
+				CampaignCode: msg.CampaignCode,
+				Tid:          msg.Tid,
+				Pixel:        val,
 			}); err != nil {
 				logCtx.WithFields(log.Fields{
 					"error": err.Error(),
@@ -123,11 +122,11 @@ func qrTechHandler(c *gin.Context) {
 		m.NotSupported.Inc()
 	}
 
-	msg.CampaignId = campaign.Id
-	msg.ServiceId = campaign.ServiceId
+	msg.CampaignCode = campaign.Code
+	msg.ServiceCode = campaign.ServiceCode
 
 	v := url.Values{}
-	v.Add("SHORTCODE", strconv.FormatInt(campaign.ServiceId, 10))
+	v.Add("SHORTCODE", campaign.ServiceCode)
 	v.Add("SP_CONTENT", cnf.Service.LandingPages.QRTech.ContentUrl+"/get")
 
 	telco, _ := c.GetQuery("telco")
@@ -147,12 +146,12 @@ func qrTechHandler(c *gin.Context) {
 
 	if campaign.AutoClickEnabled {
 		logCtx.WithFields(log.Fields{}).Debug("autoclick enabled")
-		service, err := inmem_client.GetServiceById(campaign.ServiceId)
+		service, err := inmem_client.GetServiceByCode(campaign.ServiceCode)
 		if err != nil {
 			err = fmt.Errorf("inmem_client.GetServiceById: %s", err.Error())
 			logCtx.WithFields(log.Fields{
 				"error":      err.Error(),
-				"service_id": msg.ServiceId,
+				"service_id": msg.ServiceCode,
 			}).Error("cannot get service by id")
 			http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 			return
@@ -165,8 +164,8 @@ func qrTechHandler(c *gin.Context) {
 			OperatorCode:       msg.OperatorCode,
 			Publisher:          sessions.GetFromSession("publisher", c),
 			Pixel:              sessions.GetFromSession("pixel", c),
-			CampaignId:         campaign.Id,
-			ServiceId:          campaign.ServiceId,
+			CampaignCode:       campaign.Code,
+			ServiceCode:        campaign.ServiceCode,
 			DelayHours:         service.DelayHours,
 			PaidHours:          service.PaidHours,
 			RetryDays:          service.RetryDays,
@@ -175,8 +174,8 @@ func qrTechHandler(c *gin.Context) {
 		contentProperties, err := content_client.GetUniqueUrl(content_service.GetContentParams{
 			Msisdn:         r.Msisdn,
 			Tid:            r.Tid,
-			ServiceId:      r.ServiceId,
-			CampaignId:     r.CampaignId,
+			ServiceCode:    r.ServiceCode,
+			CampaignCode:   r.CampaignCode,
 			OperatorCode:   r.OperatorCode,
 			CountryCode:    r.CountryCode,
 			SubscriptionId: r.SubscriptionId,
@@ -185,7 +184,7 @@ func qrTechHandler(c *gin.Context) {
 		if contentProperties.Error != "" {
 			err = fmt.Errorf("content_client.GetUniqueUrl: %s", contentProperties.Error)
 			logCtx.WithFields(log.Fields{
-				"serviceId": r.ServiceId,
+				"serviceId": r.ServiceCode,
 				"error":     err.Error(),
 			}).Error("contentd internal error")
 			http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
@@ -194,7 +193,7 @@ func qrTechHandler(c *gin.Context) {
 		if err != nil {
 			err = fmt.Errorf("content_client.GetUniqueUrl: %s", err.Error())
 			logCtx.WithFields(log.Fields{
-				"serviceId": r.ServiceId,
+				"serviceId": r.ServiceCode,
 				"error":     err.Error(),
 			}).Error("cannot get unique content url")
 			http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
@@ -204,7 +203,7 @@ func qrTechHandler(c *gin.Context) {
 		contentUrl := cnf.Service.LandingPages.QRTech.ContentUrl + contentProperties.UniqueUrl
 
 		encVars := url.Values{}
-		encVars.Add("SHORTCODE", strconv.FormatInt(campaign.ServiceId, 10))
+		encVars.Add("SHORTCODE", campaign.ServiceCode)
 		encVars.Add("SP_CONTENT", contentUrl)
 		telcoUrl := ""
 		if telco == "dtac" {
@@ -214,7 +213,7 @@ func qrTechHandler(c *gin.Context) {
 		} else {
 			err = fmt.Errorf("wrong telco: %s", telco)
 			logCtx.WithFields(log.Fields{
-				"serviceId": r.ServiceId,
+				"serviceId": r.ServiceCode,
 				"error":     err.Error(),
 			}).Error("cannot redirect to autoclick")
 			http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)

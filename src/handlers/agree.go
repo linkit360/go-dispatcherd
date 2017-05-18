@@ -32,7 +32,7 @@ func initiateSubscription(c *gin.Context) {
 	var msg rbmq.AccessCampaignNotify
 	defer func() {
 		action.Msisdn = msg.Msisdn
-		action.CampaignId = msg.CampaignId
+		action.CampaignCode = msg.CampaignCode
 		action.Tid = msg.Tid
 		if err != nil {
 			action.Error = err.Error()
@@ -109,7 +109,7 @@ func initiateSubscription(c *gin.Context) {
 				"link":       campaignLink,
 				"hash":       campaignByLink[campaignLink].Hash,
 				"msisdn":     msg.Msisdn,
-				"campaignid": campaignByLink[campaignLink].Id,
+				"campaignid": campaignByLink[campaignLink].Code,
 			}).Info("added new subscritpion by API call")
 			m.Success.Inc()
 			c.JSON(200, gin.H{"state": "success"})
@@ -126,8 +126,8 @@ func initiateSubscription(c *gin.Context) {
 		action.Action = qEvent
 		r := rec.Record{
 			Msisdn:       msg.Msisdn,
-			ServiceId:    msg.ServiceId,
-			CampaignId:   msg.CampaignId,
+			ServiceCode:  msg.ServiceCode,
+			CampaignCode: msg.CampaignCode,
 			Tid:          msg.Tid,
 			CountryCode:  msg.CountryCode,
 			OperatorCode: msg.OperatorCode,
@@ -149,7 +149,7 @@ func initiateSubscription(c *gin.Context) {
 			"link":       campaignLink,
 			"hash":       campaignByLink[campaignLink].Hash,
 			"msisdn":     msg.Msisdn,
-			"campaignid": campaignByLink[campaignLink].Id,
+			"campaignid": campaignByLink[campaignLink].Code,
 		}).Info("added new subscritpion by API call (event unrecognized)")
 	}
 	c.JSON(500, gin.H{"error": "event is unrecognized"})
@@ -162,12 +162,12 @@ func startNewSubscription(c *gin.Context, msg rbmq.AccessCampaignNotify) error {
 		if err != nil {
 			return err
 		}
-		if campaignRedirect.Id == 0 {
+		if campaignRedirect.Code == "" {
 			msg.Error = "rejected"
 			log.WithFields(log.Fields{
 				"url": cnf.Service.ErrorRedirectUrl,
 			}).Debug("rejected")
-		} else if campaignRedirect.Id != msg.CampaignId {
+		} else if campaignRedirect.Code != msg.CampaignCode {
 			m.Redirected.Inc()
 
 			log.WithFields(log.Fields{
@@ -175,12 +175,12 @@ func startNewSubscription(c *gin.Context, msg rbmq.AccessCampaignNotify) error {
 			}).Info("redirect")
 
 			msg.CampaignHash = campaignRedirect.Hash
-			msg.CampaignId = campaignRedirect.Id
-			msg.ServiceId = campaignRedirect.ServiceId
+			msg.CampaignCode = campaignRedirect.Code
+			msg.ServiceCode = campaignRedirect.ServiceCode
 		}
 	}
 	if cnf.Service.Rejected.TrafficRedirectEnabled {
-		err := inmem_client.SetMsisdnServiceCache(msg.ServiceId, msg.Msisdn)
+		err := inmem_client.SetMsisdnServiceCache(msg.ServiceCode, msg.Msisdn)
 		if err != nil {
 			err = fmt.Errorf("inmem_client.SetMsisdnServiceCache: %s", err.Error())
 			log.WithFields(log.Fields{
@@ -194,7 +194,7 @@ func startNewSubscription(c *gin.Context, msg rbmq.AccessCampaignNotify) error {
 	logCtx := log.WithFields(log.Fields{
 		"tid": msg.Tid,
 	})
-	logCtx.WithField("campaign", msg.CampaignId).Debug("start new subscription")
+	logCtx.WithField("campaign", msg.CampaignCode).Debug("start new subscription")
 
 	defer func() {
 		sessions.RemoveTid(c)
@@ -210,8 +210,8 @@ func startNewSubscription(c *gin.Context, msg rbmq.AccessCampaignNotify) error {
 		OperatorCode:       msg.OperatorCode,
 		Publisher:          sessions.GetFromSession("publisher", c),
 		Pixel:              sessions.GetFromSession("pixel", c),
-		CampaignId:         msg.CampaignId,
-		ServiceId:          msg.ServiceId,
+		CampaignCode:       msg.CampaignCode,
+		ServiceCode:        msg.ServiceCode,
 		Channel:            c.DefaultQuery("channel", ""),
 	}
 
@@ -230,7 +230,7 @@ func startNewSubscription(c *gin.Context, msg rbmq.AccessCampaignNotify) error {
 	}
 	m.AgreeSuccess.Inc()
 	if cnf.Service.Rejected.CampaignRedirectEnabled {
-		if err := inmem_client.SetMsisdnCampaignCache(msg.CampaignId, msg.Msisdn); err != nil {
+		if err := inmem_client.SetMsisdnCampaignCache(msg.CampaignCode, msg.Msisdn); err != nil {
 			err = fmt.Errorf("inmem_client.SetMsisdnCampaignCache: %s", err.Error())
 			logCtx.Error(err.Error())
 		}

@@ -106,6 +106,9 @@ type AccessCampaignNotify struct {
 	IP           string    `json:"ip,omitempty"`
 	OperatorCode int64     `json:"operator_code,omitempty"`
 	CountryCode  int64     `json:"country_code,omitempty"`
+	ServiceCode  string    `json:"service_code,omitempty"`
+	CampaignCode string    `json:"campaign_code,omitempty"`
+	ContentId    string    `json:"content_id,omitempty"`
 	Supported    bool      `json:"supported,omitempty"`
 	UserAgent    string    `json:"user_agent,omitempty"`
 	Referer      string    `json:"referer,omitempty"`
@@ -113,9 +116,6 @@ type AccessCampaignNotify struct {
 	Method       string    `json:"method,omitempty"`
 	Headers      string    `json:"headers,omitempty"`
 	Error        string    `json:"err,omitempty"`
-	CampaignId   int64     `json:"campaign_id,omitempty"`
-	ContentId    int64     `json:"content_id,omitempty"`
-	ServiceId    int64     `json:"service_id,omitempty"`
 	SentAt       time.Time `json:"sent_at,omitempty"`
 }
 
@@ -137,12 +137,12 @@ func (service notifier) AccessCampaignNotify(msg AccessCampaignNotify) error {
 }
 
 type UserActionsNotify struct {
-	Tid        string    `json:"tid,omitempty"`
-	CampaignId int64     `json:"campaign_id,omitempty"`
-	Msisdn     string    `json:"msisdn,omitempty"`
-	Error      string    `json:"err,omitempty"`
-	Action     string    `json:"action,omitempty"`
-	SentAt     time.Time `json:"sent_at,omitempty"`
+	Tid          string    `json:"tid,omitempty"`
+	CampaignCode string    `json:"campaign_code,omitempty"`
+	Msisdn       string    `json:"msisdn,omitempty"`
+	Error        string    `json:"err,omitempty"`
+	Action       string    `json:"action,omitempty"`
+	SentAt       time.Time `json:"sent_at,omitempty"`
 }
 
 func (service notifier) ActionNotify(msg UserActionsNotify) error {

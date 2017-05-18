@@ -181,12 +181,12 @@ func redirect(msg rbmq.AccessCampaignNotify) (campaign inmem_service.Campaign, e
 		log.WithFields(log.Fields{
 			"tid": msg.Tid,
 		}).Debug("redirect off")
-		campaign.Id = msg.CampaignId
+		campaign.Code = msg.CampaignCode
 		return
 	}
 
 	// if nextCampaignId == msg.CampaignId then it's not rejected msisdn
-	campaign.Id, err = inmem_client.GetMsisdnCampaignCache(msg.CampaignId, msg.Msisdn)
+	campaign.Code, err = inmem_client.GetMsisdnCampaignCache(msg.CampaignCode, msg.Msisdn)
 	if err != nil {
 		err = fmt.Errorf("inmem_client.GetMsisdnCampaignCache: %s", err.Error())
 		log.WithFields(log.Fields{
@@ -196,25 +196,25 @@ func redirect(msg rbmq.AccessCampaignNotify) (campaign inmem_service.Campaign, e
 		return
 	}
 
-	if campaign.Id == msg.CampaignId {
+	if campaign.Code == msg.CampaignCode {
 		log.WithFields(log.Fields{
 			"tid": msg.Tid,
 		}).Debug("no redirect: ok")
 		return
 	}
 	// no more campaigns
-	if campaign.Id == 0 {
+	if campaign.Code == "" {
 		m.Rejected.Inc()
 
 		log.WithFields(log.Fields{
 			"tid":      msg.Tid,
 			"msisdn":   msg.Msisdn,
-			"campaign": msg.CampaignId,
+			"campaign": msg.CampaignCode,
 		}).Debug("redirect")
 		return
 	}
 
-	campaign, err = inmem_client.GetCampaignById(campaign.Id)
+	campaign, err = inmem_client.GetCampaignByCode(campaign.Code)
 	if err != nil {
 		err = fmt.Errorf("inmem_client.GetCampaignById: %s", err.Error())
 
@@ -228,8 +228,8 @@ func redirect(msg rbmq.AccessCampaignNotify) (campaign inmem_service.Campaign, e
 	log.WithFields(log.Fields{
 		"tid":       msg.Tid,
 		"msisdn":    msg.Msisdn,
-		"campaign":  msg.CampaignId,
-		"2campaign": campaign.Id,
+		"campaign":  msg.CampaignCode,
+		"2campaign": campaign.Code,
 	}).Debug("redirect")
 	return
 }
@@ -240,13 +240,13 @@ func generateUniqueUrl(r rbmq.AccessCampaignNotify) (url string, err error) {
 	logCtx := log.WithFields(log.Fields{
 		"tid": r.Tid,
 	})
-	service, err := inmem_client.GetServiceById(r.ServiceId)
+	service, err := inmem_client.GetServiceByCode(r.ServiceCode)
 	if err != nil {
 		m.UnknownService.Inc()
 
 		err = fmt.Errorf("inmem_client.GetServiceById: %s", err.Error())
 		logCtx.WithFields(log.Fields{
-			"serviceId": r.ServiceId,
+			"serviceId": r.ServiceCode,
 			"error":     err.Error(),
 		}).Error("cannot get service by id")
 		return
@@ -254,8 +254,8 @@ func generateUniqueUrl(r rbmq.AccessCampaignNotify) (url string, err error) {
 	contentProperties, err := content_client.GetUniqueUrl(content_service.GetContentParams{
 		Msisdn:       r.Msisdn,
 		Tid:          r.Tid,
-		ServiceId:    r.ServiceId,
-		CampaignId:   r.CampaignId,
+		ServiceCode:  r.ServiceCode,
+		CampaignCode: r.CampaignCode,
 		OperatorCode: r.OperatorCode,
 		CountryCode:  r.CountryCode,
 	})
@@ -264,7 +264,7 @@ func generateUniqueUrl(r rbmq.AccessCampaignNotify) (url string, err error) {
 		m.ContentDeliveryErrors.Inc()
 		err = fmt.Errorf("content_client.GetUniqueUrl: %s", contentProperties.Error)
 		logCtx.WithFields(log.Fields{
-			"serviceId": r.ServiceId,
+			"serviceId": r.ServiceCode,
 			"error":     err.Error(),
 		}).Error("contentd internal error")
 		return
@@ -272,7 +272,7 @@ func generateUniqueUrl(r rbmq.AccessCampaignNotify) (url string, err error) {
 	if err != nil {
 		err = fmt.Errorf("content_client.GetUniqueUrl: %s", err.Error())
 		logCtx.WithFields(log.Fields{
-			"serviceId": r.ServiceId,
+			"serviceId": r.ServiceCode,
 			"error":     err.Error(),
 		}).Error("cannot get unique content url")
 		return
@@ -297,7 +297,7 @@ func generateCode(c *gin.Context) {
 	var msg rbmq.AccessCampaignNotify
 	defer func() {
 		action.Msisdn = msg.Msisdn
-		action.CampaignId = msg.CampaignId
+		action.CampaignCode = msg.CampaignCode
 		action.Tid = msg.Tid
 		if err != nil {
 			action.Error = err.Error()
@@ -381,7 +381,7 @@ func generateCode(c *gin.Context) {
 	//	KeepDays:           service.KeepDays,
 	//	Price:              100 * int(service.Price),
 	//	SMSText:            "Your code: " + code,
-	//	Notice:             code,
+	//	Type:             code,
 	//}
 	//
 	//mobilinkCodeCache.SetDefault(msg.Msisdn, r)
@@ -406,7 +406,7 @@ func verifyCode(c *gin.Context) {
 	var err error
 	defer func() {
 		action.Msisdn = r.Msisdn
-		action.CampaignId = r.CampaignId
+		action.CampaignCode = r.CampaignCode
 		action.Tid = r.Tid
 		if err != nil {
 			action.Error = err.Error()
@@ -447,8 +447,8 @@ func verifyCode(c *gin.Context) {
 	}
 	code, _ := c.GetQuery("code")
 
-	if r.Notice != code {
-		err = fmt.Errorf("Code is incorrect: %v, expected %v", code, r.Notice)
+	if r.Type != code {
+		err = fmt.Errorf("Code is incorrect: %v, expected %v", code, r.Type)
 		log.WithFields(log.Fields{
 			"error": err.Error(),
 		}).Error("wrong code")

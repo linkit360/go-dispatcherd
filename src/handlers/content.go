@@ -76,7 +76,7 @@ func ContentGet(c *gin.Context) {
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
-	action.CampaignId = campaign.Id
+	action.CampaignCode = campaign.Code
 	msg := gatherInfo(c, campaign)
 
 	startNewSubscriptionFlag, _ := c.GetQuery("s")
@@ -85,14 +85,14 @@ func ContentGet(c *gin.Context) {
 			log.WithFields(log.Fields{
 				"tid":        msg.Tid,
 				"msisdn":     msg.Msisdn,
-				"campaignid": campaign.Id,
+				"campaignid": campaign.Code,
 			}).Info("added new subscritpion")
 
 			subAction := rbmq.UserActionsNotify{
-				Action:     "pull_click",
-				Tid:        tid,
-				Msisdn:     msg.Msisdn,
-				CampaignId: campaign.Id,
+				Action:       "pull_click",
+				Tid:          tid,
+				Msisdn:       msg.Msisdn,
+				CampaignCode: campaign.Code,
 			}
 			if err := notifierService.ActionNotify(subAction); err != nil {
 				logCtx.WithField("error", err.Error()).Error("notify user action")
@@ -116,8 +116,8 @@ func ContentGet(c *gin.Context) {
 	contentProperties, err = content_client.Get(content_service.GetContentParams{
 		Msisdn:       msg.Msisdn,
 		Tid:          tid,
-		CampaignId:   campaign.Id,
-		ServiceId:    campaign.ServiceId,
+		CampaignCode: campaign.Code,
+		ServiceCode:  campaign.ServiceCode,
 		OperatorCode: operatorCode,
 		CountryCode:  countryCode,
 	})
@@ -135,7 +135,7 @@ func ContentGet(c *gin.Context) {
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
-	contentProperties.CampaignId = campaign.Id
+	contentProperties.CampaignCode = campaign.Code
 	if contentProperties.Error != "" {
 		m.ContentDeliveryErrors.Inc()
 
@@ -191,12 +191,13 @@ func UniqueUrlGet(c *gin.Context) {
 	var err error
 	defer func() {
 		if err != nil {
+			m.ContentDeliveryErrors.Inc()
 			m.Errors.Inc()
 			action.Error = err.Error()
 		}
 		contentProperties.Tid = tid
 		action.Tid = tid
-		action.CampaignId = contentProperties.CampaignId
+		action.CampaignCode = contentProperties.CampaignCode
 
 		if err := notifierService.ActionNotify(action); err != nil {
 			logCtx.WithField("error", err.Error()).Error("notify user action")
@@ -212,10 +213,10 @@ func UniqueUrlGet(c *gin.Context) {
 	if uniqueUrl == "get" {
 		m.RandomContentGet.Inc()
 		contentProperties, err = content_client.Get(content_service.GetContentParams{
-			Msisdn:     sessions.GetFromSession("msisdn", c),
-			Tid:        tid,
-			ServiceId:  777,
-			CampaignId: 290,
+			Msisdn:       sessions.GetFromSession("msisdn", c),
+			Tid:          tid,
+			ServiceCode:  "777",
+			CampaignCode: "290",
 		})
 	} else {
 		m.UniqueUrlGet.Inc()
@@ -248,7 +249,7 @@ func UniqueUrlGet(c *gin.Context) {
 		"path":      contentProperties.ContentPath,
 	}).Debug("contentd response")
 
-	action.CampaignId = contentProperties.CampaignId
+	action.CampaignCode = contentProperties.CampaignCode
 	action.Msisdn = contentProperties.Msisdn
 	action.Tid = contentProperties.Tid
 	action.Error = contentProperties.Error
@@ -269,7 +270,7 @@ func UniqueUrlGet(c *gin.Context) {
 	}
 	logCtx.WithFields(log.Fields{}).Debug("served file ok")
 
-	m.Success.Inc()
+	m.ContentGetSuccess.Inc()
 }
 
 // create unique url
@@ -281,8 +282,8 @@ func createUniqueUrl(r rec.Record) (contentUrl string, err error) {
 	contentProperties, err := content_client.GetUniqueUrl(content_service.GetContentParams{
 		Msisdn:         r.Msisdn,
 		Tid:            r.Tid,
-		ServiceId:      r.ServiceId,
-		CampaignId:     r.CampaignId,
+		ServiceCode:    r.ServiceCode,
+		CampaignCode:   r.CampaignCode,
 		OperatorCode:   r.OperatorCode,
 		CountryCode:    r.CountryCode,
 		SubscriptionId: r.SubscriptionId,
@@ -291,7 +292,7 @@ func createUniqueUrl(r rec.Record) (contentUrl string, err error) {
 	if contentProperties.Error != "" {
 		err = fmt.Errorf("contentProperties.Error: %s", contentProperties.Error)
 		logCtx.WithFields(log.Fields{
-			"serviceId": r.ServiceId,
+			"serviceId": r.ServiceCode,
 			"error":     err.Error(),
 		}).Error("contentd internal error")
 		return
@@ -299,7 +300,7 @@ func createUniqueUrl(r rec.Record) (contentUrl string, err error) {
 	if err != nil {
 		err = fmt.Errorf("content_client.GetUniqueUrl: %s", err.Error())
 		logCtx.WithFields(log.Fields{
-			"serviceId": r.ServiceId,
+			"serviceId": r.ServiceCode,
 			"error":     err.Error(),
 		}).Error("cannot get unique content url")
 		return
