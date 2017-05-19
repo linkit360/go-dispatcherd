@@ -67,7 +67,7 @@ func initiateSubscription(c *gin.Context) {
 		return
 	}
 
-	msg = gatherInfo(c, *campaign)
+	msg = gatherInfo(c, campaign.Properties)
 	if msg.IP == "" {
 		m.IPNotFoundError.Inc()
 	}
@@ -107,9 +107,9 @@ func initiateSubscription(c *gin.Context) {
 			log.WithFields(log.Fields{
 				"tid":        msg.Tid,
 				"link":       campaignLink,
-				"hash":       campaignByLink[campaignLink].Hash,
+				"hash":       campaignByLink[campaignLink].Properties.Hash,
 				"msisdn":     msg.Msisdn,
-				"campaignid": campaignByLink[campaignLink].Code,
+				"campaignid": campaignByLink[campaignLink].Properties.Code,
 			}).Info("added new subscritpion by API call")
 			m.Success.Inc()
 			c.JSON(200, gin.H{"state": "success"})
@@ -147,9 +147,9 @@ func initiateSubscription(c *gin.Context) {
 		log.WithFields(log.Fields{
 			"tid":        msg.Tid,
 			"link":       campaignLink,
-			"hash":       campaignByLink[campaignLink].Hash,
+			"hash":       campaignByLink[campaignLink].Properties.Hash,
 			"msisdn":     msg.Msisdn,
-			"campaignid": campaignByLink[campaignLink].Code,
+			"campaignid": campaignByLink[campaignLink].Properties.Code,
 		}).Info("added new subscritpion by API call (event unrecognized)")
 	}
 	c.JSON(500, gin.H{"error": "event is unrecognized"})

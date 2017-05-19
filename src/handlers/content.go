@@ -69,13 +69,14 @@ func ContentGet(c *gin.Context) {
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
-	campaign, ok := campaignByHash[campaignHash]
+	inmemCampaign, ok := campaignByHash[campaignHash]
 	if !ok {
 		m.CampaignHashWrong.Inc()
 		err = fmt.Errorf("Cann't find campaign: %s", campaignHash)
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
+	campaign := inmemCampaign.Properties
 	action.CampaignCode = campaign.Code
 	msg := gatherInfo(c, campaign)
 

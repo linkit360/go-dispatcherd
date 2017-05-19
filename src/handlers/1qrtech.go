@@ -101,7 +101,7 @@ func qrTechHandler(c *gin.Context) {
 	paths := strings.Split(c.Request.URL.Path, "/")
 	campaignLink := paths[len(paths)-1]
 
-	campaign, ok := campaignByLink[campaignLink]
+	inmemCampaign, ok := campaignByLink[campaignLink]
 	if !ok {
 		m.Errors.Inc()
 		m.PageNotFoundError.Inc()
@@ -113,7 +113,9 @@ func qrTechHandler(c *gin.Context) {
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
-	msg = gatherInfo(c, *campaign)
+
+	campaign := inmemCampaign.Properties
+	msg = gatherInfo(c, campaign)
 	msg.CountryCode = cnf.Service.LandingPages.QRTech.CountryCode
 	if msg.IP == "" {
 		m.IPNotFoundError.Inc()

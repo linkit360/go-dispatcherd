@@ -10,6 +10,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
 
+	acceptor "github.com/linkit360/go-acceptor-structs"
 	content_client "github.com/linkit360/go-contentd/rpcclient"
 	content_service "github.com/linkit360/go-contentd/server/src/service"
 	"github.com/linkit360/go-dispatcherd/src/config"
@@ -112,8 +113,8 @@ func UpdateCampaigns() error {
 	campaignByHash = make(map[string]inmem_service.Campaign, len(campaigns))
 	for _, campaign := range campaigns {
 		camp := campaign
-		campaignByLink[campaign.Link] = &camp
-		campaignByHash[campaign.Hash] = campaign
+		campaignByLink[campaign.Properties.Link] = &camp
+		campaignByHash[campaign.Properties.Hash] = campaign
 	}
 
 	campaignsJson, _ := json.Marshal(campaignByLink)
@@ -176,7 +177,7 @@ func trafficRedirect(r rbmq.AccessCampaignNotify, c *gin.Context) {
 }
 
 // redirect inside dispatcher to another campaign if he/she already was here
-func redirect(msg rbmq.AccessCampaignNotify) (campaign inmem_service.Campaign, err error) {
+func redirect(msg rbmq.AccessCampaignNotify) (campaign acceptor.Campaign, err error) {
 	if !cnf.Service.Rejected.CampaignRedirectEnabled {
 		log.WithFields(log.Fields{
 			"tid": msg.Tid,
@@ -214,7 +215,7 @@ func redirect(msg rbmq.AccessCampaignNotify) (campaign inmem_service.Campaign, e
 		return
 	}
 
-	campaign, err = inmem_client.GetCampaignByCode(campaign.Code)
+	inmemCampaign, err := inmem_client.GetCampaignByCode(campaign.Code)
 	if err != nil {
 		err = fmt.Errorf("inmem_client.GetCampaignById: %s", err.Error())
 
@@ -225,6 +226,7 @@ func redirect(msg rbmq.AccessCampaignNotify) (campaign inmem_service.Campaign, e
 		}).Debug("redirect")
 		return
 	}
+	campaign = inmemCampaign.Properties
 	log.WithFields(log.Fields{
 		"tid":       msg.Tid,
 		"msisdn":    msg.Msisdn,
@@ -337,7 +339,7 @@ func generateCode(c *gin.Context) {
 		return
 	}
 
-	msg = gatherInfo(c, *campaign)
+	msg = gatherInfo(c, campaign.Properties)
 	msg.CountryCode = cnf.Service.LandingPages.Mobilink.CountryCode
 	msg.OperatorCode = cnf.Service.LandingPages.Mobilink.OperatorCode
 	if msg.IP == "" {
