@@ -8,7 +8,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 
 	m "github.com/linkit360/go-dispatcherd/src/metrics"
-	inmem_service "github.com/linkit360/go-inmem/service"
+	inmem_service "github.com/linkit360/go-mid/service"
 	redirect_service "github.com/linkit360/go-partners/service"
 	"github.com/linkit360/go-utils/amqp"
 	"github.com/linkit360/go-utils/rec"

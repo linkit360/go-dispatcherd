@@ -13,7 +13,7 @@ import (
 	content_client "github.com/linkit360/go-contentd/rpcclient"
 	"github.com/linkit360/go-dispatcherd/src/rbmq"
 	"github.com/linkit360/go-dispatcherd/src/sessions"
-	inmem_client "github.com/linkit360/go-inmem/rpcclient"
+	inmem_client "github.com/linkit360/go-mid/rpcclient"
 	redirect_client "github.com/linkit360/go-partners/rpcclient"
 )
 

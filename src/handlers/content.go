@@ -14,7 +14,7 @@ import (
 	"github.com/linkit360/go-dispatcherd/src/rbmq"
 	"github.com/linkit360/go-dispatcherd/src/sessions"
 	"github.com/linkit360/go-dispatcherd/src/utils"
-	inmem_service "github.com/linkit360/go-inmem/service"
+	inmem_service "github.com/linkit360/go-mid/service"
 	"github.com/linkit360/go-utils/rec"
 )
 
