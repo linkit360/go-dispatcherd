@@ -9,13 +9,13 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
 
-	acceptor "github.com/linkit360/go-acceptor-structs"
 	"github.com/linkit360/go-dispatcherd/src/rbmq"
 	"github.com/linkit360/go-dispatcherd/src/sessions"
+	mid "github.com/linkit360/go-mid/service"
 )
 
 // gather information from headers, etc
-func gatherInfo(c *gin.Context, campaign acceptor.Campaign) (msg rbmq.AccessCampaignNotify) {
+func gatherInfo(c *gin.Context, campaign mid.Campaign) (msg rbmq.AccessCampaignNotify) {
 	sessions.SetSession(c)
 	tid := sessions.GetTid(c)
 	logCtx := log.WithFields(log.Fields{

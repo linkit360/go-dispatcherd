@@ -89,7 +89,7 @@ func serveCampaigns(c *gin.Context) {
 		return
 	}
 
-	msg = gatherInfo(c, campaign.Properties)
+	msg = gatherInfo(c, *campaign)
 	if msg.IP == "" {
 		m.IPNotFoundError.Inc()
 	}
@@ -101,7 +101,7 @@ func serveCampaigns(c *gin.Context) {
 	}
 
 	if cnf.Service.Rejected.TrafficRedirectEnabled {
-		// check if rejected: if rejected, then campaignId differs from campaign.id
+		// check if rejected: if rejected, then campaignCode differs from campaign.id
 		isRejected, err := inmem_client.IsMsisdnRejectedByService(msg.ServiceCode, msg.Msisdn)
 		if err != nil {
 			err = fmt.Errorf("inmem_client.IsMsisdnRejectedByService: %s", err.Error())
@@ -194,11 +194,11 @@ func serveCampaigns(c *gin.Context) {
 
 	if err = startNewSubscription(c, msg); err == nil {
 		log.WithFields(log.Fields{
-			"tid":        msg.Tid,
-			"link":       campaignLink,
-			"hash":       campaignByLink[campaignLink].Properties.Hash,
-			"msisdn":     msg.Msisdn,
-			"campaignid": campaignByLink[campaignLink].Properties.Code,
+			"tid":           msg.Tid,
+			"link":          campaignLink,
+			"hash":          campaignByLink[campaignLink].Hash,
+			"msisdn":        msg.Msisdn,
+			"campaign_code": campaignByLink[campaignLink].Code,
 		}).Info("added new subscritpion due to ratio")
 	}
 

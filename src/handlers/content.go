@@ -69,14 +69,13 @@ func ContentGet(c *gin.Context) {
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
-	inmemCampaign, ok := campaignByHash[campaignHash]
+	campaign, ok := campaignByHash[campaignHash]
 	if !ok {
 		m.CampaignHashWrong.Inc()
 		err = fmt.Errorf("Cann't find campaign: %s", campaignHash)
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
-	campaign := inmemCampaign.Properties
 	action.CampaignCode = campaign.Code
 	msg := gatherInfo(c, campaign)
 
@@ -84,9 +83,9 @@ func ContentGet(c *gin.Context) {
 	if len(startNewSubscriptionFlag) > 0 && msg.Msisdn != "" {
 		if err = startNewSubscription(c, msg); err == nil {
 			log.WithFields(log.Fields{
-				"tid":        msg.Tid,
-				"msisdn":     msg.Msisdn,
-				"campaignid": campaign.Code,
+				"tid":           msg.Tid,
+				"msisdn":        msg.Msisdn,
+				"campaign_code": campaign.Code,
 			}).Info("added new subscritpion")
 
 			subAction := rbmq.UserActionsNotify{
@@ -131,7 +130,7 @@ func ContentGet(c *gin.Context) {
 		return
 	}
 
-	if contentProperties.ContentId == 0 {
+	if contentProperties.ContentCode == "" {
 		err = fmt.Errorf("content.Get: %s", "No content id")
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
@@ -146,7 +145,7 @@ func ContentGet(c *gin.Context) {
 		return
 	}
 	logCtx.WithFields(log.Fields{
-		"contentId": contentProperties.ContentId,
+		"contentId": contentProperties.ContentCode,
 		"path":      contentProperties.ContentPath,
 	}).Debug("contentd response")
 
@@ -233,10 +232,10 @@ func UniqueUrlGet(c *gin.Context) {
 		logCtx.Fatal("contentd fatal: trying to free all resources")
 		return
 	}
-	if contentProperties.Error != "" || contentProperties.ContentId == 0 {
+	if contentProperties.Error != "" || contentProperties.ContentCode == "" {
 		m.ContentDeliveryErrors.Inc()
 
-		if contentProperties.ContentId == 0 {
+		if contentProperties.ContentCode == "" {
 			contentProperties.Error = contentProperties.Error + " no uniq url found"
 		}
 		err = fmt.Errorf("content.GetByUniqueUrl: %s", contentProperties.Error)
@@ -246,7 +245,7 @@ func UniqueUrlGet(c *gin.Context) {
 		return
 	}
 	logCtx.WithFields(log.Fields{
-		"contentId": contentProperties.ContentId,
+		"contentId": contentProperties.ContentCode,
 		"path":      contentProperties.ContentPath,
 	}).Debug("contentd response")
 

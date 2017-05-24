@@ -10,15 +10,14 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
 
-	acceptor "github.com/linkit360/go-acceptor-structs"
 	content_client "github.com/linkit360/go-contentd/rpcclient"
 	content_service "github.com/linkit360/go-contentd/server/src/service"
 	"github.com/linkit360/go-dispatcherd/src/config"
 	m "github.com/linkit360/go-dispatcherd/src/metrics"
 	"github.com/linkit360/go-dispatcherd/src/rbmq"
 	"github.com/linkit360/go-dispatcherd/src/sessions"
-	inmem_client "github.com/linkit360/go-mid/rpcclient"
-	inmem_service "github.com/linkit360/go-mid/service"
+	mid_client "github.com/linkit360/go-mid/rpcclient"
+	mid "github.com/linkit360/go-mid/service"
 	redirect_client "github.com/linkit360/go-partners/rpcclient"
 	redirect_service "github.com/linkit360/go-partners/service"
 	"github.com/linkit360/go-utils/rec"
@@ -32,8 +31,8 @@ var cnf config.AppConfig
 var e *gin.Engine
 var notifierService rbmq.Notifier
 
-var campaignByLink map[string]*inmem_service.Campaign
-var campaignByHash map[string]inmem_service.Campaign
+var campaignByLink map[string]*mid.Campaign
+var campaignByHash map[string]mid.Campaign
 
 func Init(conf config.AppConfig, engine *gin.Engine) {
 	log.SetLevel(log.DebugLevel)
@@ -44,7 +43,7 @@ func Init(conf config.AppConfig, engine *gin.Engine) {
 	if err := content_client.Init(conf.ContentClient); err != nil {
 		log.Fatal("cannot init contentd client")
 	}
-	if err := inmem_client.Init(conf.InMemConfig); err != nil {
+	if err := mid_client.Init(conf.InMemConfig); err != nil {
 		log.Fatal("cannot init inmem client")
 	}
 	if err := redirect_client.Init(conf.RedirectConfig); err != nil {
@@ -95,7 +94,7 @@ func AccessHandler(c *gin.Context) {
 // and from inmem service it goes to dispatcher
 func UpdateCampaigns() error {
 	log.WithFields(log.Fields{}).Debug("get all campaigns")
-	campaigns, err := inmem_client.GetAllCampaigns()
+	campaigns, err := mid_client.GetAllCampaigns()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err.Error(),
@@ -109,12 +108,12 @@ func UpdateCampaigns() error {
 	for key, _ := range campaignByHash {
 		delete(campaignByHash, key)
 	}
-	campaignByLink = make(map[string]*inmem_service.Campaign, len(campaigns))
-	campaignByHash = make(map[string]inmem_service.Campaign, len(campaigns))
+	campaignByLink = make(map[string]*mid.Campaign, len(campaigns))
+	campaignByHash = make(map[string]mid.Campaign, len(campaigns))
 	for _, campaign := range campaigns {
 		camp := campaign
-		campaignByLink[campaign.Properties.Link] = &camp
-		campaignByHash[campaign.Properties.Hash] = campaign
+		campaignByLink[campaign.Link] = &camp
+		campaignByHash[campaign.Hash] = campaign
 	}
 
 	campaignsJson, _ := json.Marshal(campaignByLink)
@@ -160,7 +159,7 @@ func trafficRedirect(r rbmq.AccessCampaignNotify, c *gin.Context) {
 		return
 	}
 
-	inmem_client.IncRedirectStatCount(dst.DestinationId)
+	mid_client.IncRedirectStatCount(dst.DestinationId)
 
 	hit.DestinationId = dst.DestinationId
 	hit.PartnerId = dst.PartnerId
@@ -177,7 +176,7 @@ func trafficRedirect(r rbmq.AccessCampaignNotify, c *gin.Context) {
 }
 
 // redirect inside dispatcher to another campaign if he/she already was here
-func redirect(msg rbmq.AccessCampaignNotify) (campaign acceptor.Campaign, err error) {
+func redirect(msg rbmq.AccessCampaignNotify) (campaign mid.Campaign, err error) {
 	if !cnf.Service.Rejected.CampaignRedirectEnabled {
 		log.WithFields(log.Fields{
 			"tid": msg.Tid,
@@ -186,8 +185,8 @@ func redirect(msg rbmq.AccessCampaignNotify) (campaign acceptor.Campaign, err er
 		return
 	}
 
-	// if nextCampaignId == msg.CampaignId then it's not rejected msisdn
-	campaign.Code, err = inmem_client.GetMsisdnCampaignCache(msg.CampaignCode, msg.Msisdn)
+	// if nextCampaignCode == msg.CampaignCode then it's not rejected msisdn
+	campaign.Code, err = mid_client.GetMsisdnCampaignCache(msg.CampaignCode, msg.Msisdn)
 	if err != nil {
 		err = fmt.Errorf("inmem_client.GetMsisdnCampaignCache: %s", err.Error())
 		log.WithFields(log.Fields{
@@ -215,7 +214,7 @@ func redirect(msg rbmq.AccessCampaignNotify) (campaign acceptor.Campaign, err er
 		return
 	}
 
-	inmemCampaign, err := inmem_client.GetCampaignByCode(campaign.Code)
+	campaign, err = mid_client.GetCampaignByCode(campaign.Code)
 	if err != nil {
 		err = fmt.Errorf("inmem_client.GetCampaignById: %s", err.Error())
 
@@ -226,7 +225,6 @@ func redirect(msg rbmq.AccessCampaignNotify) (campaign acceptor.Campaign, err er
 		}).Debug("redirect")
 		return
 	}
-	campaign = inmemCampaign.Properties
 	log.WithFields(log.Fields{
 		"tid":       msg.Tid,
 		"msisdn":    msg.Msisdn,
@@ -242,7 +240,7 @@ func generateUniqueUrl(r rbmq.AccessCampaignNotify) (url string, err error) {
 	logCtx := log.WithFields(log.Fields{
 		"tid": r.Tid,
 	})
-	service, err := inmem_client.GetServiceByCode(r.ServiceCode)
+	service, err := mid_client.GetServiceByCode(r.ServiceCode)
 	if err != nil {
 		m.UnknownService.Inc()
 
@@ -339,7 +337,7 @@ func generateCode(c *gin.Context) {
 		return
 	}
 
-	msg = gatherInfo(c, campaign.Properties)
+	msg = gatherInfo(c, *campaign)
 	msg.CountryCode = cnf.Service.LandingPages.Mobilink.CountryCode
 	msg.OperatorCode = cnf.Service.LandingPages.Mobilink.OperatorCode
 	if msg.IP == "" {
@@ -376,7 +374,7 @@ func generateCode(c *gin.Context) {
 	//	OperatorCode:       msg.OperatorCode,
 	//	Publisher:          sessions.GetFromSession("publisher", c),
 	//	Pixel:              sessions.GetFromSession("pixel", c),
-	//	CampaignId:         msg.CampaignId,
+	//	CampaignCode:         msg.CampaignCode,
 	//	ServiceId:          msg.ServiceId,
 	//	DelayHours:         service.DelayHours,
 	//	PaidHours:          service.PaidHours,

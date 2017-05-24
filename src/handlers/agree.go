@@ -67,7 +67,7 @@ func initiateSubscription(c *gin.Context) {
 		return
 	}
 
-	msg = gatherInfo(c, campaign.Properties)
+	msg = gatherInfo(c, *campaign)
 	if msg.IP == "" {
 		m.IPNotFoundError.Inc()
 	}
@@ -105,11 +105,11 @@ func initiateSubscription(c *gin.Context) {
 	if "sub" == qEvent {
 		if err = startNewSubscription(c, msg); err == nil {
 			log.WithFields(log.Fields{
-				"tid":        msg.Tid,
-				"link":       campaignLink,
-				"hash":       campaignByLink[campaignLink].Properties.Hash,
-				"msisdn":     msg.Msisdn,
-				"campaignid": campaignByLink[campaignLink].Properties.Code,
+				"tid":           msg.Tid,
+				"link":          campaignLink,
+				"hash":          campaignByLink[campaignLink].Hash,
+				"msisdn":        msg.Msisdn,
+				"campaign_code": campaignByLink[campaignLink].Code,
 			}).Info("added new subscritpion by API call")
 			m.Success.Inc()
 			c.JSON(200, gin.H{"state": "success"})
@@ -145,11 +145,11 @@ func initiateSubscription(c *gin.Context) {
 	}
 	if err = startNewSubscription(c, msg); err == nil {
 		log.WithFields(log.Fields{
-			"tid":        msg.Tid,
-			"link":       campaignLink,
-			"hash":       campaignByLink[campaignLink].Properties.Hash,
-			"msisdn":     msg.Msisdn,
-			"campaignid": campaignByLink[campaignLink].Properties.Code,
+			"tid":           msg.Tid,
+			"link":          campaignLink,
+			"hash":          campaignByLink[campaignLink].Hash,
+			"msisdn":        msg.Msisdn,
+			"campaign_code": campaignByLink[campaignLink].Code,
 		}).Info("added new subscritpion by API call (event unrecognized)")
 	}
 	c.JSON(500, gin.H{"error": "event is unrecognized"})

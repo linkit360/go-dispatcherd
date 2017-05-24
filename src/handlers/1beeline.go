@@ -246,15 +246,14 @@ func redirectUserBeeline(c *gin.Context) {
 	}()
 
 	campaignLink := c.Params.ByName("campaign_link")
-	inmemCampaign, ok := campaignByLink[campaignLink]
+	campaign, ok := campaignByLink[campaignLink]
 	if !ok {
 		m.CampaignLinkWrong.Inc()
 		err = fmt.Errorf("Cann't find campaign by link: %s", campaignLink)
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
-	campaign := inmemCampaign.Properties
-	msg = gatherInfo(c, campaign)
+	msg = gatherInfo(c, *campaign)
 	msg.CountryCode = cnf.Service.LandingPages.Beeline.CountryCode
 	msg.OperatorCode = cnf.Service.LandingPages.Beeline.OperatorCode
 
@@ -391,14 +390,13 @@ func returnBackCampaignPage(c *gin.Context) {
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
-	inmemCampaign, ok := campaignByHash[campaignHash]
+	campaign, ok := campaignByHash[campaignHash]
 	if !ok {
 		m.CampaignHashWrong.Inc()
 		err = fmt.Errorf("Cann't find campaign: %s", campaignHash)
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
-	campaign := inmemCampaign.Properties
 
 	action := rbmq.UserActionsNotify{
 		Action:       "return_back",
@@ -408,11 +406,11 @@ func returnBackCampaignPage(c *gin.Context) {
 	}
 	campaignPage := c.Params.ByName("campaign_page")
 	for _, v := range campaignByHash {
-		if campaignPage == v.Properties.PageSuccess {
+		if campaignPage == v.PageSuccess {
 			action.Action = "charge_paid"
 			break
 		}
-		if campaignPage == v.Properties.PageError {
+		if campaignPage == v.PageError {
 			action.Action = "charge_failed"
 			break
 		}
