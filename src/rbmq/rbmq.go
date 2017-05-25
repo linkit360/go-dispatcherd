@@ -108,7 +108,7 @@ type AccessCampaignNotify struct {
 	CountryCode  int64     `json:"country_code,omitempty"`
 	ServiceCode  string    `json:"service_code,omitempty"`
 	CampaignCode string    `json:"campaign_code,omitempty"`
-	ContentId    string    `json:"content_id,omitempty"`
+	ContentCode  string    `json:"content_code,omitempty"`
 	Supported    bool      `json:"supported,omitempty"`
 	UserAgent    string    `json:"user_agent,omitempty"`
 	Referer      string    `json:"referer,omitempty"`
