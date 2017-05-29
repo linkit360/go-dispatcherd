@@ -12,6 +12,7 @@ import (
 	"github.com/linkit360/go-dispatcherd/src/sessions"
 	inmem_client "github.com/linkit360/go-mid/rpcclient"
 	rec "github.com/linkit360/go-utils/rec"
+	"github.com/linkit360/go-utils/structs"
 )
 
 // on click - start new subscription API for south team
@@ -29,7 +30,7 @@ func initiateSubscription(c *gin.Context) {
 	m.Incoming.Inc()
 
 	var err error
-	var msg rbmq.AccessCampaignNotify
+	var msg structs.AccessCampaignNotify
 	defer func() {
 		action.Msisdn = msg.Msisdn
 		action.CampaignCode = msg.CampaignCode
@@ -156,7 +157,7 @@ func initiateSubscription(c *gin.Context) {
 	return
 }
 
-func startNewSubscription(c *gin.Context, msg rbmq.AccessCampaignNotify) error {
+func startNewSubscription(c *gin.Context, msg structs.AccessCampaignNotify) error {
 	if cnf.Service.Rejected.CampaignRedirectEnabled {
 		campaignRedirect, err := redirect(msg)
 		if err != nil {

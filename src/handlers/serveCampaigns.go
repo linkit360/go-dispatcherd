@@ -14,6 +14,7 @@ import (
 	"github.com/linkit360/go-dispatcherd/src/sessions"
 	inmem_client "github.com/linkit360/go-mid/rpcclient"
 	"github.com/linkit360/go-utils/rec"
+	"github.com/linkit360/go-utils/structs"
 )
 
 func AddCampaignHandler(rg *gin.RouterGroup) {
@@ -45,7 +46,7 @@ func serveCampaigns(c *gin.Context) {
 	m.Incoming.Inc()
 
 	var err error
-	var msg rbmq.AccessCampaignNotify
+	var msg structs.AccessCampaignNotify
 	defer func() {
 		action.Msisdn = msg.Msisdn
 		action.CampaignCode = msg.CampaignCode

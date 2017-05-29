@@ -14,8 +14,8 @@ import (
 	"github.com/linkit360/go-dispatcherd/src/rbmq"
 	"github.com/linkit360/go-dispatcherd/src/sessions"
 	"github.com/linkit360/go-dispatcherd/src/utils"
-	inmem_service "github.com/linkit360/go-mid/service"
 	"github.com/linkit360/go-utils/rec"
+	"github.com/linkit360/go-utils/structs"
 )
 
 func AddContentHandlers() {
@@ -39,7 +39,7 @@ func ContentGet(c *gin.Context) {
 		Action: "content_get",
 		Tid:    tid,
 	}
-	contentProperties := &inmem_service.ContentSentProperties{}
+	contentProperties := &structs.ContentSentProperties{}
 	defer func() {
 		if err != nil {
 			m.Errors.Inc()
@@ -182,7 +182,7 @@ func UniqueUrlGet(c *gin.Context) {
 	})
 	logCtx.Debug("receive content by unique link")
 
-	contentProperties := &inmem_service.ContentSentProperties{}
+	contentProperties := &structs.ContentSentProperties{}
 	action := rbmq.UserActionsNotify{
 		Action: "content_get",
 		Tid:    tid,

@@ -8,7 +8,8 @@ import (
 	log "github.com/Sirupsen/logrus"
 
 	m "github.com/linkit360/go-dispatcherd/src/metrics"
-	inmem_service "github.com/linkit360/go-mid/service"
+	"github.com/linkit360/go-utils/structs"
+
 	redirect_service "github.com/linkit360/go-partners/service"
 	"github.com/linkit360/go-utils/amqp"
 	"github.com/linkit360/go-utils/rec"
@@ -19,11 +20,11 @@ type Notifier interface {
 
 	NewSubscriptionNotify(string, rec.Record) error
 
-	AccessCampaignNotify(msg AccessCampaignNotify) error
+	AccessCampaignNotify(msg structs.AccessCampaignNotify) error
 
 	ActionNotify(msg UserActionsNotify) error
 
-	ContentSentNotify(msg inmem_service.ContentSentProperties) error
+	ContentSentNotify(msg structs.ContentSentProperties) error
 
 	PixelBufferNotify(r rec.Record) error
 
@@ -99,27 +100,7 @@ func (service notifier) NewSubscriptionNotify(queue string, msg rec.Record) erro
 	return nil
 }
 
-type AccessCampaignNotify struct {
-	Msisdn       string    `json:"msisdn,omitempty"`
-	CampaignHash string    `json:"campaign_hash,omitempty"`
-	Tid          string    `json:"tid,omitempty"`
-	IP           string    `json:"ip,omitempty"`
-	OperatorCode int64     `json:"operator_code,omitempty"`
-	CountryCode  int64     `json:"country_code,omitempty"`
-	ServiceCode  string    `json:"service_code,omitempty"`
-	CampaignCode string    `json:"campaign_code,omitempty"`
-	ContentCode  string    `json:"content_code,omitempty"`
-	Supported    bool      `json:"supported,omitempty"`
-	UserAgent    string    `json:"user_agent,omitempty"`
-	Referer      string    `json:"referer,omitempty"`
-	UrlPath      string    `json:"url_path,omitempty"`
-	Method       string    `json:"method,omitempty"`
-	Headers      string    `json:"headers,omitempty"`
-	Error        string    `json:"err,omitempty"`
-	SentAt       time.Time `json:"sent_at,omitempty"`
-}
-
-func (service notifier) AccessCampaignNotify(msg AccessCampaignNotify) error {
+func (service notifier) AccessCampaignNotify(msg structs.AccessCampaignNotify) error {
 	msg.SentAt = time.Now().UTC()
 	event := EventNotify{
 		EventName: "access_campaign",
@@ -163,7 +144,7 @@ func (service notifier) ActionNotify(msg UserActionsNotify) error {
 	return nil
 }
 
-func (service notifier) ContentSentNotify(msg inmem_service.ContentSentProperties) error {
+func (service notifier) ContentSentNotify(msg structs.ContentSentProperties) error {
 	msg.SentAt = time.Now().UTC()
 
 	event := EventNotify{

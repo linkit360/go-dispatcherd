@@ -9,13 +9,13 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
 
-	"github.com/linkit360/go-dispatcherd/src/rbmq"
 	"github.com/linkit360/go-dispatcherd/src/sessions"
 	mid "github.com/linkit360/go-mid/service"
+	"github.com/linkit360/go-utils/structs"
 )
 
 // gather information from headers, etc
-func gatherInfo(c *gin.Context, campaign mid.Campaign) (msg rbmq.AccessCampaignNotify) {
+func gatherInfo(c *gin.Context, campaign mid.Campaign) (msg structs.AccessCampaignNotify) {
 	sessions.SetSession(c)
 	tid := sessions.GetTid(c)
 	logCtx := log.WithFields(log.Fields{
@@ -27,7 +27,7 @@ func gatherInfo(c *gin.Context, campaign mid.Campaign) (msg rbmq.AccessCampaignN
 		logCtx.Error("cannot marshal headers")
 		headers = []byte("{}")
 	}
-	msg = rbmq.AccessCampaignNotify{
+	msg = structs.AccessCampaignNotify{
 		Tid:          tid,
 		IP:           r.Header.Get("X-Forwarded-For"),
 		UserAgent:    r.UserAgent(),

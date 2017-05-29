@@ -21,6 +21,7 @@ import (
 	redirect_client "github.com/linkit360/go-partners/rpcclient"
 	redirect_service "github.com/linkit360/go-partners/service"
 	"github.com/linkit360/go-utils/rec"
+	"github.com/linkit360/go-utils/structs"
 )
 
 // file for global variables,
@@ -130,7 +131,7 @@ type EventNotify struct {
 }
 
 // traffic redirect
-func trafficRedirect(r rbmq.AccessCampaignNotify, c *gin.Context) {
+func trafficRedirect(r structs.AccessCampaignNotify, c *gin.Context) {
 	if r.CountryCode == 0 {
 		r.CountryCode = cnf.Service.CountryCode
 	}
@@ -176,7 +177,7 @@ func trafficRedirect(r rbmq.AccessCampaignNotify, c *gin.Context) {
 }
 
 // redirect inside dispatcher to another campaign if he/she already was here
-func redirect(msg rbmq.AccessCampaignNotify) (campaign mid.Campaign, err error) {
+func redirect(msg structs.AccessCampaignNotify) (campaign mid.Campaign, err error) {
 	if !cnf.Service.Rejected.CampaignRedirectEnabled {
 		log.WithFields(log.Fields{
 			"tid": msg.Tid,
@@ -236,7 +237,7 @@ func redirect(msg rbmq.AccessCampaignNotify) (campaign mid.Campaign, err error) 
 
 // generate unique url for user
 // the unique url creation is inside contentd service
-func generateUniqueUrl(r rbmq.AccessCampaignNotify) (url string, err error) {
+func generateUniqueUrl(r structs.AccessCampaignNotify) (url string, err error) {
 	logCtx := log.WithFields(log.Fields{
 		"tid": r.Tid,
 	})
@@ -294,7 +295,7 @@ func generateCode(c *gin.Context) {
 	m.Incoming.Inc()
 
 	var err error
-	var msg rbmq.AccessCampaignNotify
+	var msg structs.AccessCampaignNotify
 	defer func() {
 		action.Msisdn = msg.Msisdn
 		action.CampaignCode = msg.CampaignCode

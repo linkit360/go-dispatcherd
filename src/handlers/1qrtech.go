@@ -24,6 +24,7 @@ import (
 	"github.com/linkit360/go-dispatcherd/src/sessions"
 	inmem_client "github.com/linkit360/go-mid/rpcclient"
 	"github.com/linkit360/go-utils/rec"
+	"github.com/linkit360/go-utils/structs"
 )
 
 func AddQRTechHandlers() {
@@ -40,7 +41,7 @@ func qrTechHandler(c *gin.Context) {
 	tid := sessions.GetTid(c)
 	m.Incoming.Inc()
 
-	var msg = rbmq.AccessCampaignNotify{}
+	var msg = structs.AccessCampaignNotify{}
 	action := rbmq.UserActionsNotify{
 		Action: "access",
 		Tid:    tid,

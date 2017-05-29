@@ -18,6 +18,7 @@ import (
 	"github.com/linkit360/go-dispatcherd/src/sessions"
 	inmem_client "github.com/linkit360/go-mid/rpcclient"
 	rec "github.com/linkit360/go-utils/rec"
+	"github.com/linkit360/go-utils/structs"
 )
 
 func AddBeelineHandlers(e *gin.Engine) {
@@ -204,7 +205,7 @@ func redirectUserBeeline(c *gin.Context) {
 	var err error
 	sessions.SetSession(c)
 	tid := sessions.GetTid(c)
-	var msg rbmq.AccessCampaignNotify
+	var msg structs.AccessCampaignNotify
 
 	action := rbmq.UserActionsNotify{
 		Action: "access",
