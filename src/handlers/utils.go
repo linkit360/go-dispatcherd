@@ -44,8 +44,8 @@ func Init(conf config.AppConfig, engine *gin.Engine) {
 	if err := content_client.Init(conf.ContentClient); err != nil {
 		log.Fatal("cannot init contentd client")
 	}
-	if err := mid_client.Init(conf.InMemConfig); err != nil {
-		log.Fatal("cannot init inmem client")
+	if err := mid_client.Init(conf.MidConfig); err != nil {
+		log.Fatal("cannot init mid client")
 	}
 	if err := redirect_client.Init(conf.RedirectConfig); err != nil {
 		log.Fatal("cannot redirect client")
@@ -91,8 +91,8 @@ func AccessHandler(c *gin.Context) {
 }
 
 // update campaign list
-// when campaign changes, CQR request comes to inmem service
-// and from inmem service it goes to dispatcher
+// when campaign changes, update request comes to mid service
+// and from mid service it goes to dispatcher
 func UpdateCampaigns() error {
 	log.WithFields(log.Fields{}).Debug("get all campaigns")
 	campaigns, err := mid_client.GetAllCampaigns()
@@ -189,7 +189,7 @@ func redirect(msg structs.AccessCampaignNotify) (campaign mid.Campaign, err erro
 	// if nextCampaignCode == msg.CampaignCode then it's not rejected msisdn
 	campaign.Code, err = mid_client.GetMsisdnCampaignCache(msg.CampaignCode, msg.Msisdn)
 	if err != nil {
-		err = fmt.Errorf("inmem_client.GetMsisdnCampaignCache: %s", err.Error())
+		err = fmt.Errorf("mid_client.GetMsisdnCampaignCache: %s", err.Error())
 		log.WithFields(log.Fields{
 			"tid":   msg.Tid,
 			"error": err.Error(),
@@ -217,7 +217,7 @@ func redirect(msg structs.AccessCampaignNotify) (campaign mid.Campaign, err erro
 
 	campaign, err = mid_client.GetCampaignByCode(campaign.Code)
 	if err != nil {
-		err = fmt.Errorf("inmem_client.GetCampaignById: %s", err.Error())
+		err = fmt.Errorf("mid_client.GetCampaignById: %s", err.Error())
 
 		log.WithFields(log.Fields{
 			"tid":    msg.Tid,
@@ -245,7 +245,7 @@ func generateUniqueUrl(r structs.AccessCampaignNotify) (url string, err error) {
 	if err != nil {
 		m.UnknownService.Inc()
 
-		err = fmt.Errorf("inmem_client.GetServiceById: %s", err.Error())
+		err = fmt.Errorf("mid_client.GetServiceById: %s", err.Error())
 		logCtx.WithFields(log.Fields{
 			"serviceId": r.ServiceCode,
 			"error":     err.Error(),
@@ -355,9 +355,9 @@ func generateCode(c *gin.Context) {
 		return
 	}
 
-	//service, err := inmem_client.GetServiceById(msg.ServiceId)
+	//service, err := mid_client.GetServiceById(msg.ServiceId)
 	//if err != nil {
-	//	err = fmt.Errorf("inmem_client.GetServiceById: %s", err.Error())
+	//	err = fmt.Errorf("mid_client.GetServiceById: %s", err.Error())
 	//	logCtx.WithFields(log.Fields{
 	//		"error":      err.Error(),
 	//		"service_id": msg.ServiceId,

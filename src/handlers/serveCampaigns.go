@@ -12,7 +12,7 @@ import (
 	m "github.com/linkit360/go-dispatcherd/src/metrics"
 	"github.com/linkit360/go-dispatcherd/src/rbmq"
 	"github.com/linkit360/go-dispatcherd/src/sessions"
-	inmem_client "github.com/linkit360/go-mid/rpcclient"
+	mid_client "github.com/linkit360/go-mid/rpcclient"
 	"github.com/linkit360/go-utils/rec"
 	"github.com/linkit360/go-utils/structs"
 )
@@ -103,9 +103,9 @@ func serveCampaigns(c *gin.Context) {
 
 	if cnf.Service.Rejected.TrafficRedirectEnabled {
 		// check if rejected: if rejected, then campaignCode differs from campaign.id
-		isRejected, err := inmem_client.IsMsisdnRejectedByService(msg.ServiceCode, msg.Msisdn)
+		isRejected, err := mid_client.IsMsisdnRejectedByService(msg.ServiceCode, msg.Msisdn)
 		if err != nil {
-			err = fmt.Errorf("inmem_client.IsMsisdnRejectedByService: %s", err.Error())
+			err = fmt.Errorf("mid_client.IsMsisdnRejectedByService: %s", err.Error())
 			log.WithFields(log.Fields{
 				"tid":   msg.Tid,
 				"error": err.Error(),

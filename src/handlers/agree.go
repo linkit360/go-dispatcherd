@@ -10,7 +10,7 @@ import (
 	m "github.com/linkit360/go-dispatcherd/src/metrics"
 	"github.com/linkit360/go-dispatcherd/src/rbmq"
 	"github.com/linkit360/go-dispatcherd/src/sessions"
-	inmem_client "github.com/linkit360/go-mid/rpcclient"
+	mid_client "github.com/linkit360/go-mid/rpcclient"
 	rec "github.com/linkit360/go-utils/rec"
 	"github.com/linkit360/go-utils/structs"
 )
@@ -181,9 +181,9 @@ func startNewSubscription(c *gin.Context, msg structs.AccessCampaignNotify) erro
 		}
 	}
 	if cnf.Service.Rejected.TrafficRedirectEnabled {
-		err := inmem_client.SetMsisdnServiceCache(msg.ServiceCode, msg.Msisdn)
+		err := mid_client.SetMsisdnServiceCache(msg.ServiceCode, msg.Msisdn)
 		if err != nil {
-			err = fmt.Errorf("inmem_client.SetMsisdnServiceCache: %s", err.Error())
+			err = fmt.Errorf("mid_client.SetMsisdnServiceCache: %s", err.Error())
 			log.WithFields(log.Fields{
 				"tid":   msg.Tid,
 				"error": err.Error(),
@@ -231,8 +231,8 @@ func startNewSubscription(c *gin.Context, msg structs.AccessCampaignNotify) erro
 	}
 	m.AgreeSuccess.Inc()
 	if cnf.Service.Rejected.CampaignRedirectEnabled {
-		if err := inmem_client.SetMsisdnCampaignCache(msg.CampaignCode, msg.Msisdn); err != nil {
-			err = fmt.Errorf("inmem_client.SetMsisdnCampaignCache: %s", err.Error())
+		if err := mid_client.SetMsisdnCampaignCache(msg.CampaignCode, msg.Msisdn); err != nil {
+			err = fmt.Errorf("mid_client.SetMsisdnCampaignCache: %s", err.Error())
 			logCtx.Error(err.Error())
 		}
 	}

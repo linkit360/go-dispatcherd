@@ -13,7 +13,7 @@ import (
 	content_client "github.com/linkit360/go-contentd/rpcclient"
 	"github.com/linkit360/go-dispatcherd/src/rbmq"
 	"github.com/linkit360/go-dispatcherd/src/sessions"
-	inmem_client "github.com/linkit360/go-mid/rpcclient"
+	mid "github.com/linkit360/go-mid/rpcclient"
 	redirect_client "github.com/linkit360/go-partners/rpcclient"
 )
 
@@ -22,7 +22,7 @@ type AppConfig struct {
 	Server         ServerConfig                    `yaml:"server"`
 	Service        ServiceConfig                   `yaml:"service"`
 	ContentClient  content_client.ClientConfig     `yaml:"content_client"`
-	InMemConfig    inmem_client.ClientConfig       `yaml:"inmem_client"`
+	MidConfig      mid.ClientConfig                `yaml:"mid_client"`
 	RedirectConfig redirect_client.RPCClientConfig `yaml:"redirect_client"`
 	Notifier       rbmq.NotifierConfig             `yaml:"notifier"`
 }

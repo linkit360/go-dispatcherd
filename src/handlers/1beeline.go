@@ -16,7 +16,7 @@ import (
 	m "github.com/linkit360/go-dispatcherd/src/metrics"
 	"github.com/linkit360/go-dispatcherd/src/rbmq"
 	"github.com/linkit360/go-dispatcherd/src/sessions"
-	inmem_client "github.com/linkit360/go-mid/rpcclient"
+	mid_client "github.com/linkit360/go-mid/rpcclient"
 	rec "github.com/linkit360/go-utils/rec"
 	"github.com/linkit360/go-utils/structs"
 )
@@ -258,9 +258,9 @@ func redirectUserBeeline(c *gin.Context) {
 	msg.CountryCode = cnf.Service.LandingPages.Beeline.CountryCode
 	msg.OperatorCode = cnf.Service.LandingPages.Beeline.OperatorCode
 
-	service, err := inmem_client.GetServiceByCode(msg.ServiceCode)
+	service, err := mid_client.GetServiceByCode(msg.ServiceCode)
 	if err != nil {
-		err = fmt.Errorf("inmem_client.GetServiceById: %s", err.Error())
+		err = fmt.Errorf("mid_client.GetServiceById: %s", err.Error())
 		log.WithFields(log.Fields{
 			"tid":        msg.Tid,
 			"error":      err.Error(),

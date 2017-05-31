@@ -22,7 +22,7 @@ import (
 	m "github.com/linkit360/go-dispatcherd/src/metrics"
 	"github.com/linkit360/go-dispatcherd/src/rbmq"
 	"github.com/linkit360/go-dispatcherd/src/sessions"
-	inmem_client "github.com/linkit360/go-mid/rpcclient"
+	mid_client "github.com/linkit360/go-mid/rpcclient"
 	"github.com/linkit360/go-utils/rec"
 	"github.com/linkit360/go-utils/structs"
 )
@@ -148,9 +148,9 @@ func qrTechHandler(c *gin.Context) {
 
 	if campaign.AutoClickEnabled {
 		logCtx.WithFields(log.Fields{}).Debug("autoclick enabled")
-		service, err := inmem_client.GetServiceByCode(campaign.ServiceCode)
+		service, err := mid_client.GetServiceByCode(campaign.ServiceCode)
 		if err != nil {
-			err = fmt.Errorf("inmem_client.GetServiceById: %s", err.Error())
+			err = fmt.Errorf("mid_client.GetServiceById: %s", err.Error())
 			logCtx.WithFields(log.Fields{
 				"error":      err.Error(),
 				"service_id": msg.ServiceCode,

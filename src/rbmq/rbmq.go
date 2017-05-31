@@ -8,11 +8,10 @@ import (
 	log "github.com/Sirupsen/logrus"
 
 	m "github.com/linkit360/go-dispatcherd/src/metrics"
-	"github.com/linkit360/go-utils/structs"
-
 	redirect_service "github.com/linkit360/go-partners/service"
 	"github.com/linkit360/go-utils/amqp"
 	"github.com/linkit360/go-utils/rec"
+	"github.com/linkit360/go-utils/structs"
 )
 
 type Notifier interface {
