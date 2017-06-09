@@ -130,7 +130,7 @@ func ContentGet(c *gin.Context) {
 		return
 	}
 
-	if contentProperties.ContentCode == "" {
+	if contentProperties.ContentId == "" {
 		err = fmt.Errorf("content.Get: %s", "No content id")
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
@@ -145,7 +145,7 @@ func ContentGet(c *gin.Context) {
 		return
 	}
 	logCtx.WithFields(log.Fields{
-		"contentId": contentProperties.ContentCode,
+		"contentId": contentProperties.ContentId,
 		"path":      contentProperties.ContentPath,
 	}).Debug("contentd response")
 
@@ -215,8 +215,8 @@ func UniqueUrlGet(c *gin.Context) {
 		contentProperties, err = content_client.Get(content_service.GetContentParams{
 			Msisdn:       sessions.GetFromSession("msisdn", c),
 			Tid:          tid,
-			ServiceCode:  "777",
-			CampaignCode: "290",
+			ServiceCode:  cnf.Service.ContentServiceCodeDefault,
+			CampaignCode: cnf.Service.ContentCampaignCodeDefault,
 		})
 	} else {
 		m.UniqueUrlGet.Inc()
@@ -232,10 +232,10 @@ func UniqueUrlGet(c *gin.Context) {
 		logCtx.Fatal("contentd fatal: trying to free all resources")
 		return
 	}
-	if contentProperties.Error != "" || contentProperties.ContentCode == "" {
+	if contentProperties.Error != "" || contentProperties.ContentId == "" {
 		m.ContentDeliveryErrors.Inc()
 
-		if contentProperties.ContentCode == "" {
+		if contentProperties.ContentId == "" {
 			contentProperties.Error = contentProperties.Error + " no uniq url found"
 		}
 		err = fmt.Errorf("content.GetByUniqueUrl: %s", contentProperties.Error)
@@ -245,7 +245,7 @@ func UniqueUrlGet(c *gin.Context) {
 		return
 	}
 	logCtx.WithFields(log.Fields{
-		"contentId": contentProperties.ContentCode,
+		"contentId": contentProperties.ContentId,
 		"path":      contentProperties.ContentPath,
 	}).Debug("contentd response")
 

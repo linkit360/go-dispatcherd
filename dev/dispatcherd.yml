@@ -35,6 +35,9 @@ service:
   detect_by_ip_enabled: false
   country_code: 92
   operator_code: 41001
+  content_service_code_default: 23
+  content_campaign_code_default: 290
+
   rejected:
     campaign_redirect_enabled: false
     traffic_redirect_enabled: false
@@ -43,7 +46,7 @@ service:
     custom: true
 
     mobilink:
-      enabled: true
+      enabled: false
       queues:
         responses: mobilink_responses
         mo: mobilink_new_subscriptions
@@ -60,8 +63,9 @@ service:
       session_path: /home/centos/linkit/beeline_session.json
       url: http://217.118.84.12:8888/CDP_WapTester/emulator
       timeout: 30
-      user: 1637572
-      pass: KhZbQo1n
+      auth:
+        user: 1637572
+        pass: KhZbQo1n
 
     qrtech:
       enabled: false

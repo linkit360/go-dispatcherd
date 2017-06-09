@@ -27,7 +27,6 @@ import (
 // file for global variables,
 // initialisation
 // common functions
-
 var cnf config.AppConfig
 var e *gin.Engine
 var notifierService rbmq.Notifier
