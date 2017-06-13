@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/jinzhu/configor"
+	log "github.com/sirupsen/logrus"
 
 	content_client "github.com/linkit360/go-contentd/rpcclient"
 	"github.com/linkit360/go-dispatcherd/src/rbmq"

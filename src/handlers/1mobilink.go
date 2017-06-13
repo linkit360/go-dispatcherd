@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
+	log "github.com/sirupsen/logrus"
 )
 
 func AddMobilinkHandlers(e *gin.Engine) {

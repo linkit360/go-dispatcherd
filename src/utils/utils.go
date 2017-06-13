@@ -5,8 +5,8 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 func ServeAttachment(filePath, name string, c *gin.Context, log *logrus.Entry) error {
@@ -26,17 +26,6 @@ func ServeAttachment(filePath, name string, c *gin.Context, log *logrus.Entry) e
 
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", fileName))
 	w.Header().Set("Content-Type", "application; charset-utf-8")
-	w.Header().Set("Cache-Control", "no-cache, no-store, max-age=0, must-revalidate")
-	w.Header().Set("Pragma", "no-cache")
-	w.Header().Set("Expires", "0")
-	w.WriteHeader(200)
-	w.Write(content)
-	return nil
-}
-
-func ServeBytes(content []byte, c *gin.Context) error {
-	w := c.Writer
-	w.Header().Set("Content-Type", "text/html; charset-utf-8")
 	w.Header().Set("Cache-Control", "no-cache, no-store, max-age=0, must-revalidate")
 	w.Header().Set("Pragma", "no-cache")
 	w.Header().Set("Expires", "0")

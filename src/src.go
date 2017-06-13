@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"runtime"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	//"github.com/fvbock/endless"
 	"github.com/gin-gonic/gin"
 
@@ -43,10 +43,9 @@ func RunServer() {
 	e.StaticFile("/favicon.ico", conf.Server.Path+"/favicon.ico")
 	e.StaticFile("/robots.txt", conf.Server.Path+"/robots.txt")
 	e.NoRoute(handlers.AccessHandler, notFound)
+	//e.RedirectTrailingSlash = true
 
-	e.RedirectTrailingSlash = true
 	e.Run(":" + conf.Server.Port)
-	//endless.ListenAndServe(":"+conf.Server.Port, e)
 }
 
 func notFound(c *gin.Context) {

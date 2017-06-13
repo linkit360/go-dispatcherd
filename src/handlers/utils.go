@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
+	log "github.com/sirupsen/logrus"
 
 	content_client "github.com/linkit360/go-contentd/rpcclient"
 	content_service "github.com/linkit360/go-contentd/server/src/service"
@@ -115,6 +116,15 @@ func UpdateCampaigns() error {
 		campaignByLink[campaign.Link] = &camp
 		campaignByHash[campaign.Hash] = campaign
 	}
+
+	path := cnf.Server.Path + "campaign/*/*.html"
+	log.Debugf("update templates path: %s", path)
+	files, err := filepath.Glob(path)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	log.WithField("files", files).Debug("read campaigns")
+	e.LoadHTMLFiles(files...)
 
 	campaignsJson, _ := json.Marshal(campaignByLink)
 	log.WithFields(log.Fields{

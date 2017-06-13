@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/linkit360/go-dispatcherd/src/sessions"
 	mid "github.com/linkit360/go-mid/service"

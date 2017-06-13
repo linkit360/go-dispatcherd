@@ -3,9 +3,9 @@ package sessions
 import (
 	"fmt"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/contrib/sessions"
 	"github.com/gin-gonic/gin"
+	log "github.com/sirupsen/logrus"
 
 	rec "github.com/linkit360/go-utils/rec"
 )

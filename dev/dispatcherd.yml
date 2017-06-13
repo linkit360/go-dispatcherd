@@ -28,7 +28,7 @@ redirect_client:
 service:
   campaign_hash_length: 32
   error_redirect_url: http://id.slypee.com
-  not_found_redirect_url: http://dev.pk.linkit360.ru/lp/cpa.k.ak100
+  not_found_redirect_url: http://id.slypee.com
   redirect_on_gather_error: true
   send_restore_pixel_enabled:  false
   start_new_subscription_on_click: true
@@ -43,7 +43,7 @@ service:
     traffic_redirect_enabled: false
 
   landings:
-    custom: true
+    custom: false
 
     mobilink:
       enabled: false

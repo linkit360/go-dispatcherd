@@ -3,11 +3,10 @@ package handlers
 import (
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
+	log "github.com/sirupsen/logrus"
 
 	m "github.com/linkit360/go-dispatcherd/src/metrics"
 	"github.com/linkit360/go-dispatcherd/src/rbmq"
@@ -19,18 +18,44 @@ import (
 
 func AddCampaignHandler(rg *gin.RouterGroup) {
 	if !cnf.Service.LandingPages.Custom {
-		e.Group("/lp/:campaign_link", AccessHandler).GET("", serveCampaigns)
+		e.HEAD("/lp/:campaign_link/*filepath", ServeStatic)
+		e.GET("/lp/:campaign_link/*filepath", ServeStatic)
 	}
-	e.LoadHTMLGlob(cnf.Server.Path + "campaign/**/*")
 	e.GET("/updateTemplates", updateTemplates)
 }
 
 func updateTemplates(c *gin.Context) {
-	path := cnf.Server.Path + "campaign/**/*"
-	log.Debugf("update templates path: %s", path)
-	e.LoadHTMLGlob(path)
 	UpdateCampaigns()
 	c.JSON(200, struct{}{})
+}
+
+func ServeStatic(c *gin.Context) {
+	filePath := c.Params.ByName("filepath")
+	log.WithFields(log.Fields{
+		"fp": filePath,
+	}).Info("path")
+
+	if filePath == "" || filePath == "/" {
+		serveCampaigns(c)
+		return
+	}
+	campaignLink := c.Params.ByName("campaign_link")
+	campaign, ok := campaignByLink[campaignLink]
+	if !ok {
+		m.PageNotFoundError.Inc()
+		err := fmt.Errorf("page not found: %s", campaignLink)
+
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Error("cannot get campaign by link")
+		c.JSON(500, gin.H{"error": "link not found"})
+		return
+	}
+
+	filePath = cnf.Server.Path + "campaign/" + campaign.Id + filePath
+	log.WithField("path", filePath).Debug("serve file")
+
+	c.File(filePath)
 }
 
 func serveCampaigns(c *gin.Context) {
@@ -73,8 +98,7 @@ func serveCampaigns(c *gin.Context) {
 		}
 	}()
 
-	paths := strings.Split(c.Request.URL.Path, "/")
-	campaignLink := paths[len(paths)-1]
+	campaignLink := c.Params.ByName("campaign_link")
 
 	// important, do not use campaign from this operation
 	// bcz we need to inc counter to process ratio

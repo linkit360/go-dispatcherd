@@ -9,9 +9,9 @@ import (
 	"os"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/gin-gonic/gin"
 	cache "github.com/patrickmn/go-cache"
+	log "github.com/sirupsen/logrus"
 
 	m "github.com/linkit360/go-dispatcherd/src/metrics"
 	"github.com/linkit360/go-dispatcherd/src/rbmq"
