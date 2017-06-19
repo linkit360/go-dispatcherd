@@ -6,11 +6,14 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
-func ServeAttachment(filePath, name string, c *gin.Context, log *logrus.Entry) error {
-	log.WithField("path", filePath).Debug("serve file")
+func ServeAttachment(filePath, name string, c *gin.Context, logCtx *log.Entry) error {
+	logCtx.WithFields(log.Fields{
+		"path": filePath,
+		"name": name,
+	}).Debug("serve file")
 
 	w := c.Writer
 

@@ -62,6 +62,7 @@ func initiateSubscription(c *gin.Context) {
 		err = fmt.Errorf("page not found: %s", campaignLink)
 
 		log.WithFields(log.Fields{
+			"link":  campaignLink,
 			"error": err.Error(),
 		}).Error("cannot get campaign by link")
 		c.JSON(500, gin.H{"error": "Unknown campaign"})

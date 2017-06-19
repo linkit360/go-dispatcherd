@@ -46,6 +46,8 @@ func ServeStatic(c *gin.Context) {
 		err := fmt.Errorf("page not found: %s", campaignLink)
 
 		log.WithFields(log.Fields{
+			"link":  campaignLink,
+			"path":  c.Request.URL.Path,
 			"error": err.Error(),
 		}).Error("cannot get campaign by link")
 		c.JSON(500, gin.H{"error": "link not found"})

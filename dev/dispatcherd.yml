@@ -46,7 +46,7 @@ service:
     custom: false
 
     mobilink:
-      enabled: false
+      enabled: true
       queues:
         responses: mobilink_responses
         mo: mobilink_new_subscriptions

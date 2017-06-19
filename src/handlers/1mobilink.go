@@ -11,5 +11,6 @@ func AddMobilinkHandlers(e *gin.Engine) {
 	}
 	e.Group("/lp/:campaign_link", AccessHandler).GET("", serveCampaigns)
 	e.Group("/api/:campaign_link").GET("", AccessHandler, initiateSubscription)
+	e.Group("/api/:campaign_link").GET("/", AccessHandler, initiateSubscription)
 	log.WithFields(log.Fields{}).Debug("mobilink handlers init")
 }

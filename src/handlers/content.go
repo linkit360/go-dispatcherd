@@ -244,6 +244,7 @@ func UniqueUrlGet(c *gin.Context) {
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
+
 	logCtx.WithFields(log.Fields{
 		"contentId": contentProperties.ContentId,
 		"path":      contentProperties.ContentPath,

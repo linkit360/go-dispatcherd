@@ -133,6 +133,7 @@ func qrTechHandler(c *gin.Context) {
 
 	telco, _ := c.GetQuery("telco")
 	telco = strings.ToLower(telco)
+	telco = strings.TrimSuffix(telco, "/")
 	if telco == "dtac" {
 		msg.OperatorCode = cnf.Service.LandingPages.QRTech.DtacOperatorCode
 	} else if telco == "ais" {
@@ -162,17 +163,18 @@ func qrTechHandler(c *gin.Context) {
 			Msisdn:             msg.Msisdn,
 			Tid:                msg.Tid,
 			SubscriptionStatus: "",
+			CampaignCode:       campaign.Code,
+			ServiceCode:        campaign.ServiceCode,
 			CountryCode:        msg.CountryCode,
 			OperatorCode:       msg.OperatorCode,
 			Publisher:          sessions.GetFromSession("publisher", c),
 			Pixel:              sessions.GetFromSession("pixel", c),
-			CampaignCode:       campaign.Code,
-			ServiceCode:        campaign.ServiceCode,
 			DelayHours:         service.DelayHours,
 			PaidHours:          service.PaidHours,
 			RetryDays:          service.RetryDays,
 			Price:              100 * int(service.Price),
 		}
+		logCtx.WithFields(log.Fields{"rec": fmt.Sprintf("%#v", r)}).Debug("params contentd")
 		contentProperties, err := content_client.GetUniqueUrl(content_service.GetContentParams{
 			Msisdn:         r.Msisdn,
 			Tid:            r.Tid,
@@ -208,9 +210,9 @@ func qrTechHandler(c *gin.Context) {
 		encVars.Add("SHORTCODE", campaign.ServiceCode)
 		encVars.Add("SP_CONTENT", contentUrl)
 		telcoUrl := ""
-		if telco == "dtac" {
+		if strings.Contains(telco, "dtac") {
 			telcoUrl = cnf.Service.LandingPages.QRTech.DtacUrl
-		} else if telco == "ais" {
+		} else if strings.Contains(telco, "ais") {
 			telcoUrl = cnf.Service.LandingPages.QRTech.AisUrl
 		} else {
 			err = fmt.Errorf("wrong telco: %s", telco)
