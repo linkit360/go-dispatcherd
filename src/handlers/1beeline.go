@@ -346,7 +346,7 @@ func redirectUserBeeline(c *gin.Context) {
 		DelayHours:               service.DelayHours,
 		PaidHours:                service.PaidHours,
 		RetryDays:                service.RetryDays,
-		Price:                    100 * int(service.Price),
+		Price:                    service.PriceCents,
 		Periodic:                 true,
 		PeriodicDays:             service.PeriodicDays,
 		PeriodicAllowedFromHours: service.PeriodicAllowedFrom,

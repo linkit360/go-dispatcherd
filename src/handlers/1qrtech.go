@@ -17,8 +17,6 @@ import (
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 
-	content_client "github.com/linkit360/go-contentd/rpcclient"
-	content_service "github.com/linkit360/go-contentd/server/src/service"
 	m "github.com/linkit360/go-dispatcherd/src/metrics"
 	"github.com/linkit360/go-dispatcherd/src/rbmq"
 	"github.com/linkit360/go-dispatcherd/src/sessions"
@@ -35,8 +33,6 @@ func AddQRTechHandlers() {
 }
 
 func qrTechHandler(c *gin.Context) {
-	m.Incoming.Inc()
-
 	var err error
 	tid := sessions.GetTid(c)
 	m.Incoming.Inc()
@@ -74,6 +70,7 @@ func qrTechHandler(c *gin.Context) {
 				"action": fmt.Sprintf("%#v", action),
 			}).Error("notify user action")
 		}
+
 		if errAccessCampaign := notifierService.AccessCampaignNotify(msg); errAccessCampaign != nil {
 			logCtx.WithFields(log.Fields{
 				"error": errAccessCampaign.Error(),
@@ -172,39 +169,10 @@ func qrTechHandler(c *gin.Context) {
 			DelayHours:         service.DelayHours,
 			PaidHours:          service.PaidHours,
 			RetryDays:          service.RetryDays,
-			Price:              100 * int(service.Price),
-		}
-		logCtx.WithFields(log.Fields{"rec": fmt.Sprintf("%#v", r)}).Debug("params contentd")
-		contentProperties, err := content_client.GetUniqueUrl(content_service.GetContentParams{
-			Msisdn:         r.Msisdn,
-			Tid:            r.Tid,
-			ServiceCode:    r.ServiceCode,
-			CampaignCode:   r.CampaignCode,
-			OperatorCode:   r.OperatorCode,
-			CountryCode:    r.CountryCode,
-			SubscriptionId: r.SubscriptionId,
-		})
-
-		if contentProperties.Error != "" {
-			err = fmt.Errorf("content_client.GetUniqueUrl: %s", contentProperties.Error)
-			logCtx.WithFields(log.Fields{
-				"serviceId": r.ServiceCode,
-				"error":     err.Error(),
-			}).Error("contentd internal error")
-			http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
-			return
-		}
-		if err != nil {
-			err = fmt.Errorf("content_client.GetUniqueUrl: %s", err.Error())
-			logCtx.WithFields(log.Fields{
-				"serviceId": r.ServiceCode,
-				"error":     err.Error(),
-			}).Error("cannot get unique content url")
-			http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
-			return
+			Price:              service.PriceCents,
 		}
 
-		contentUrl := cnf.Service.LandingPages.QRTech.ContentUrl + contentProperties.UniqueUrl
+		contentUrl := cnf.Service.LandingPages.QRTech.ContentUrl + "get"
 
 		encVars := url.Values{}
 		encVars.Add("SHORTCODE", campaign.ServiceCode)

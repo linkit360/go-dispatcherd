@@ -29,9 +29,9 @@ service:
   campaign_hash_length: 32
   error_redirect_url: http://id.slypee.com
   not_found_redirect_url: http://id.slypee.com
-  redirect_on_gather_error: true
-  send_restore_pixel_enabled:  false
-  start_new_subscription_on_click: true
+  redirect_on_gather_error: false
+  send_restore_pixel_enabled:  true
+  start_new_subscription_on_click: false
   detect_by_ip_enabled: false
   country_code: 92
   operator_code: 41001
@@ -43,10 +43,10 @@ service:
     traffic_redirect_enabled: false
 
   landings:
-    custom: false
+    custom: true
 
     mobilink:
-      enabled: true
+      enabled: false
       queues:
         responses: mobilink_responses
         mo: mobilink_new_subscriptions
@@ -68,7 +68,7 @@ service:
         pass: KhZbQo1n
 
     qrtech:
-      enabled: false
+      enabled: true
       content_url: http://platform.th.linkit360.ru/qr/
       autoclick_url: http://yandex.ru
       aes_key: 5432104769mb8552

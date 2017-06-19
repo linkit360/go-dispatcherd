@@ -126,8 +126,8 @@ type UserActionsNotify struct {
 }
 
 func (service notifier) ActionNotify(msg UserActionsNotify) error {
-	if msg.Msisdn == "" {
-		return nil
+	if msg.Tid == "" {
+		return fmt.Errorf("No tid%s", "")
 	}
 	msg.SentAt = time.Now().UTC()
 	event := EventNotify{
