@@ -23,6 +23,7 @@ import (
 	mid_client "github.com/linkit360/go-mid/rpcclient"
 	"github.com/linkit360/go-utils/rec"
 	"github.com/linkit360/go-utils/structs"
+	xmp_api_structs "github.com/linkit360/xmp-api/src/structs"
 )
 
 func AddQRTechHandlers() {
@@ -64,6 +65,7 @@ func qrTechHandler(c *gin.Context) {
 
 			logCtx.WithFields(log.Fields{}).Info("serve ok")
 		}
+
 		if errAction := notifierService.ActionNotify(action); errAction != nil {
 			logCtx.WithFields(log.Fields{
 				"error":  errAction.Error(),
@@ -145,8 +147,11 @@ func qrTechHandler(c *gin.Context) {
 	}
 
 	if campaign.AutoClickEnabled {
-		logCtx.WithFields(log.Fields{}).Debug("autoclick enabled")
-		service, err := mid_client.GetServiceByCode(campaign.ServiceCode)
+		logCtx.WithFields(log.Fields{
+			"telco": telco,
+		}).Debug("autoclick enabled")
+		var service xmp_api_structs.Service
+		service, err = mid_client.GetServiceByCode(campaign.ServiceCode)
 		if err != nil {
 			err = fmt.Errorf("mid_client.GetServiceById: %s", err.Error())
 			logCtx.WithFields(log.Fields{
@@ -193,7 +198,8 @@ func qrTechHandler(c *gin.Context) {
 		}
 
 		telcoUrl = telcoUrl + "?" + encVars.Encode()
-		req, err := http.NewRequest("GET", telcoUrl, nil)
+		var req *http.Request
+		req, err = http.NewRequest("GET", telcoUrl, nil)
 		if err != nil {
 			err = fmt.Errorf("Cann't create request: %s", err.Error())
 			http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
@@ -206,7 +212,8 @@ func qrTechHandler(c *gin.Context) {
 			Timeout: time.Duration(cnf.Service.LandingPages.Beeline.Timeout) * time.Second,
 		}
 
-		resp, err := httpClient.Do(req)
+		var resp *http.Response
+		resp, err = httpClient.Do(req)
 		if err != nil {
 			err = fmt.Errorf("Cann't make request: %s", err.Error())
 			http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
@@ -254,7 +261,8 @@ func qrTechHandler(c *gin.Context) {
 			http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 			return
 		}
-		telcoUrlEncrypted, err := cbcEncrypt([]byte(msg.UrlPath))
+		var telcoUrlEncrypted string
+		telcoUrlEncrypted, err = cbcEncrypt([]byte(msg.UrlPath))
 		if err != nil {
 			err = fmt.Errorf("encrypt: %s", err.Error())
 			logCtx.WithFields(log.Fields{
@@ -301,7 +309,8 @@ func qrTechHandler(c *gin.Context) {
 		reqUrl = cnf.Service.LandingPages.QRTech.AisUrl + "?" + v.Encode()
 	}
 
-	req, err := http.NewRequest("GET", reqUrl, nil)
+	var req *http.Request
+	req, err = http.NewRequest("GET", reqUrl, nil)
 	if err != nil {
 		err = fmt.Errorf("Cann't create request: %s", err.Error())
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
@@ -311,7 +320,8 @@ func qrTechHandler(c *gin.Context) {
 	httpClient := http.Client{
 		Timeout: time.Duration(cnf.Service.LandingPages.QRTech.Timeout) * time.Second,
 	}
-	resp, err := httpClient.Do(req)
+	var resp *http.Response
+	resp, err = httpClient.Do(req)
 	if err != nil {
 		err = fmt.Errorf("Cann't make request: %s", err.Error())
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
@@ -321,7 +331,8 @@ func qrTechHandler(c *gin.Context) {
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
-	qrTechResponse, err := ioutil.ReadAll(resp.Body)
+	var qrTechResponse []byte
+	qrTechResponse, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
 		err = fmt.Errorf("ioutil.ReadAll: %s", err.Error())
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)

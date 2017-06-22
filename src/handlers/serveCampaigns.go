@@ -32,10 +32,11 @@ func updateTemplates(c *gin.Context) {
 func ServeStatic(c *gin.Context) {
 	filePath := c.Params.ByName("filepath")
 	log.WithFields(log.Fields{
-		"fp": filePath,
+		"fp":   filePath,
+		"link": c.Params.ByName("campaign_link"),
 	}).Info("path")
 
-	if filePath == "" || filePath == "/" {
+	if filePath == "" || filePath == "/" || filePath == "//" {
 		serveCampaigns(c)
 		return
 	}

@@ -85,10 +85,6 @@ func getFromParamsOrSession(
 ) string {
 	val, ok := c.GetQuery(getParamName)
 	if ok && len(val) >= length {
-		log.WithFields(log.Fields{
-			"tid":         tid,
-			sessParamName: val,
-		}).Debug("found " + sessParamName + " in get params")
 		return val
 	}
 
