@@ -10,12 +10,11 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/linkit360/go-dispatcherd/src/sessions"
-	mid "github.com/linkit360/go-mid/service"
 	"github.com/linkit360/go-utils/structs"
 )
 
 // gather information from headers, etc
-func gatherInfo(c *gin.Context, campaign mid.Campaign) (msg structs.AccessCampaignNotify) {
+func gatherInfo(c *gin.Context) (msg structs.AccessCampaignNotify) {
 	sessions.SetSession(c)
 	tid := sessions.GetTid(c)
 	logCtx := log.WithFields(log.Fields{
@@ -35,9 +34,6 @@ func gatherInfo(c *gin.Context, campaign mid.Campaign) (msg structs.AccessCampai
 		UrlPath:      r.URL.String(),
 		Method:       r.Method,
 		Headers:      string(headers),
-		CampaignCode: campaign.Code,
-		ServiceCode:  campaign.ServiceCode,
-		CampaignHash: campaign.Hash,
 		Supported:    true,
 		CountryCode:  cnf.Service.CountryCode,
 		OperatorCode: cnf.Service.OperatorCode,

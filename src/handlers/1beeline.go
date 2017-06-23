@@ -18,7 +18,6 @@ import (
 	"github.com/linkit360/go-dispatcherd/src/sessions"
 	mid_client "github.com/linkit360/go-mid/rpcclient"
 	rec "github.com/linkit360/go-utils/rec"
-	"github.com/linkit360/go-utils/structs"
 )
 
 func AddBeelineHandlers(e *gin.Engine) {
@@ -128,7 +127,7 @@ func notifyBeeline(c *gin.Context) {
 			log.WithFields(fields).Error("notify")
 		}
 
-		action.CampaignCode = land.CampaignCode
+		action.CampaignId = land.CampaignId
 		action.Tid = land.Tid
 
 		if err := notifierService.ActionNotify(action); err != nil {
@@ -204,9 +203,9 @@ func redirectUserBeeline(c *gin.Context) {
 	var r rec.Record
 	var err error
 	sessions.SetSession(c)
-	tid := sessions.GetTid(c)
-	var msg structs.AccessCampaignNotify
 
+	tid := sessions.GetTid(c)
+	msg := gatherInfo(c)
 	action := rbmq.UserActionsNotify{
 		Action: "access",
 		Tid:    tid,
@@ -224,7 +223,7 @@ func redirectUserBeeline(c *gin.Context) {
 			}).Error("beeline redirect to lp")
 		}
 		action.Msisdn = msg.Msisdn
-		action.CampaignCode = msg.CampaignCode
+		action.CampaignId = msg.CampaignId
 		action.Tid = msg.Tid
 
 		if err := notifierService.ActionNotify(action); err != nil {
@@ -254,7 +253,9 @@ func redirectUserBeeline(c *gin.Context) {
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
-	msg = gatherInfo(c, *campaign)
+	msg.CampaignId = campaign.Id
+	msg.ServiceCode = campaign.ServiceCode
+	msg.CampaignHash = campaign.Hash
 	msg.CountryCode = cnf.Service.LandingPages.Beeline.CountryCode
 	msg.OperatorCode = cnf.Service.LandingPages.Beeline.OperatorCode
 
@@ -339,7 +340,7 @@ func redirectUserBeeline(c *gin.Context) {
 		CountryCode:              cnf.Service.LandingPages.Beeline.CountryCode,
 		OperatorCode:             cnf.Service.LandingPages.Beeline.OperatorCode,
 		SentAt:                   time.Now().UTC(),
-		CampaignCode:             campaign.Code,
+		CampaignId:               campaign.Id,
 		ServiceCode:              campaign.ServiceCode,
 		Publisher:                sessions.GetFromSession("publisher", c),
 		Pixel:                    sessions.GetFromSession("pixel", c),
@@ -400,10 +401,10 @@ func returnBackCampaignPage(c *gin.Context) {
 	}
 
 	action := rbmq.UserActionsNotify{
-		Action:       "return_back",
-		Tid:          tid,
-		CampaignCode: campaign.Code,
-		Msisdn:       sessions.GetFromSession("msisdn", c),
+		Action:     "return_back",
+		Tid:        tid,
+		CampaignId: campaign.Id,
+		Msisdn:     sessions.GetFromSession("msisdn", c),
 	}
 	campaignPage := c.Params.ByName("campaign_page")
 	for _, v := range campaignByHash {

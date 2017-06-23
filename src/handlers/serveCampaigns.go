@@ -10,10 +10,8 @@ import (
 
 	m "github.com/linkit360/go-dispatcherd/src/metrics"
 	"github.com/linkit360/go-dispatcherd/src/rbmq"
-	"github.com/linkit360/go-dispatcherd/src/sessions"
 	mid_client "github.com/linkit360/go-mid/rpcclient"
 	"github.com/linkit360/go-utils/rec"
-	"github.com/linkit360/go-utils/structs"
 )
 
 func AddCampaignHandler(rg *gin.RouterGroup) {
@@ -62,22 +60,20 @@ func ServeStatic(c *gin.Context) {
 }
 
 func serveCampaigns(c *gin.Context) {
-	sessions.SetSession(c)
-	tid := sessions.GetTid(c)
+	msg := gatherInfo(c)
 	logCtx := log.WithFields(log.Fields{
-		"tid": tid,
+		"tid": msg.Tid,
 	})
 	action := rbmq.UserActionsNotify{
 		Action: "access",
-		Tid:    tid,
+		Tid:    msg.Tid,
 	}
 	m.Incoming.Inc()
 
 	var err error
-	var msg structs.AccessCampaignNotify
 	defer func() {
 		action.Msisdn = msg.Msisdn
-		action.CampaignCode = msg.CampaignCode
+		action.CampaignId = msg.CampaignId
 		action.Tid = msg.Tid
 		if err != nil {
 			action.Error = err.Error()
@@ -110,14 +106,15 @@ func serveCampaigns(c *gin.Context) {
 		m.PageNotFoundError.Inc()
 		err = fmt.Errorf("page not found: %s", campaignLink)
 
-		log.WithFields(log.Fields{
+		logCtx.WithFields(log.Fields{
 			"error": err.Error(),
 		}).Error("cannot get campaign by link")
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
-
-	msg = gatherInfo(c, *campaign)
+	msg.CampaignId = campaign.Id
+	msg.ServiceCode = campaign.ServiceCode
+	msg.CampaignHash = campaign.Hash
 	if msg.IP == "" {
 		m.IPNotFoundError.Inc()
 	}
@@ -133,8 +130,7 @@ func serveCampaigns(c *gin.Context) {
 		isRejected, err := mid_client.IsMsisdnRejectedByService(msg.ServiceCode, msg.Msisdn)
 		if err != nil {
 			err = fmt.Errorf("mid_client.IsMsisdnRejectedByService: %s", err.Error())
-			log.WithFields(log.Fields{
-				"tid":   msg.Tid,
+			logCtx.WithFields(log.Fields{
 				"error": err.Error(),
 			}).Error("rejected check failed")
 		} else {
@@ -146,7 +142,7 @@ func serveCampaigns(c *gin.Context) {
 	}
 
 	if cnf.Service.RedirectOnGatherError && msg.Error != "" {
-		log.WithFields(log.Fields{
+		logCtx.WithFields(log.Fields{
 			"err": msg.Error,
 		}).Debug("gather info failed")
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
@@ -156,15 +152,12 @@ func serveCampaigns(c *gin.Context) {
 	if cnf.Service.SendRestorePixelEnabled {
 		val, ok := c.GetQuery("aff_sub")
 		if ok && len(val) >= 5 {
-			log.WithFields(log.Fields{
-				"tid": tid,
-			}).Debug("found pixel in get params")
 			if err := notifierService.PixelBufferNotify(rec.Record{
-				SentAt:       time.Now().UTC(),
-				CampaignCode: msg.CampaignCode,
-				ServiceCode:  msg.ServiceCode,
-				Tid:          msg.Tid,
-				Pixel:        val,
+				SentAt:      time.Now().UTC(),
+				CampaignId:  msg.CampaignId,
+				ServiceCode: msg.ServiceCode,
+				Tid:         msg.Tid,
+				Pixel:       val,
 			}); err != nil {
 				logCtx.WithFields(log.Fields{
 					"error": err.Error(),
@@ -192,7 +185,7 @@ func serveCampaigns(c *gin.Context) {
 		return
 	}
 
-	action = rbmq.UserActionsNotify{
+	actionAutoClick := rbmq.UserActionsNotify{
 		Action: "autoclick",
 	}
 
@@ -200,34 +193,33 @@ func serveCampaigns(c *gin.Context) {
 		if err != nil {
 			m.Errors.Inc()
 			action.Error = err.Error()
-			log.WithFields(log.Fields{
-				"tid":    msg.Tid,
+			logCtx.WithFields(log.Fields{
 				"msisdn": msg.Msisdn,
 				"link":   campaignLink,
 				"error":  err.Error(),
 			}).Info("error add new subscription")
 		}
-		action.Tid = msg.Tid
-		action.Msisdn = msg.Msisdn
-		action.CampaignCode = msg.CampaignCode
+		actionAutoClick.Tid = msg.Tid
+		actionAutoClick.Msisdn = msg.Msisdn
+		actionAutoClick.CampaignId = msg.CampaignId
 
-		if err := notifierService.ActionNotify(action); err != nil {
-			log.WithFields(log.Fields{
+		if err := notifierService.ActionNotify(actionAutoClick); err != nil {
+			logCtx.WithFields(log.Fields{
 				"error": err.Error(),
-				"tid":   msg.Tid,
 			}).Error("notify user action")
-		} else {
 		}
 	}()
 
 	if err = startNewSubscription(c, msg); err == nil {
-		log.WithFields(log.Fields{
-			"tid":           msg.Tid,
-			"link":          campaignLink,
-			"hash":          campaignByLink[campaignLink].Hash,
-			"msisdn":        msg.Msisdn,
-			"campaign_code": campaignByLink[campaignLink].Code,
+		logCtx.WithFields(log.Fields{
+			"msisdn":      msg.Msisdn,
+			"campaign_id": campaignByLink[campaignLink].Id,
 		}).Info("added new subscritpion due to ratio")
+	} else {
+		logCtx.WithFields(log.Fields{
+			"error":       err.Error(),
+			"campaign_id": campaignByLink[campaignLink].Id,
+		}).Info("cannot add new subscription")
 	}
 
 	return

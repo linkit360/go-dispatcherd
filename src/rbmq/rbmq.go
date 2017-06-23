@@ -117,12 +117,12 @@ func (service notifier) AccessCampaignNotify(msg structs.AccessCampaignNotify) e
 }
 
 type UserActionsNotify struct {
-	Tid          string    `json:"tid,omitempty"`
-	CampaignCode string    `json:"campaign_code,omitempty"`
-	Msisdn       string    `json:"msisdn,omitempty"`
-	Error        string    `json:"err,omitempty"`
-	Action       string    `json:"action,omitempty"`
-	SentAt       time.Time `json:"sent_at,omitempty"`
+	Tid        string    `json:"tid,omitempty"`
+	CampaignId string    `json:"campaign_id,omitempty"`
+	Msisdn     string    `json:"msisdn,omitempty"`
+	Error      string    `json:"err,omitempty"`
+	Action     string    `json:"action,omitempty"`
+	SentAt     time.Time `json:"sent_at,omitempty"`
 }
 
 func (service notifier) ActionNotify(msg UserActionsNotify) error {
@@ -131,7 +131,7 @@ func (service notifier) ActionNotify(msg UserActionsNotify) error {
 	}
 	msg.SentAt = time.Now().UTC()
 	event := EventNotify{
-		EventName: "user_actions",
+		EventName: msg.Action,
 		EventData: msg,
 	}
 	body, err := json.Marshal(event)

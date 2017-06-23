@@ -62,6 +62,7 @@ func SaveState() {
 
 func AccessHandler(c *gin.Context) {
 	m.Access.Inc()
+	sessions.SetSession(c)
 
 	begin := time.Now()
 	c.Next()
@@ -191,12 +192,12 @@ func redirect(msg structs.AccessCampaignNotify) (campaign mid.Campaign, err erro
 		log.WithFields(log.Fields{
 			"tid": msg.Tid,
 		}).Debug("redirect off")
-		campaign.Code = msg.CampaignCode
+		campaign.Id = msg.CampaignId
 		return
 	}
 
 	// if nextCampaignCode == msg.CampaignCode then it's not rejected msisdn
-	campaign.Code, err = mid_client.GetMsisdnCampaignCache(msg.CampaignCode, msg.Msisdn)
+	campaign.Id, err = mid_client.GetMsisdnCampaignCache(msg.CampaignId, msg.Msisdn)
 	if err != nil {
 		err = fmt.Errorf("mid_client.GetMsisdnCampaignCache: %s", err.Error())
 		log.WithFields(log.Fields{
@@ -206,25 +207,25 @@ func redirect(msg structs.AccessCampaignNotify) (campaign mid.Campaign, err erro
 		return
 	}
 
-	if campaign.Code == msg.CampaignCode {
+	if campaign.Id == msg.CampaignId {
 		log.WithFields(log.Fields{
 			"tid": msg.Tid,
 		}).Debug("no redirect: ok")
 		return
 	}
 	// no more campaigns
-	if campaign.Code == "" {
+	if campaign.Id == "" {
 		m.Rejected.Inc()
 
 		log.WithFields(log.Fields{
 			"tid":      msg.Tid,
 			"msisdn":   msg.Msisdn,
-			"campaign": msg.CampaignCode,
+			"campaign": msg.CampaignId,
 		}).Debug("redirect")
 		return
 	}
 
-	campaign, err = mid_client.GetCampaignByCode(campaign.Code)
+	campaign, err = mid_client.GetCampaignByUUID(campaign.Id)
 	if err != nil {
 		err = fmt.Errorf("mid_client.GetCampaignById: %s", err.Error())
 
@@ -238,8 +239,8 @@ func redirect(msg structs.AccessCampaignNotify) (campaign mid.Campaign, err erro
 	log.WithFields(log.Fields{
 		"tid":       msg.Tid,
 		"msisdn":    msg.Msisdn,
-		"campaign":  msg.CampaignCode,
-		"2campaign": campaign.Code,
+		"campaign":  msg.CampaignId,
+		"2campaign": campaign.Id,
 	}).Debug("redirect")
 	return
 }
@@ -265,7 +266,7 @@ func generateUniqueUrl(r structs.AccessCampaignNotify) (url string, err error) {
 		Msisdn:       r.Msisdn,
 		Tid:          r.Tid,
 		ServiceCode:  r.ServiceCode,
-		CampaignCode: r.CampaignCode,
+		CampaignId:   r.CampaignId,
 		OperatorCode: r.OperatorCode,
 		CountryCode:  r.CountryCode,
 	})
@@ -292,22 +293,19 @@ func generateUniqueUrl(r structs.AccessCampaignNotify) (url string, err error) {
 }
 
 func generateCode(c *gin.Context) {
-	sessions.SetSession(c)
-	tid := sessions.GetTid(c)
+	msg := gatherInfo(c)
 	logCtx := log.WithFields(log.Fields{
-		"tid": tid,
+		"tid": msg.Tid,
 	})
 	action := rbmq.UserActionsNotify{
 		Action: "generate_code",
-		Tid:    tid,
+		Tid:    msg.Tid,
 	}
 	m.Incoming.Inc()
-
 	var err error
-	var msg structs.AccessCampaignNotify
 	defer func() {
 		action.Msisdn = msg.Msisdn
-		action.CampaignCode = msg.CampaignCode
+		action.CampaignId = msg.CampaignId
 		action.Tid = msg.Tid
 		if err != nil {
 			action.Error = err.Error()
@@ -346,8 +344,9 @@ func generateCode(c *gin.Context) {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
-
-	msg = gatherInfo(c, *campaign)
+	msg.CampaignId = campaign.Id
+	msg.ServiceCode = campaign.ServiceCode
+	msg.CampaignHash = campaign.Hash
 	msg.CountryCode = cnf.Service.LandingPages.Mobilink.CountryCode
 	msg.OperatorCode = cnf.Service.LandingPages.Mobilink.OperatorCode
 	if msg.IP == "" {
@@ -416,7 +415,7 @@ func verifyCode(c *gin.Context) {
 	var err error
 	defer func() {
 		action.Msisdn = r.Msisdn
-		action.CampaignCode = r.CampaignCode
+		action.CampaignId = r.CampaignId
 		action.Tid = r.Tid
 		if err != nil {
 			action.Error = err.Error()

@@ -28,16 +28,15 @@ func ContentGet(c *gin.Context) {
 	var err error
 
 	m.CampaignAccess.Inc()
-	sessions.SetSession(c)
-	tid := sessions.GetTid(c)
+	msg := gatherInfo(c)
 
 	logCtx := log.WithFields(log.Fields{
-		"tid": tid,
+		"tid": msg.Tid,
 	})
 	logCtx.Debug("get content")
 	action := rbmq.UserActionsNotify{
 		Action: "content_get",
-		Tid:    tid,
+		Tid:    msg.Tid,
 	}
 	contentProperties := &structs.ContentSentProperties{}
 	defer func() {
@@ -76,23 +75,25 @@ func ContentGet(c *gin.Context) {
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
-	action.CampaignCode = campaign.Code
-	msg := gatherInfo(c, campaign)
+	msg.CampaignId = campaign.Id
+	msg.ServiceCode = campaign.ServiceCode
+	msg.CampaignHash = campaign.Hash
+	action.CampaignId = campaign.Id
 
 	startNewSubscriptionFlag, _ := c.GetQuery("s")
 	if len(startNewSubscriptionFlag) > 0 && msg.Msisdn != "" {
 		if err = startNewSubscription(c, msg); err == nil {
 			log.WithFields(log.Fields{
-				"tid":           msg.Tid,
-				"msisdn":        msg.Msisdn,
-				"campaign_code": campaign.Code,
+				"tid":         msg.Tid,
+				"msisdn":      msg.Msisdn,
+				"campaign_id": campaign.Id,
 			}).Info("added new subscritpion")
 
 			subAction := rbmq.UserActionsNotify{
-				Action:       "pull_click",
-				Tid:          tid,
-				Msisdn:       msg.Msisdn,
-				CampaignCode: campaign.Code,
+				Action:     "pull_click",
+				Tid:        msg.Tid,
+				Msisdn:     msg.Msisdn,
+				CampaignId: campaign.Id,
 			}
 			if err := notifierService.ActionNotify(subAction); err != nil {
 				logCtx.WithField("error", err.Error()).Error("notify user action")
@@ -115,8 +116,8 @@ func ContentGet(c *gin.Context) {
 
 	contentProperties, err = content_client.Get(content_service.GetContentParams{
 		Msisdn:       msg.Msisdn,
-		Tid:          tid,
-		CampaignCode: campaign.Code,
+		Tid:          msg.Tid,
+		CampaignId:   campaign.Id,
 		ServiceCode:  campaign.ServiceCode,
 		OperatorCode: operatorCode,
 		CountryCode:  countryCode,
@@ -135,7 +136,7 @@ func ContentGet(c *gin.Context) {
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
-	contentProperties.CampaignCode = campaign.Code
+	contentProperties.CampaignId = campaign.Id
 	if contentProperties.Error != "" {
 		m.ContentDeliveryErrors.Inc()
 
@@ -197,7 +198,7 @@ func UniqueUrlGet(c *gin.Context) {
 		}
 		contentProperties.Tid = tid
 		action.Tid = tid
-		action.CampaignCode = contentProperties.CampaignCode
+		action.CampaignId = contentProperties.CampaignId
 
 		if err := notifierService.ActionNotify(action); err != nil {
 			logCtx.WithField("error", err.Error()).Error("notify user action")
@@ -213,10 +214,10 @@ func UniqueUrlGet(c *gin.Context) {
 	if uniqueUrl == "get" {
 		m.RandomContentGet.Inc()
 		contentProperties, err = content_client.Get(content_service.GetContentParams{
-			Msisdn:       sessions.GetFromSession("msisdn", c),
-			Tid:          tid,
-			ServiceCode:  cnf.Service.ContentServiceCodeDefault,
-			CampaignCode: cnf.Service.ContentCampaignCodeDefault,
+			Msisdn:      sessions.GetFromSession("msisdn", c),
+			Tid:         tid,
+			ServiceCode: cnf.Service.ContentServiceCodeDefault,
+			CampaignId:  cnf.Service.ContentCampaignIdDefault,
 		})
 	} else {
 		m.UniqueUrlGet.Inc()
@@ -250,7 +251,7 @@ func UniqueUrlGet(c *gin.Context) {
 		"path":      contentProperties.ContentPath,
 	}).Debug("contentd response")
 
-	action.CampaignCode = contentProperties.CampaignCode
+	action.CampaignId = contentProperties.CampaignId
 	action.Msisdn = contentProperties.Msisdn
 	action.Tid = contentProperties.Tid
 	action.Error = contentProperties.Error
@@ -284,7 +285,7 @@ func createUniqueUrl(r rec.Record) (contentUrl string, err error) {
 		Msisdn:         r.Msisdn,
 		Tid:            r.Tid,
 		ServiceCode:    r.ServiceCode,
-		CampaignCode:   r.CampaignCode,
+		CampaignId:     r.CampaignId,
 		OperatorCode:   r.OperatorCode,
 		CountryCode:    r.CountryCode,
 		SubscriptionId: r.SubscriptionId,

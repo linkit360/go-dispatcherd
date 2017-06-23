@@ -22,7 +22,6 @@ import (
 	"github.com/linkit360/go-dispatcherd/src/sessions"
 	mid_client "github.com/linkit360/go-mid/rpcclient"
 	"github.com/linkit360/go-utils/rec"
-	"github.com/linkit360/go-utils/structs"
 	xmp_api_structs "github.com/linkit360/xmp-api/src/structs"
 )
 
@@ -35,21 +34,20 @@ func AddQRTechHandlers() {
 
 func qrTechHandler(c *gin.Context) {
 	var err error
-	tid := sessions.GetTid(c)
 	m.Incoming.Inc()
 
-	var msg = structs.AccessCampaignNotify{}
+	msg := gatherInfo(c)
 	action := rbmq.UserActionsNotify{
 		Action: "access",
-		Tid:    tid,
+		Tid:    msg.Tid,
 	}
 	logCtx := log.WithFields(log.Fields{
-		"tid": tid,
+		"tid": msg.Tid,
 	})
 
 	defer func() {
 		action.Msisdn = msg.Msisdn
-		action.CampaignCode = msg.CampaignCode
+		action.CampaignId = msg.CampaignId
 		action.Tid = msg.Tid
 		if err != nil {
 			m.Errors.Inc()
@@ -83,13 +81,13 @@ func qrTechHandler(c *gin.Context) {
 		val, ok := c.GetQuery("aff_sub")
 		if ok && len(val) >= 5 {
 			log.WithFields(log.Fields{
-				"tid": tid,
+				"tid": msg.Tid,
 			}).Debug("found pixel in get params")
 			if err := notifierService.PixelBufferNotify(rec.Record{
-				SentAt:       time.Now().UTC(),
-				CampaignCode: msg.CampaignCode,
-				Tid:          msg.Tid,
-				Pixel:        val,
+				SentAt:     time.Now().UTC(),
+				CampaignId: msg.CampaignId,
+				Tid:        msg.Tid,
+				Pixel:      val,
 			}); err != nil {
 				logCtx.WithFields(log.Fields{
 					"error": err.Error(),
@@ -113,8 +111,9 @@ func qrTechHandler(c *gin.Context) {
 		http.Redirect(c.Writer, c.Request, cnf.Service.ErrorRedirectUrl, 303)
 		return
 	}
-
-	msg = gatherInfo(c, *campaign)
+	msg.CampaignId = campaign.Id
+	msg.ServiceCode = campaign.ServiceCode
+	msg.CampaignHash = campaign.Hash
 	msg.CountryCode = cnf.Service.LandingPages.QRTech.CountryCode
 	if msg.IP == "" {
 		m.IPNotFoundError.Inc()
@@ -123,7 +122,7 @@ func qrTechHandler(c *gin.Context) {
 		m.NotSupported.Inc()
 	}
 
-	msg.CampaignCode = campaign.Code
+	msg.CampaignId = campaign.Id
 	msg.ServiceCode = campaign.ServiceCode
 
 	v := url.Values{}
@@ -165,7 +164,7 @@ func qrTechHandler(c *gin.Context) {
 			Msisdn:             msg.Msisdn,
 			Tid:                msg.Tid,
 			SubscriptionStatus: "",
-			CampaignCode:       campaign.Code,
+			CampaignId:         campaign.Id,
 			ServiceCode:        campaign.ServiceCode,
 			CountryCode:        msg.CountryCode,
 			OperatorCode:       msg.OperatorCode,

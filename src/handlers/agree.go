@@ -18,22 +18,20 @@ import (
 // on click - start new subscription API for south team
 // ALTER TABLE public.xmp_subscriptions ADD channel VARCHAR(255) DEFAULT '' NOT NULL;
 func initiateSubscription(c *gin.Context) {
-	sessions.SetSession(c)
-	tid := sessions.GetTid(c)
+	var err error
+	m.Incoming.Inc()
+
+	msg := gatherInfo(c)
+
 	logCtx := log.WithFields(log.Fields{
-		"tid": tid,
+		"tid": msg.Tid,
 	})
 	action := rbmq.UserActionsNotify{
 		Action: "api_subscribe",
-		Tid:    tid,
 	}
-	m.Incoming.Inc()
-
-	var err error
-	var msg structs.AccessCampaignNotify
 	defer func() {
 		action.Msisdn = msg.Msisdn
-		action.CampaignCode = msg.CampaignCode
+		action.CampaignId = msg.CampaignId
 		action.Tid = msg.Tid
 		if err != nil {
 			action.Error = err.Error()
@@ -68,11 +66,13 @@ func initiateSubscription(c *gin.Context) {
 		c.JSON(500, gin.H{"error": "Unknown campaign"})
 		return
 	}
-
-	msg = gatherInfo(c, *campaign)
+	msg.CampaignId = campaign.Id
+	msg.ServiceCode = campaign.ServiceCode
+	msg.CampaignHash = campaign.Hash
 	if msg.IP == "" {
 		m.IPNotFoundError.Inc()
 	}
+
 	if msg.Error == "Msisdn not found" {
 		m.MsisdnNotFoundError.Inc()
 
@@ -107,11 +107,11 @@ func initiateSubscription(c *gin.Context) {
 	if "sub" == qEvent {
 		if err = startNewSubscription(c, msg); err == nil {
 			log.WithFields(log.Fields{
-				"tid":           msg.Tid,
-				"link":          campaignLink,
-				"hash":          campaignByLink[campaignLink].Hash,
-				"msisdn":        msg.Msisdn,
-				"campaign_code": campaignByLink[campaignLink].Code,
+				"tid":         msg.Tid,
+				"link":        campaignLink,
+				"hash":        campaignByLink[campaignLink].Hash,
+				"msisdn":      msg.Msisdn,
+				"campaign_id": campaignByLink[campaignLink].Id,
 			}).Info("added new subscritpion by API call")
 			m.Success.Inc()
 			c.JSON(200, gin.H{"state": "success"})
@@ -129,7 +129,7 @@ func initiateSubscription(c *gin.Context) {
 		r := rec.Record{
 			Msisdn:       msg.Msisdn,
 			ServiceCode:  msg.ServiceCode,
-			CampaignCode: msg.CampaignCode,
+			CampaignId:   msg.CampaignId,
 			Tid:          msg.Tid,
 			CountryCode:  msg.CountryCode,
 			OperatorCode: msg.OperatorCode,
@@ -147,11 +147,11 @@ func initiateSubscription(c *gin.Context) {
 	}
 	if err = startNewSubscription(c, msg); err == nil {
 		log.WithFields(log.Fields{
-			"tid":           msg.Tid,
-			"link":          campaignLink,
-			"hash":          campaignByLink[campaignLink].Hash,
-			"msisdn":        msg.Msisdn,
-			"campaign_code": campaignByLink[campaignLink].Code,
+			"tid":         msg.Tid,
+			"link":        campaignLink,
+			"hash":        campaignByLink[campaignLink].Hash,
+			"msisdn":      msg.Msisdn,
+			"campaign_id": campaignByLink[campaignLink].Id,
 		}).Info("added new subscritpion by API call (event unrecognized)")
 	}
 	c.JSON(500, gin.H{"error": "event is unrecognized"})
@@ -159,17 +159,18 @@ func initiateSubscription(c *gin.Context) {
 }
 
 func startNewSubscription(c *gin.Context, msg structs.AccessCampaignNotify) error {
+
 	if cnf.Service.Rejected.CampaignRedirectEnabled {
 		campaignRedirect, err := redirect(msg)
 		if err != nil {
 			return err
 		}
-		if campaignRedirect.Code == "" {
+		if campaignRedirect.Id == "" {
 			msg.Error = "rejected"
 			log.WithFields(log.Fields{
 				"url": cnf.Service.ErrorRedirectUrl,
 			}).Debug("rejected")
-		} else if campaignRedirect.Code != msg.CampaignCode {
+		} else if campaignRedirect.Id != msg.CampaignId {
 			m.Redirected.Inc()
 
 			log.WithFields(log.Fields{
@@ -177,10 +178,11 @@ func startNewSubscription(c *gin.Context, msg structs.AccessCampaignNotify) erro
 			}).Info("redirect")
 
 			msg.CampaignHash = campaignRedirect.Hash
-			msg.CampaignCode = campaignRedirect.Code
+			msg.CampaignId = campaignRedirect.Id
 			msg.ServiceCode = campaignRedirect.ServiceCode
 		}
 	}
+
 	if cnf.Service.Rejected.TrafficRedirectEnabled {
 		err := mid_client.SetMsisdnServiceCache(msg.ServiceCode, msg.Msisdn)
 		if err != nil {
@@ -196,7 +198,8 @@ func startNewSubscription(c *gin.Context, msg structs.AccessCampaignNotify) erro
 	logCtx := log.WithFields(log.Fields{
 		"tid": msg.Tid,
 	})
-	logCtx.WithField("campaign", msg.CampaignCode).Debug("start new subscription")
+
+	logCtx.WithField("campaign", msg.CampaignId).Debug("start new subscription...")
 
 	defer func() {
 		sessions.RemoveTid(c)
@@ -212,7 +215,7 @@ func startNewSubscription(c *gin.Context, msg structs.AccessCampaignNotify) erro
 		OperatorCode:       msg.OperatorCode,
 		Publisher:          sessions.GetFromSession("publisher", c),
 		Pixel:              sessions.GetFromSession("pixel", c),
-		CampaignCode:       msg.CampaignCode,
+		CampaignId:         msg.CampaignId,
 		ServiceCode:        msg.ServiceCode,
 		Channel:            c.DefaultQuery("channel", ""),
 	}
@@ -232,7 +235,7 @@ func startNewSubscription(c *gin.Context, msg structs.AccessCampaignNotify) erro
 	}
 	m.AgreeSuccess.Inc()
 	if cnf.Service.Rejected.CampaignRedirectEnabled {
-		if err := mid_client.SetMsisdnCampaignCache(msg.CampaignCode, msg.Msisdn); err != nil {
+		if err := mid_client.SetMsisdnCampaignCache(msg.CampaignId, msg.Msisdn); err != nil {
 			err = fmt.Errorf("mid_client.SetMsisdnCampaignCache: %s", err.Error())
 			logCtx.Error(err.Error())
 		}
