@@ -28,6 +28,7 @@ type AppConfig struct {
 }
 
 type ServerConfig struct {
+	Host     string                  `default:"127.0.0.1"`
 	Port     string                  `default:"50300"`
 	Path     string                  `default:"/var/www/xmp.linkit360.ru/web/" yaml:"path"`
 	Url      string                  `default:"http://platform.pk.linkit360.ru" yaml:"url"`

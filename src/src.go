@@ -45,7 +45,7 @@ func RunServer() {
 	e.NoRoute(handlers.AccessHandler, notFound)
 	e.RedirectTrailingSlash = true
 
-	e.Run(":" + conf.Server.Port)
+	e.Run(conf.Server.Host + ":" + conf.Server.Port)
 }
 
 func notFound(c *gin.Context) {
